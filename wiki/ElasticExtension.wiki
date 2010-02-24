@@ -2,7 +2,7 @@
 
 This draft protocol and metadata extension represents a proof of concept method for securely extending a torrent's data layer, and lacks several features that would be required for real world deployment
 
-= Summary =
+== Summary ==
 
   The Elastic Extension allows a single file within a torrent to be securely extended by its creator, and the extended data to be propagated through the peer cloud in near real time.
 
@@ -10,7 +10,7 @@ This draft protocol and metadata extension represents a proof of concept method 
 
   The Elastic Extension requires no special tracker support, and parts of its peer infrastructure can share an implementation with the Merkle extension
 
-= Implementation Details =
+== Implementation Details ==
 
 For discussion of a Merkle tree structure that supports the expanding data layer, see [ElasticTree The Elastic Tree]
 
