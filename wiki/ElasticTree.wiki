@@ -1,5 +1,7 @@
 = The Elastic Tree =
 
+_This documentation in progress_
+
 The Elastic tree is a tree structure suitable for modeling an expandable [http://en.wikipedia.org/wiki/Hash_tree Merkle tree] in a way that is both space and time efficient
 
 An Elastic tree is a perfect binary tree consisting of an *immutable set* of hash nodes and one or more *views* consisting of mutable hash nodes that may be replaced
