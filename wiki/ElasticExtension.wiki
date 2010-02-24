@@ -62,5 +62,5 @@ For discussion of a Merkle tree structure that supports the expanding data layer
     * Issues not faced by non-Elastic torrents
       * Allowing torrent data to be extended replaces a previous safety management issue ("is the known content of this immutable torrent safe") with a reputation management issue ("do I trust this key and whatever new data it may send me")
       * The torrent originator is in a unique position to break an existing torrent by issuing inconsistent, but verifiable signatures
-  * This may occur deliberately, or accidentally if for instance the originator dies without having committed signatures that it has published to permanent storage. A statement of best practices for originators may be useful.
-  * If this occurs, the peer set will fracture into two or more competing sets
+        * This may occur deliberately, or accidentally if for instance the originator dies without having committed signatures that it has published to permanent storage. A statement of best practices for originators may be useful.
+        * If this occurs, the peer set will fracture into two or more competing sets
