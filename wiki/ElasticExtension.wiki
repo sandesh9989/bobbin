@@ -6,13 +6,13 @@ This draft protocol and metadata extension represents a proof of concept method 
 
   The Elastic Extension allows a single file within a torrent to be securely extended by its creator, and the extended data to be propagated through the peer cloud in near real time.
 
-  The Elastic Extension is based in part upon the principles of the Merkle extension. As with the Merkle extension, the initial static data of the torrent is defined by the root hash of a Merkle tree. In addition to the root hash, an Elastic torrent !MetaInfo contains both a public key and a signature structure that ties the torrent's Info uniquely to that key; later extensions to the torrent by its creator are signed with the same key, and can thus be validated by peers as authentic.
+  The Elastic Extension is based in part upon the principles of the Merkle extension. As with the Merkle extension, the initial static data of the torrent is defined by the root hash of a hash tree. In addition to the root hash, an Elastic torrent !MetaInfo contains both a public key and a signature structure that ties the torrent's Info uniquely to that key; later extensions to the torrent by its creator are signed with the same key, and can thus be validated by peers as authentic.
 
   The Elastic Extension requires no special tracker support, and parts of its peer infrastructure can share an implementation with the Merkle extension
 
 == Implementation Details ==
 
-For discussion of a Merkle tree structure that supports the expanding data layer, see [ElasticTree Elastic Hash Tree]
+For discussion of a hash tree structure that supports the expanding data layer, see [ElasticTree Elastic Hash Tree]
 
   * Extension identifier
     * `bo_elastic`
