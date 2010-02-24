@@ -1,0 +1,41 @@
+= The Elastic Tree =
+
+  * An array of n hashes is modelled as the leaves of a perfect binary tree of height `ceil(log2(n))`, containing `2^height` leaves, and `2 * leaves - 1` total nodes
+  * The nodes of the tree are numbered according to their sequence in a post order traversal, with zero being the first node (the first leaf)
+  * The tree is considered to grow upwards from the leaves, such that for any leaf `e`, `height(e) = 0`
+  * Leaves with a leaf number greater than `n - 1` are filler leaves, considered to have a hash of zero
+  * A filler node f at a given height within the tree has the following identity : `filler(0) = 0 ; filler(height(f)) = hash(filler(height(f)-1),filler(height(f)-1))`
+  * The root node of the tree is always the last numbered node, with node index `2 * leaves - 2`
+  * The node index of a leaf number `i` has the following identity: `nodeindex(i) = (2 * i) + ones(i)`, where `ones()` counts the number of set bits in an integer
+  * A leaf with a leaf number `i` is a left sibling if `i % 1 == 0`, otherwise it is a right sibling
+  * The parent of a left sibling `ls` is `ls + 2^(height(ls) + 1)`
+  * The parent of a right sibling `rs` is `rs + 1`
+  * The path from a leaf with a leaf index of `i` to the root node is contained within the bits of `i` starting with the smallest; at each point on the path, the node is a left sibling if the next bit is 0, otherwise it is a right sibling
+  * Given a tree `t` that represents a growable, append-only array of bytes with initial length `b` with a leaf hash for each `p` bytes, for a total of `n` non-filler leaves;
+    * For a given leaf node index `x`, let `path(x)` be the set of nodes on the path between `x` and the root
+    * The cardinality of `path(x)` is `height(root) + 1`
+    * Nodes greater than `nodeindex(n - 1)` that are not in `path(nodeindex(n - 1))` are filler nodes
+    * Let `q` be the highest immutable node index
+      * If `(b % p) == 0`, tree nodes `0 .. nodeindex(n - 1)` are immutable and will not change even if b grows
+      * If `(b % p) > 0`, tree nodes `0 .. nodeindex(n - 1) - 1` are immutable; tree nodes in `path(nodeindex(n - 1))` are mutable and will change if `b` grows
+    * => `t` can be modelled as a flat array of immutable nodes `0 .. q`, and, iff `q < n`, a mutable path consisting of `path(n)`
+
+{{{
+Example tree
+
+                              30
+                           /      \
+                       /              \
+                   /                      \
+               /                              \
+              14                              29
+           /      \                        /      \
+         /          \                    /          \
+       /              \                /              \
+      06              13              21              28
+    /    \          /    \          /    \          /    \
+   /      \        /      \        /      \        /      \
+  02      05      09      12      17      20      24      27
+/    \  /    \  /    \  /   \   /    \  /    \  /    \  /    \
+00  01  03  04  07  08  10  11  15  16  18  19  22  23  25  26
+}}}
