@@ -24,6 +24,12 @@ A tree modeling 10 immutable leaves and 0 mutable leaves
 
 <img src="http://bobbin.googlecode.com/svn/wiki/postorder_tree_example2.png">
 
+=== Example 3 ===
+A tree modeling 16 immutable leaves and 0 mutable leaves
+
+<img src="http://bobbin.googlecode.com/svn/wiki/postorder_tree_whole.png">
+
+
 Note that :
   * Existing node indices do not change when more leaves are added, even if the height of the tree changes as a result
   * The node indices of the immutable set are contiguous
