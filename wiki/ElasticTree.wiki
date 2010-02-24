@@ -4,10 +4,30 @@ The Elastic tree is a tree structure suitable for modeling an expandable [http:/
 
 An Elastic tree is a perfect binary tree consisting of an *immutable set* of hash nodes and one or more *views* consisting of mutable hash nodes that may be replaced
 
-== Examples ==
+Nodes in an Elastic tree are numbered by [http://en.wikipedia.org/wiki/Postorder postorder traversal]
+
+== Explanation ==
+
+Yellow nodes are the *immutable set*
+
+Orange nodes are *mutable view nodes*
+
+Blue nodes are *filler nodes*. A filler leaf node is defined to have a hash of all zeroes
+
+=== Example 1 ===
+A tree modeling 9 immutable leaves and 1 mutable leaf
+
 <img src="http://bobbin.googlecode.com/svn/wiki/postorder_tree_example1.png">
 
+=== Example 2 ===
+A tree modeling 10 immutable leaves and 0 mutable leaves
+
 <img src="http://bobbin.googlecode.com/svn/wiki/postorder_tree_example2.png">
+
+Note that :
+  * Existing node indices do not change when more leaves are added, even if the height of the tree changes as a result
+  * The node indices of the immutable set are contiguous
+  * The number of mutable nodes in a view is limited to the height of the tree
 
 
 == Tree properties ==
