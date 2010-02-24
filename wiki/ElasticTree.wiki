@@ -1,12 +1,10 @@
-= The Elastic Tree =
+= Elastic Hash Tree =
 
-_This documentation in progress_
+An elastic hash tree is a binary [http://en.wikipedia.org/wiki/Hash_tree hash tree] that allows extension of the hashed data, can be efficiently queried and updated, and is compactly represented in memory.
 
-The Elastic tree is a tree structure suitable for modeling an expandable [http://en.wikipedia.org/wiki/Hash_tree Merkle tree] in a way that is both space and time efficient
+An elastic hash tree consists of one or more *views* consisting of mutable hash nodes that may be replaced, backed by a single *immutable set* of hash nodes that will never change even if the hashed data is extended
 
-An Elastic tree is a perfect binary tree consisting of an *immutable set* of hash nodes and one or more *views* consisting of mutable hash nodes that may be replaced
-
-Nodes in an Elastic tree are numbered by [http://en.wikipedia.org/wiki/Postorder postorder traversal]
+The nodes of an elastic hash tree are numbered by [http://en.wikipedia.org/wiki/Postorder postorder traversal]
 
 == Explanation ==
 
@@ -17,25 +15,23 @@ Orange nodes are *mutable view nodes*
 Blue nodes are *filler nodes*. A filler leaf node is defined to have a hash of all zeroes
 
 === Example 1 ===
-A tree modeling 9 immutable leaves and 1 mutable leaf
+A view modeling data of length 950, with a piece size of 100, has 9 immutable leaves and 1 mutable leaf
 
 <img src="http://bobbin.googlecode.com/svn/wiki/postorder_tree_example1.png">
 
+As the hashed data may only be extended, not contracted, leaves 0 .. 8 (node indices 0, 1, 3, 4, 7, 8, 10, 11, 15) that represent a complete piece will never change. Leaf 9 (node index 16) will be replaced if a new, longer view is added to the tree.
+
+Note that the immutable set form a contiguous list of node indices 0 .. 15; this property is true for any length view. Note also that the mutable nodes form a single path from the root; this property is also true for any length view, although the path is not always the length of the full height of the tree (see the following example). These two properties form the basis of the compact representation of the tree.
+
+Further note that existing node indices will not change when more leaves are added, even if the height of the tree changes as a result. As a result, extending the tree is a time efficient operation.
+
 === Example 2 ===
-A tree modeling 10 immutable leaves and 0 mutable leaves
+A view modeling data of length 1000, with a piece size of 100, has 10 immutable leaves and 0 mutable leaves
 
 <img src="http://bobbin.googlecode.com/svn/wiki/postorder_tree_example2.png">
 
-=== Example 3 ===
-A tree modeling 16 immutable leaves and 0 mutable leaves
+Although there are no mutable leaves in this view, there are mutable nodes that are the ancestor of both immutable and filler nodes. When the last leaf in the view (the *view leaf*) is immutable, immutable nodes continue as far as can be moved up-left.
 
-<img src="http://bobbin.googlecode.com/svn/wiki/postorder_tree_whole.png">
-
-
-Note that :
-  * Existing node indices do not change when more leaves are added, even if the height of the tree changes as a result
-  * The node indices of the immutable set are contiguous
-  * The number of mutable nodes in a view is limited to the height of the tree
 
 
 == Tree properties ==
@@ -51,12 +47,8 @@ Note that :
   * The parent of a left sibling `ls` is `ls + 2^(height(ls) + 1)`
   * The parent of a right sibling `rs` is `rs + 1`
   * The path from a leaf with a leaf index of `i` to the root node is contained within the bits of `i` starting with the smallest; at each point on the path, the node is a left sibling if the next bit is 0, otherwise it is a right sibling
-  * Given a tree `t` that represents a growable, append-only array of bytes with initial length `b` with a leaf hash for each `p` bytes, for a total of `n` non-filler leaves;
+  * Given a view of length `b`, with a piece size `p` and a highest non-filler leaf number `n`;
     * For a given leaf node index `x`, let `path(x)` be the set of nodes on the path between `x` and the root
-    * The cardinality of `path(x)` is `height(root) + 1`
-    * Nodes greater than `nodeindex(n - 1)` that are not in `path(nodeindex(n - 1))` are filler nodes
-    * Let `q` be the highest immutable node index
-      * *FIXME This definition is slightly wrong*
-      * If `(b % p) == 0`, tree nodes `0 .. nodeindex(n - 1)` are immutable and will not change even if b grows
-      * If `(b % p) > 0`, tree nodes `0 .. nodeindex(n - 1) - 1` are immutable; tree nodes in `path(nodeindex(n - 1))` are mutable and will change if `b` grows
-    * => `t` can be modelled as a flat array of immutable nodes `0 .. q`, and, iff `q < n`, a mutable path consisting of `path(n)`
+    * Let `trailingOnes(x)` be the number of bits in `x`, starting at the smallest, that are set before the first `0` is reached
+    * If `(b % p) > 0`, tree nodes `0 .. nodeindex(n) - 1` are immutable; tree nodes in `path(nodeindex(n))` are mutable and will change if `b` grows
+    * If `(b % p) == 0`, tree nodes `0 .. (nodeindex(n) - 1 + trailingOnes(n))` are immutable and will not change even if b grows; tree nodes in `path(nodeindex(n))` that are greater than the final immutable node are mutable and will change if `b` grows
