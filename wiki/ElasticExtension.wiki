@@ -1,0 +1,66 @@
+#summary The Elastic extension
+
+This draft protocol and metadata extension represents a proof of concept method for securely extending a torrent's data layer, and lacks several features that would be required for real world deployment
+
+= Summary =
+
+  The Elastic Extension allows a single file within a torrent to be securely extended by its creator, and the extended data to be propagated through the peer cloud in near real time.
+
+  The Elastic Extension is based in part upon the principles of the Merkle extension. As with the Merkle extension, the initial static data of the torrent is defined by the root hash of a Merkle tree. In addition to the root hash, an Elastic torrent !MetaInfo contains both a public key and a signature structure that ties the torrent's Info uniquely to that key; later extensions to the torrent by its creator are signed with the same key, and can thus be validated by peers as authentic.
+
+  The Elastic Extension requires no special tracker support, and parts of its peer infrastructure can share an implementation with the Merkle extension
+
+= Implementation Details =
+
+For discussion of a Merkle tree structure that supports the expanding data layer, see [ElasticTree The Elastic Tree]
+
+  * Extension identifier
+    * `bo_elastic`
+  * Info extensions
+    * The Info must be a Merkle extension style Info with a "root hash" entry, plus the following keys
+      * "`root signature`" : `binary<40>` - A DSA signature of the root hash. Note: This must be a 40 byte, P1363 encoded raw DSA signature on the root hash, not an "SHA1withDSA" signature that would re-hash the bytes of the root hash
+      * "`fingerprint`" : `binary<20>` - the SHA1 fingerprint of the DSA public key used to sign the root hash
+      * "`elastic`" : `binary<1> 0x01`
+  * Metainfo extensions
+    * "`info signature`" : `binary<40>` - A DSA signature of the Info Hash
+    * "`public key`" : `binary` - An X.509 encoded DSA public key
+  * Message format
+    * Elastic Signature - `0:viewLength<8>:viewRootHash<20>:signature(infoHash,viewLength,viewRootHash)<40>`
+    * Elastic Piece - `1:pieceNumber<4>:offset<4>:hashLength<4>:hashCount<1>:{viewLength<8>:hashList<20*hashCount>}?:data`
+    * Elastic Bitfield - `2:bitfield`
+  * Protocol implementation
+    * A peer must advertise the Elastic extension only when connecting on an Elastic torrent
+    * An Elastic torrent peer must close the connection if the remote peer does not advertise the Elastic extension
+    * An Elastic torrent peer must send a "Have None" message during the initial handshake
+    * Once extension negotiation is complete, a peer must send:
+      * An Elastic Signature message corresponding to the signature of its local view (the largest view it has a signature for), if its local view is longer than the initial view defined by the torrent's Info
+      * An Elastic Bitfield message for that view
+    * An Elastic torrent peer must only send "Elastic Piece" messages
+      * When sending an Elastic piece, a peer may choose any view length for which it possesses a signature and complete hash chain for that piece
+      * A peer is required to remember a known signature set for its remote peer consisting of: The signature of the longest view that the remote peer has sent, and of the most recent view sent other than the longest
+      * Before sending a block with a particular view length, a peer must have sent an "Elastic Signature" for that view length such that it is in the known signature set defined above
+      * A peer may send blocks using the initial view length of the torrent without sending a signature. The initial view length defined by the torrent's Info is implicitly valid
+    * An Elastic torrent peer must close the connection if the remote peer sends a "Piece" message
+    * A peer must extend their local view each time a longer signature is received
+    * When the local view is extended, if the previous view's final piece was irregular (not exactly a piece-size piece) then it is dropped from the present piece set, and outstanding requests for that piece should be rejected
+    * Where the local peer's view is longer than a remote peer's, the local peer must ensure that it does not request blocks beyond the length of the remote peer's final piece
+    * The length of a remote peer's view as seen by the local peer is defined by the longest view signature the remote peer has sent
+    * If a remote peer replaces its longest view *v1* with a new view *v2*, and the final piece *p* of *v1* is irregular (not an exactly piece-size piece), *p* is implicitly dropped from the remote peer's available piece set
+    * When a signature extends the peer's local view, it must propagate that signature to the other peers in its peer set
+  * Tracker implementation
+    * No special tracker support is required
+    * An Elastic torrent peer may announce itself as a partial seed as defined in BEP 0021 if it is not interested in downloading data
+    * An Elastic torrent peer should not announce itself as a complete seed, as an Elastic torrent may be extended at any time (see below note)
+
+  * Notes
+    * Features that should be added or altered for real world deployment
+      * A method to exchange key metadata among peers (which may be split into a separate extension in order to allow non-Elastic torrents to benefit from signing)
+      * A method to extend the fileset, which may be implemented using an additional Elastic message subtype
+      * A method for the torrent originator to declare the torrent data complete at a particular length, which may be implemented using an additional Elastic message subtype, or an alteration to the Signature message
+      * A method for peers to send a compact bitfield, which may be implemented as an update to the format of the "Elastic Bitfield" message. This would allow peers to hold complete parts of very large bitsets without the cost of sending a full length bitfield
+      * A method for peers to periodically "not have" ranges of pieces, which may be implemented using an additional Elastic message subtype. This would allow peers to participate in live streaming without the obligation to file-back all the pieces they have ever held
+    * Issues not faced by non-Elastic torrents
+      * Allowing torrent data to be extended replaces a previous safety management issue ("is the known content of this immutable torrent safe") with a reputation management issue ("do I trust this key and whatever new data it may send me")
+      * The torrent originator is in a unique position to break an existing torrent by issuing inconsistent, but verifiable signatures
+  * This may occur deliberately, or accidentally if for instance the originator dies without having committed signatures that it has published to permanent storage. A statement of best practices for originators may be useful.
+  * If this occurs, the peer set will fracture into two or more competing sets
