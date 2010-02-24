@@ -12,7 +12,7 @@ This draft protocol and metadata extension represents a proof of concept method 
 
 == Implementation Details ==
 
-For discussion of a Merkle tree structure that supports the expanding data layer, see [ElasticTree The Elastic Tree]
+For discussion of a Merkle tree structure that supports the expanding data layer, see [ElasticTree Elastic Hash Tree]
 
   * Extension identifier
     * `bo_elastic`
