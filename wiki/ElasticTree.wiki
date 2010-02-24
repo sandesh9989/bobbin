@@ -1,5 +1,17 @@
 = The Elastic Tree =
 
+The Elastic tree is a tree structure suitable for modeling an expandable [http://en.wikipedia.org/wiki/Hash_tree Merkle tree] in a way that is both space and time efficient
+
+An Elastic tree is a perfect binary tree consisting of an *immutable set* of hash nodes and one or more *views* consisting of mutable hash nodes that may be replaced
+
+== Examples ==
+<img src="http://bobbin.googlecode.com/svn/wiki/postorder_tree_example1.png">
+
+<img src="http://bobbin.googlecode.com/svn/wiki/postorder_tree_example2.png">
+
+
+== Tree properties ==
+
   * An array of n hashes is modelled as the leaves of a perfect binary tree of height `ceil(log2(n))`, containing `2^height` leaves, and `2 * leaves - 1` total nodes
   * The nodes of the tree are numbered according to their sequence in a post order traversal, with zero being the first node (the first leaf)
   * The tree is considered to grow upwards from the leaves, such that for any leaf `e`, `height(e) = 0`
@@ -16,26 +28,7 @@
     * The cardinality of `path(x)` is `height(root) + 1`
     * Nodes greater than `nodeindex(n - 1)` that are not in `path(nodeindex(n - 1))` are filler nodes
     * Let `q` be the highest immutable node index
+      * *FIXME This definition is slightly wrong*
       * If `(b % p) == 0`, tree nodes `0 .. nodeindex(n - 1)` are immutable and will not change even if b grows
       * If `(b % p) > 0`, tree nodes `0 .. nodeindex(n - 1) - 1` are immutable; tree nodes in `path(nodeindex(n - 1))` are mutable and will change if `b` grows
     * => `t` can be modelled as a flat array of immutable nodes `0 .. q`, and, iff `q < n`, a mutable path consisting of `path(n)`
-
-{{{
-Example tree
-
-                              30
-                           /      \
-                       /              \
-                   /                      \
-               /                              \
-              14                              29
-           /      \                        /      \
-         /          \                    /          \
-       /              \                /              \
-      06              13              21              28
-    /    \          /    \          /    \          /    \
-   /      \        /      \        /      \        /      \
-  02      05      09      12      17      20      24      27
-/    \  /    \  /    \  /   \   /    \  /    \  /    \  /    \
-00  01  03  04  07  08  10  11  15  16  18  19  22  23  25  26
-}}}
