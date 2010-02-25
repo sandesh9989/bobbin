@@ -12,13 +12,13 @@ This draft protocol and metadata extension represents a proof of concept method 
 
 == Demonstration ==
 
-The class `demo.DemoElasticSeed` in the project source connects a tracker, an initial seed, and an ordinary peer. Simply invoke:
+The class `demo.DemoElasticSeed` in the project source connects a tracker, an initial seed, and an ordinary peer on a torrent containing a single file. Simply invoke:
 
 {{{
 # java -cp <Bobbin base>/bin demo.DemoElasticSeed <shared file>
 }}}
 
-Then, extend the shared file on disk. The initial seed polls the shared file periodically and adds the new data to the shared torrent in chunks
+Then, extend the shared file on disk. The initial seed polls the shared file periodically and will add the new data to the shared torrent in chunks
 
 {{{
 # cat <something> >> <shared file>
@@ -31,8 +31,8 @@ The initial seed and ordinary peer in this example are sharing a process, but co
 }}}
 
 Notes:
-  * DemoClient supports save/resume, but in this demonstration the initial seed does not
-  * Both DemoClient and DemoElasticSeed write their data to the current directory, so be sure to invoke them from different locations
+  * !DemoClient supports save/resume, but in this demonstration the initial seed does not
+  * Both !DemoClient and !DemoElasticSeed write their data to the current directory, so be sure to invoke them from different locations
 
 
 == Implementation Details ==
