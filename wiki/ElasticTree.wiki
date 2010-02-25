@@ -12,11 +12,9 @@ See [http://code.google.com/p/bobbin/source/browse/#svn/trunk/Bobbin/src/org/ita
 
 == Explanation ==
 
-Yellow nodes are the *immutable set*
-
-Orange nodes are *mutable view nodes*
-
-Blue nodes are *filler nodes*. A filler leaf node is defined to have a hash of all zeroes
+  * Yellow nodes are the *immutable set*
+  * Orange nodes are *mutable view nodes*
+  * Blue nodes are *filler nodes*. A filler leaf node is defined to have a hash of all zeroes
 
 === Example 1 ===
 A view modeling data of length 950, with a piece size of 100, has 9 immutable leaves and 1 mutable leaf
