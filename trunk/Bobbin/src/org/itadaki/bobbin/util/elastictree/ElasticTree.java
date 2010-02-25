@@ -21,7 +21,7 @@ import java.util.TreeMap;
 
 
 /**
- * A Merkle hash tree
+ * An expandable Merkle hash tree
  * TODO Documentation - exposition on structure and algorithms
  */
 public class ElasticTree {
