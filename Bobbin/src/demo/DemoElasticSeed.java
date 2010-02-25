@@ -92,6 +92,7 @@ public class DemoElasticSeed {
 		} else {
 			System.err.println ("Syntax: \"DemoElasticSeed\" or \"DemoElasticSeed <filename>\"");
 			System.exit (0);
+			return;
 		}
 		System.out.println ("Sharing file: " + sharedFile);
 
