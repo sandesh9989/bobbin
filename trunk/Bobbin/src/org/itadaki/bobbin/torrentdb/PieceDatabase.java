@@ -42,7 +42,6 @@ import org.itadaki.bobbin.util.statemachine.TargetedAction;
 import org.itadaki.bobbin.util.statemachine.TransitionTable;
 
 
-
 /**
  * Manages the relationship between an {@link Info} describing a torrent's data and a
  * {@link Storage} that contains the data
@@ -508,6 +507,59 @@ public class PieceDatabase {
 
 			PieceDatabase.this.verifiedPieceCount = PieceDatabase.this.verifiedPieces.cardinality();
 
+			// If we have no verified pieces, an empty hash tree and all data is file backed, build
+			// a tree to see if all pieces are present
+			if (
+					   (PieceDatabase.this.pieceHashes == null)
+					&& (PieceDatabase.this.elasticTree.getAllViews().size() == 1)
+					&& (PieceDatabase.this.verifiedPieces.cardinality() == 0)
+					&& (fileBackedPieces.cardinality() == numPieces)
+			   )
+			{
+				byte[] leafHashes = new byte [20 * numPieces];
+
+				for (int i = 0, offset = 0; i < numPieces; i++, offset += 20) {
+					ByteBuffer storedPiece = PieceDatabase.this.storage.read (i);
+
+					this.digest.reset();
+					this.digest.update (storedPiece);
+					try {
+						this.digest.digest (leafHashes, offset, 20);
+					} catch (DigestException e) {
+						// Shouldn't happen
+						throw new InternalError (e.getMessage());
+					}
+
+					if (interrupted()) {
+						return false;
+					}
+
+				}
+
+				ElasticTree verificationTree = ElasticTree.buildFromLeaves (
+						PieceDatabase.this.storage.getDescriptor().getPieceSize(),
+						PieceDatabase.this.storage.getDescriptor().getLength(),
+						leafHashes
+				);
+
+				ElasticTreeView verificationView = verificationTree.getView (PieceDatabase.this.storage.getDescriptor().getLength());
+				ElasticTreeView databaseView = PieceDatabase.this.elasticTree.getView (PieceDatabase.this.storage.getDescriptor().getLength());
+				if (ByteBuffer.wrap (verificationView.getRootHash()).equals (ByteBuffer.wrap (databaseView.getRootHash()))) {
+					// TODO Inefficient
+					for (int i = 0; i < numPieces; i++) {
+						if (databaseView.verifyHashChain (i, ByteBuffer.wrap (verificationView.getHashChain (i)))) {
+							synchronized (PieceDatabase.this.presentPieces) {
+								PieceDatabase.this.presentPieces.set (i);
+							}
+						}
+						PieceDatabase.this.verifiedPieces.set (i);
+						PieceDatabase.this.verifiedPieceCount++;
+					}
+					return true;
+				}
+			}
+
+			// Verify pieces against the existing hash array or hash tree
 			for (int i = 0; i < numPieces; i++) {
 
 				if (!PieceDatabase.this.verifiedPieces.get (i)) {
@@ -537,7 +589,9 @@ public class PieceDatabase {
 							storedPieceOK = ByteBuffer.wrap(PieceDatabase.this.pieceHashes, 20 * i, 20).equals (ByteBuffer.wrap (storedPieceHash));
 						} else {
 							// Hash tree verification
-							ElasticTreeView view = PieceDatabase.this.elasticTree.getCeilingView ((i * PieceDatabase.this.storage.getDescriptor().getPieceSize()) + PieceDatabase.this.storage.getDescriptor().getPieceLength(i));
+							ElasticTreeView view = PieceDatabase.this.elasticTree.getCeilingView (
+									(i * PieceDatabase.this.storage.getDescriptor().getPieceSize()) + PieceDatabase.this.storage.getDescriptor().getPieceLength(i)
+							);
 							storedPieceOK = view.verifyLeafHash (i, storedPieceHash);
 						}
 

@@ -1007,7 +1007,12 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 		// Handle the block
 		if (this.outboundQueue.requestReceived (descriptor)) {
-			if ((hashChain != null) && (!this.remotePeerSignatures.containsKey (viewLength))) {
+			if (
+					   (hashChain != null)
+					&& (!this.remotePeerSignatures.containsKey (viewLength))
+					&& (this.pieceDatabase.getInfo().getStorageDescriptor().getLength() != viewLength)
+			   )
+			{
 				throw new IOException ("Invalid view length in piece");
 			}
 			this.blockBytesReceivedCounter.add (descriptor.getLength());
