@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2010 Matthew J. Francis and Contributors of the Bobbin Project
+ * This file is distributed under the MIT licence. See the LICENCE file for further information.
+ */
 package demo;
 
 import java.awt.event.WindowAdapter;
@@ -13,7 +17,7 @@ import org.itadaki.bobbin.torrentdb.IncompatibleLocationException;
 
 
 /**
- * A demonstration bittorrent client
+ * A demonstration BitTorrent client
  */
 public class DemoClient {
 
