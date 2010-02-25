@@ -15,7 +15,7 @@ An Elastic torrent consists of :
   * A DSA signature of the info hash (the *info signature*) stored within the !MetaInfo, which allows peers to verify that the Info is as intended by the torrent creator
 
 An Elastic torrent originator (the initial seed that signs the torrent) behaves as follows :
-  * To extend the torrent, the originator updates its hash tree to create a new *view* that represents the extended data, then publishes a *view signature* consisting of
+  * To extend the torrent, the originator updates its hash tree to create a new *view* that represents the extended data, then publishes a *view signature* to its connected peers consisting of
     * The view length
     * The view root hash
     * A DSA signature of (info hash,view length,view root hash)
