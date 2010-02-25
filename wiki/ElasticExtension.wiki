@@ -46,7 +46,6 @@ For discussion of a hash tree structure that supports the expanding data layer, 
   * Info extensions
     * The Info must be a Merkle extension style Info with a "root hash" entry, plus the following keys
       * "`root signature`" : `binary<40>` - A DSA signature of the root hash. Note: This must be a 40 byte, P1363 encoded raw DSA signature on the root hash, not an "SHA1withDSA" signature that would re-hash the bytes of the root hash
-      * "`fingerprint`" : `binary<20>` - the SHA1 fingerprint of the DSA public key used to sign the root hash
       * "`elastic`" : `binary<1> 0x01`
   * Metainfo extensions
     * "`info signature`" : `binary<40>` - A DSA signature of the Info Hash
