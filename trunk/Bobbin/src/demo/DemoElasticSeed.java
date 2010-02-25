@@ -131,7 +131,6 @@ public class DemoElasticSeed {
 		destinationDirectory.mkdir();
 		TorrentManager seedTorrentManager = seedController.addTorrentManager (torrentFile, destinationDirectory);
 		seedTorrentManager.start (true);
-		System.out.println ("Destination directory : " + destinationDirectory);
 
 
 		// Create ordinary peer
@@ -141,6 +140,7 @@ public class DemoElasticSeed {
 		ordinaryDestinationDirectory.mkdir();
 		TorrentManager ordinaryTorrentManager = ordinaryController.addTorrentManager (torrentFile, ordinaryDestinationDirectory);
 		ordinaryTorrentManager.start (true);
+		System.out.println ("Ordinary peer's destination directory : " + ordinaryDestinationDirectory);
 
 
 		// Create ordinary peer window
