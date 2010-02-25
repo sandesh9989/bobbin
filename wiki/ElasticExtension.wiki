@@ -12,7 +12,9 @@ This draft protocol and metadata extension represents a proof of concept method 
 
 == Demonstration ==
 
-The class `demo.DemoElasticSeed` in the project source connects a tracker, an initial seed, and an ordinary peer on a torrent containing a single file. Simply invoke:
+A working demonstration is contained within the project source, which is set up as an Eclipse project.
+
+The class `demo.DemoElasticSeed` connects a tracker, an initial seed, and an ordinary peer on a torrent containing a single file. After checking out and compiling the source, invoke:
 
 {{{
 # java -cp <Bobbin base>/bin demo.DemoElasticSeed <shared file>
