@@ -12,7 +12,7 @@ An Elastic torrent consists of :
   * A [http://www.bittorrent.org/beps/bep_0030.html Merkle extension] style Info with a 'root hash', plus
   * A DSA public key stored within the !MetaInfo
   * A DSA signature of the root hash (the *root signature*) stored within the Info, which ensures that only one key is valid for the info hash
-  * A DSA signature of the Info (the *info signature*) stored within the !MetaInfo, which allows peers to verify that the public key within the !MetaInfo is the same as that which is valid for the info hash
+  * A DSA signature of the info hash (the *info signature*) stored within the !MetaInfo, which allows peers to verify that the Info is as intended by the torrent creator
 
 An Elastic torrent originator (the initial seed that signs the torrent) behaves as follows :
   * To extend the torrent, the originator updates its hash tree to create a new *view* that represents the extended data, then publishes a *view signature* consisting of
