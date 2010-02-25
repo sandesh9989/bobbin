@@ -6,6 +6,10 @@ An elastic hash tree consists of one or more *views* consisting of mutable hash 
 
 The nodes of an elastic hash tree are numbered by [http://en.wikipedia.org/wiki/Postorder postorder traversal]
 
+== Implementation ==
+
+See [http://code.google.com/p/bobbin/source/browse/#svn/trunk/Bobbin/src/org/itadaki/bobbin/util/elastictree]
+
 == Explanation ==
 
 Yellow nodes are the *immutable set*
