@@ -10,6 +10,31 @@ This draft protocol and metadata extension represents a proof of concept method 
 
   The Elastic Extension requires no special tracker support, and parts of its peer infrastructure can share an implementation with the Merkle extension
 
+== Demonstration ==
+
+The class `demo.DemoElasticSeed` in the project source connects a tracker, an initial seed, and an ordinary peer. Simply invoke:
+
+{{{
+# java -cp <Bobbin base>/bin demo.DemoElasticSeed <shared file>
+}}}
+
+Then, extend the shared file on disk. The initial seed polls the shared file periodically and adds the new data to the shared torrent in chunks
+
+{{{
+# cat <something> >> <shared file>
+}}}
+
+The initial seed and ordinary peer in this example are sharing a process, but communicating normally over the network. On startup, the filename of the created Elastic torrent file will be printed, so an additional client may be added by using it:
+
+{{{
+# java -cp <Bobbin base>/bin demo.DemoClient <torrent file>
+}}}
+
+Notes:
+  * DemoClient supports save/resume, but in this demonstration the initial seed does not
+  * Both DemoClient and DemoElasticSeed write their data to the current directory, so be sure to invoke them from different locations
+
+
 == Implementation Details ==
 
 For discussion of a hash tree structure that supports the expanding data layer, see [ElasticTree Elastic Hash Tree]
