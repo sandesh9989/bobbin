@@ -8,9 +8,9 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 /**
- * A view onto the tree of a particular length of data. Mutable nodes that may be overwritten
- * by a later view, comprising the path between the view's highest leaf and its root node, are
- * stored internally.
+ * A view onto the tree of a particular length of data. Mutable nodes that will be different in a
+ * view of differing length, comprising a partial path between the view's highest leaf and its root
+ * node, are stored internally.
  */
 public class ElasticTreeView {
 
