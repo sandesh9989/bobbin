@@ -1,6 +1,8 @@
 #summary The Elastic extension
 
-This draft protocol and metadata extension represents a proof of concept method for securely extending a torrent's data layer, and lacks several features that would be required for real world deployment
+<font color="red">
+This *draft* protocol and metadata extension represents a proof of concept, and lacks several features that would be required for real world deployment
+</font>
 
 == Summary ==
 
