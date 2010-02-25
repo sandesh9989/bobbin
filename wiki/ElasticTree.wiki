@@ -23,7 +23,7 @@ A view modeling data of length 950, with a piece size of 100, has 9 immutable le
 
 <img src="http://bobbin.googlecode.com/svn/wiki/postorder_tree_example1.png">
 
-Leaves 0 .. 8 (node indices 0, 1, 3, 4, 7, 8, 10, 11, 15) that each represent a complete piece are valid for any view that require them. Leaf 9 (node index 16) is only valid for this view, and a different view will instead use a filler node (for a view of less than 10 leaves), a different mutable node (for a different view of 10 leaves), or the node from the immutable set (for a view of more than 10 leaves).
+Leaves 0 .. 8 (node indices 0, 1, 3, 4, 7, 8, 10, 11, 15) that each represent a complete piece are valid for any view that require them. Leaf 9 (node index 16) is only valid for this view; a view of differing length will instead use a filler node (for a view of less than 10 leaves), a different mutable node (for a different view of 10 leaves), or the node from the immutable set (for a view of more than 10 leaves).
 
 Note the following properties that are true for a view of any length :
 {{{
