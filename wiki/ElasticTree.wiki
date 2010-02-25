@@ -2,7 +2,7 @@
 
 An elastic hash tree is a binary [http://en.wikipedia.org/wiki/Hash_tree hash tree] that allows extension of the hashed data, can be efficiently queried and updated, and is compactly represented in memory.
 
-An elastic hash tree consists of one or more *views*, each corresponding to a particular length of hashed data and containing mutable hash nodes that are only valid for that view, and a single *immutable set* of hash nodes that are valid for all views
+An elastic hash tree consists of one or more *views*, each corresponding to a particular length of hashed data and containing mutable hash nodes that are only valid for that view, and a single *immutable set* of hash nodes that are valid for all views.
 
 The nodes of an elastic hash tree are numbered by [http://en.wikipedia.org/wiki/Postorder postorder traversal]
 
@@ -23,7 +23,7 @@ A view modeling data of length 950, with a piece size of 100, has 9 immutable le
 
 <img src="http://bobbin.googlecode.com/svn/wiki/postorder_tree_example1.png">
 
-As the hashed data may only be extended, not contracted, leaves 0 .. 8 (node indices 0, 1, 3, 4, 7, 8, 10, 11, 15) that represent a complete piece will never change. Leaf 9 (node index 16) will be replaced if a new, longer view is added to the tree.
+Leaves 0 .. 8 (node indices 0, 1, 3, 4, 7, 8, 10, 11, 15) that each represent a complete piece are valid for any view that require them. Leaf 9 (node index 16) is only valid for this view, and a different view will instead use a filler node (for a view of less than 10 leaves), a different mutable node (for a different view of 10 leaves), or the node from the immutable set (for a view of more than 10 leaves).
 
 Note the following properties that are true for a view of any length :
 {{{
@@ -41,7 +41,7 @@ These two properties form the basis of the compact representation of the tree.
 Property : Existing node indices do not change when more leaves are added, even if the height of the tree changes as a result
 }}}
 
-This property ensures that extending the tree is a time efficient operation.
+This property ensures that extending the tree is a time efficient operation, as the immutable set does not have to be rewritten for different length views.
 
 
 === Example 2 ===
