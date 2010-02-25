@@ -2,7 +2,7 @@
 
 An elastic hash tree is a binary [http://en.wikipedia.org/wiki/Hash_tree hash tree] that allows extension of the hashed data, can be efficiently queried and updated, and is compactly represented in memory.
 
-An elastic hash tree consists of one or more *views* consisting of mutable hash nodes that may be replaced, backed by a single *immutable set* of hash nodes that will never change even if the hashed data is extended
+An elastic hash tree consists of one or more *views*, each corresponding to a particular length of hashed data and containing mutable hash nodes that are only valid for that view, and a single *immutable set* of hash nodes that are valid for all views
 
 The nodes of an elastic hash tree are numbered by [http://en.wikipedia.org/wiki/Postorder postorder traversal]
 
