@@ -48,6 +48,8 @@ Next, extend the shared file on disk. The initial seed polls the shared file per
 # cat <something> >> <shared file>
 }}}
 
+The ordinary peer window should reflect that it is receiving the additional data from the initial seed.
+
 The initial seed, ordinary peer and tracker in this example are sharing a process, but communicating normally over the network. On startup, the filename of the created Elastic torrent file will be printed, so an additional peer may be connected by using it:
 
 {{{
