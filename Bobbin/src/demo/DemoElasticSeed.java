@@ -126,9 +126,7 @@ public class DemoElasticSeed {
 
 		// Create seed peer
 		final TorrentSetController seedController = new TorrentSetController();
-		File destinationDirectory = File.createTempFile ("bbt", null);
-		destinationDirectory.delete();
-		destinationDirectory.mkdir();
+		File destinationDirectory = sharedFile.getParentFile();
 		TorrentManager seedTorrentManager = seedController.addTorrentManager (torrentFile, destinationDirectory);
 		seedTorrentManager.start (true);
 
