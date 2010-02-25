@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
 
 
 /**
- * Represents a chain of sibling hash pairs
+ * Represents a hash chain
  */
 public class HashChain {
 
@@ -18,13 +18,13 @@ public class HashChain {
 	private final long viewLength;
 
 	/**
-	 * The concatenated sibling hash pairs
+	 * The concatenated chain hashes
 	 */
 	private final ByteBuffer hashes;
 
 
 	/**
-	 * @return The concatenated sibling hash pairs
+	 * @return The concatenated chain hashes
 	 */
 	public ByteBuffer getHashes() {
 		return this.hashes.asReadOnlyBuffer();
@@ -41,7 +41,7 @@ public class HashChain {
 
 	/**
 	 * @param viewLength The view length onto the Merkle tree
-	 * @param hashes The concatenated sibling hash pairs
+	 * @param hashes The concatenated chain hashes
 	 */
 	public HashChain (long viewLength, ByteBuffer hashes) {
 
