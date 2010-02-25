@@ -4,11 +4,29 @@ This draft protocol and metadata extension represents a proof of concept method 
 
 == Summary ==
 
-  The Elastic Extension allows a single file within a torrent to be securely extended by its creator, and the extended data to be propagated through the peer cloud in near real time.
+The Elastic Extension allows a single file within a torrent to be securely extended by its creator, and the extended data to be propagated through the peer cloud in near real time.
 
-  The Elastic Extension is based in part upon the principles of the Merkle extension. As with the Merkle extension, the initial static data of the torrent is defined by the root hash of a hash tree. In addition to the root hash, an Elastic torrent !MetaInfo contains a public key and a signature structure that ties the torrent's Info uniquely to that key; later extensions to the torrent by its creator are signed with the same key, and can thus be validated by peers as authentic.
+An Elastic torrent consists of :
+  * A [http://www.bittorrent.org/beps/bep_0030.html Merkle extension] style Info with a 'root hash', plus
+  * A DSA public key stored within the !MetaInfo
+  * A DSA signature of the root hash (the *root signature*) stored within the Info, which ensures that only one key is valid for the info hash
+  * A DSA signature of the Info (the *info signature*) stored within the !MetaInfo, which allows peers to verify that the public key within the !MetaInfo is the same as that which is valid for the info hash
 
-  The Elastic Extension requires no special tracker support, and parts of its peer infrastructure can share an implementation with the Merkle extension
+An Elastic torrent originator (the initial seed that signs the torrent) behaves as follows :
+  * To extend the torrent, the originator updates its hash tree to create a new *view* that represents the extended data, then publishes a *view signature* consisting of
+    * The view length
+    * The view root hash
+    * A DSA signature of (info hash,view length,view root hash)
+
+Peers connecting on an Elastic torrent behave as follows :
+  * On connection, a peer sends the signature of its local view (if it has a view longer than the initial view)
+  * On receipt of a view signature longer than its local view, a peer updates its local view and forwards the signature to its peer set
+  * Peers exchange *elastic pieces*, which contain a hash list and the view length for which the hash list is valid. Peers may choose any view length to send a piece for which they have a valid signature, after first sending the signature to the remote peer
+
+
+The Elastic Extension requires no special tracker support, and parts of its peer infrastructure can share an implementation with the Merkle extension
+
+For discussion of a hash tree structure that efficiently supports the expanding data layer, see [ElasticTree Elastic Hash Tree]
 
 == Demonstration ==
 
@@ -40,8 +58,6 @@ Notes:
 
 
 == Implementation Details ==
-
-For discussion of a hash tree structure that supports the expanding data layer, see [ElasticTree Elastic Hash Tree]
 
   * Extension identifier
     * `bo_elastic`
