@@ -13,7 +13,7 @@ import java.util.Set;
 
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.peer.ManageablePeer;
-import org.itadaki.bobbin.peer.PeerID;
+import org.itadaki.bobbin.peer.PeerState;
 import org.itadaki.bobbin.peer.PeerStatistics;
 import org.itadaki.bobbin.peer.ReadablePeerStatistics;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
@@ -52,15 +52,6 @@ public class MockManageablePeer implements ManageablePeer {
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getRemoteViewLength()
-	 */
-	public long getRemoteViewLength() {
-		fail();
-		return 0;
-	}
-
-
-	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.ManageablePeer#getStatistics()
 	 */
 	public PeerStatistics getStatistics() {
@@ -73,24 +64,6 @@ public class MockManageablePeer implements ManageablePeer {
 	 * @see org.itadaki.bobbin.peer.ManageablePeer#getTheyHaveOutstandingRequests()
 	 */
 	public boolean getTheyHaveOutstandingRequests() {
-		fail();
-		return false;
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#isExtensionProtocolEnabled()
-	 */
-	public boolean isExtensionProtocolEnabled() {
-		fail();
-		return false;
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#isFastExtensionEnabled()
-	 */
-	public boolean isFastExtensionEnabled() {
 		fail();
 		return false;
 	}
@@ -162,15 +135,6 @@ public class MockManageablePeer implements ManageablePeer {
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getRemotePeerID()
-	 */
-	public PeerID getRemotePeerID() {
-		fail();
-		return null;
-	}
-
-
-	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.Peer#getRemoteSocketAddress()
 	 */
 	public InetSocketAddress getRemoteSocketAddress() {
@@ -188,39 +152,10 @@ public class MockManageablePeer implements ManageablePeer {
 	}
 
 
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getTheyAreChoking()
-	 */
-	public boolean getTheyAreChoking() {
+	@Override
+	public PeerState getPeerState() {
 		fail();
-		return false;
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getTheyAreInterested()
-	 */
-	public boolean getTheyAreInterested() {
-		fail();
-		return false;
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getWeAreChoking()
-	 */
-	public boolean getWeAreChoking() {
-		fail();
-		return false;
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getWeAreInterested()
-	 */
-	public boolean getWeAreInterested() {
-		fail();
-		return false;
+		return null;
 	}
 
 

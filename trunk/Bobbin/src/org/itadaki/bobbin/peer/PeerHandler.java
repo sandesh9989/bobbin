@@ -12,9 +12,7 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.NavigableMap;
 import java.util.Set;
-import java.util.TreeMap;
 
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.connectionmanager.Connection;
@@ -72,16 +70,6 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	private final Connection connection;
 
 	/**
-	 * The parser used to process incoming data
-	 */
-	private final PeerProtocolParser protocolParser;
-
-	/**
-	 * Protocol statistics about the peer
-	 */
-	private final PeerStatistics peerStatistics = new PeerStatistics();
-
-	/**
 	 * The PeerServicesProvider that will be asked to provide a PeerServices in the case of an
 	 * incoming connection, once the info hash the remote peer wants is known
 	 */
@@ -93,9 +81,14 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	private PeerServices peerServices;
 
 	/**
-	 * The torrent's FileDatabse
+	 * If {@code true}, this peer is registered through a PeerServices
 	 */
-	private PieceDatabase pieceDatabase;
+	private boolean registeredWithPeerServices = false;
+
+	/**
+	 * The parser used to process incoming data
+	 */
+	private final PeerProtocolParser protocolParser;
 
 	/**
 	 * The queue used to process outgoing data
@@ -103,88 +96,22 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	private PeerOutboundQueue outboundQueue;
 
 	/**
-	 * If {@code true}, the fast extension is enabled
+	 * The torrent's FileDatabse
 	 */
-	private boolean fastExtensionEnabled = true;
+	private PieceDatabase pieceDatabase;
 
 	/**
-	 * If {@code true}, the extension protocol is enabled
+	 * Protocol statistics about the peer
 	 */
-	private boolean extensionProtocolEnabled = true;
+	private final PeerStatistics peerStatistics = new PeerStatistics();
 
 	/**
-	 * The set of extensions offered by the remote peer
+	 * The peer protocol state
 	 */
-	private Set<String> remoteExtensions = new HashSet<String>();
-
-	/**
-	 * If {@code true}, this peer is registered through a PeerServices
-	 */
-	private boolean registeredWithPeerServices = false;
-
-	/**
-	 * The remote peer's ID
-	 */
-	private PeerID remotePeerID = null;
-
-	/**
-	 * The remote peer's bitfield
-	 */
-	private BitField remoteBitField = null;
-
-	/**
-	 * The remote peer's view
-	 */
-	private StorageDescriptor remoteViewDescriptor;
-
-	/**
-	 * The set of signatures implicitly valid from the remote peer
-	 */
-	private NavigableMap<Long,ViewSignature> remotePeerSignatures = new TreeMap<Long,ViewSignature>();
-
-	/**
-	 * The shared info hash. In an outgoing connection this is set in the constructor; in an
-	 * incoming connection, it is set during the handshake
-	 */
-	private InfoHash infoHash = null;
-
-	/**
-	 * True if we are choking the remote peer
-	 */
-	private boolean weAreChoking = true;
-
-	/**
-	 * True if we are interested in the remote peer
-	 */
-	private boolean weAreInterested = false;
-
-	/**
-	 * True if the remote peer is choking us
-	 */
-	private boolean theyAreChoking = true;
-
-	/**
-	 * True if the remote peer is interested in us
-	 */
-	private boolean theyAreInterested = false;
-
-	/**
-	 * The time in system milliseconds that the last data was received
-	 */
-	private long lastDataReceivedTime = 0;
+	private PeerState state = new PeerState();
 
 
 	/* Peer interface */
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getPeerID()
-	 */
-	public PeerID getRemotePeerID() {
-
-		return this.remotePeerID;
-
-	}
-
 
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.Peer#getRemoteAddress()
@@ -195,72 +122,12 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 	}
 
-
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getRemoteViewLength()
+	 * @see org.itadaki.bobbin.peer.Peer#getPeerState()
 	 */
-	public long getRemoteViewLength() {
+	public PeerState getPeerState() {
 
-		return this.remoteViewDescriptor.getLength();
-
-	}
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#isFastExtensionEnabled()
-	 */
-	public boolean isFastExtensionEnabled() {
-
-		return this.fastExtensionEnabled;
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#isExtensionProtocolEnabled()
-	 */
-	public boolean isExtensionProtocolEnabled() {
-
-		return this.extensionProtocolEnabled;
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getWeChoke()
-	 */
-	public boolean getWeAreChoking() {
-
-		return this.weAreChoking;
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getWeAreInterested()
-	 */
-	public boolean getWeAreInterested() {
-
-		return this.weAreInterested;
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getTheyChoke()
-	 */
-	public boolean getTheyAreChoking() {
-
-		return this.theyAreChoking;
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getTheyAreInterested()
-	 */
-	public boolean getTheyAreInterested() {
-
-		return this.theyAreInterested;
+		return this.state;
 
 	}
 
@@ -291,7 +158,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	 */
 	public BitField getRemoteBitField() {
 
-		return this.remoteBitField;
+		return this.state.remoteBitField;
 
 	}
 
@@ -311,12 +178,12 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	 */
 	public boolean setWeAreChoking (boolean weAreChokingThem) {
 
-		if (weAreChokingThem != this.weAreChoking) {
-			this.weAreChoking = weAreChokingThem;
+		if (weAreChokingThem != this.state.weAreChoking) {
+			this.state.weAreChoking = weAreChokingThem;
 			// Any unsent block requests from the remote peer, except Allowed Fast requests, will be
 			// discarded
-			List<BlockDescriptor> descriptors = this.outboundQueue.sendChokeMessage (this.weAreChoking);
-			if (this.fastExtensionEnabled) {
+			List<BlockDescriptor> descriptors = this.outboundQueue.sendChokeMessage (this.state.weAreChoking);
+			if (this.state.fastExtensionEnabled) {
 				// Explicitly discard requests
 				this.outboundQueue.sendRejectRequestMessages (descriptors);
 			}
@@ -334,8 +201,8 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	public void setWeAreInterested (boolean weAreInterested) {
 
 		// Set our interest and inform the remote peer if needed
-		if (weAreInterested != this.weAreInterested) {
-			this.weAreInterested = weAreInterested;
+		if (weAreInterested != this.state.weAreInterested) {
+			this.state.weAreInterested = weAreInterested;
 			this.outboundQueue.sendInterestedMessage (weAreInterested);
 		}
 
@@ -351,7 +218,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 		// queue that it should continue to track the cancelled request so that it later matches
 		// the remote peer's response (piece or reject)
 		for (BlockDescriptor request : requestsToCancel) {
-			this.outboundQueue.sendCancelMessage (request, this.fastExtensionEnabled);
+			this.outboundQueue.sendCancelMessage (request, this.state.fastExtensionEnabled);
 		}
 
 	}
@@ -382,7 +249,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	 */
 	public void sendKeepaliveOrClose() {
 
-		if ((System.currentTimeMillis() - this.lastDataReceivedTime) > (PeerProtocolConstants.IDLE_INTERVAL * 1000)) {
+		if ((System.currentTimeMillis() - this.state.lastDataReceivedTime) > (PeerProtocolConstants.IDLE_INTERVAL * 1000)) {
 			close();
 		} else {
 			this.outboundQueue.sendKeepaliveMessage();
@@ -445,8 +312,8 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	 */
 	public void handshakeBasicExtensions (boolean fastExtensionEnabled, boolean extensionProtocolEnabled) {
 
-		this.fastExtensionEnabled &= fastExtensionEnabled;
-		this.extensionProtocolEnabled &= extensionProtocolEnabled;
+		this.state.fastExtensionEnabled &= fastExtensionEnabled;
+		this.state.extensionProtocolEnabled &= extensionProtocolEnabled;
 
 	}
 
@@ -456,8 +323,8 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	 */
 	public void handshakeInfoHash (InfoHash infoHash) throws IOException {
 
-		if (this.infoHash != null) {
-			if (!this.infoHash.equals (infoHash)) {
+		if (this.pieceDatabase != null) {
+			if (!this.pieceDatabase.getInfo().getHash().equals (infoHash)) {
 				throw new IOException ("Invalid handshake - wrong info hash");
 			}
 		}
@@ -466,9 +333,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 		// to. If we can find it now, complete the PeerHandler's setup
 		if (this.peerServices == null) {
 
-			this.infoHash = infoHash;
-
-			this.peerServices = this.peerServicesProvider.getPeerServices (this.infoHash);
+			this.peerServices = this.peerServicesProvider.getPeerServices (infoHash);
 
 			if (this.peerServices == null) {
 				throw new IOException ("Invalid handshake - unknown info hash");
@@ -483,7 +348,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 		}
 
 		if (this.pieceDatabase.getInfo().isElastic()) {
-			if (!(this.fastExtensionEnabled && this.extensionProtocolEnabled)) {
+			if (!(this.state.fastExtensionEnabled && this.state.extensionProtocolEnabled)) {
 				throw new IOException ("Invalid handshake - no extension protocol or Fast extension on Elastic torrent");
 			}
 			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC)), null, null);
@@ -495,7 +360,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_MERKLE)), null, null);
 		};
 
-		if (this.extensionProtocolEnabled) {
+		if (this.state.extensionProtocolEnabled) {
 			this.peerServices.offerExtensionsToPeer (this);
 		}
 
@@ -507,7 +372,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	 */
 	public void handshakePeerID (PeerID peerID) throws IOException {
 
-		this.remotePeerID = peerID;
+		this.state.remotePeerID = peerID;
 
 		if (!this.peerServices.peerConnected (this)) {
 			throw new IOException ("Peer registration rejected");
@@ -519,7 +384,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 		if (this.pieceDatabase.getInfo().isElastic()) {
 			this.outboundQueue.sendHaveNoneMessage();
 		} else {
-			if (this.fastExtensionEnabled) {
+			if (this.state.fastExtensionEnabled) {
 				int pieceCount = bitField.cardinality();
 				if (pieceCount == 0) {
 					this.outboundQueue.sendHaveNoneMessage();
@@ -553,10 +418,10 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	 */
 	public void chokeMessage (boolean choked) {
 
-		this.theyAreChoking = choked;
+		this.state.theyAreChoking = choked;
 
 		this.outboundQueue.setRequestsPlugged (choked);
-		if (this.theyAreChoking && !this.fastExtensionEnabled) {
+		if (this.state.theyAreChoking && !this.state.fastExtensionEnabled) {
 			this.outboundQueue.requeueAllRequestMessages();
 		}
 
@@ -571,8 +436,8 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	 */
 	public void interestedMessage (boolean interested) {
 
-		this.theyAreInterested = interested;
-		this.peerServices.adjustChoking (this.weAreChoking);
+		this.state.theyAreInterested = interested;
+		this.peerServices.adjustChoking (this.state.weAreChoking);
 
 	}
 
@@ -588,15 +453,15 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 		// If we were previously not interested in the remote peer and they announce a piece we
 		// need, inform them of our interest and fill the request queue
-		if (!this.remoteBitField.get (pieceIndex)) {
-			this.remoteBitField.set (pieceIndex);
-			if (this.peerServices.addAvailablePiece (this, pieceIndex) && (!this.weAreInterested)) {
-				this.weAreInterested = true;
+		if (!this.state.remoteBitField.get (pieceIndex)) {
+			this.state.remoteBitField.set (pieceIndex);
+			if (this.peerServices.addAvailablePiece (this, pieceIndex) && (!this.state.weAreInterested)) {
+				this.state.weAreInterested = true;
 				this.outboundQueue.sendInterestedMessage (true);
 			}
 		}
 
-		if (this.remoteBitField.cardinality() == PeerProtocolConstants.ALLOWED_FAST_THRESHOLD) {
+		if (this.state.remoteBitField.cardinality() == PeerProtocolConstants.ALLOWED_FAST_THRESHOLD) {
 			this.outboundQueue.clearAllowedFastPieces();
 		}
 
@@ -613,22 +478,22 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 		// Validate the bitfield
 		try {
-			this.remoteBitField = new BitField (bitField, this.remoteViewDescriptor.getNumberOfPieces());
+			this.state.remoteBitField = new BitField (bitField, this.state.remoteView.getNumberOfPieces());
 		} catch (IllegalArgumentException e) {
 			throw new IOException (e);
 		}
 
 		// Set our interest in the remote peer
 		if (this.peerServices.addAvailablePieces (this)) {
-			this.weAreInterested = true;
+			this.state.weAreInterested = true;
 			this.outboundQueue.sendInterestedMessage (true);
 		}
 
 		// Send an Allowed Fast set if appropriate 
 		if (
-				   this.fastExtensionEnabled
+				   this.state.fastExtensionEnabled
 				&& !this.pieceDatabase.getInfo().isElastic()
-				&& this.remoteBitField.cardinality() < PeerProtocolConstants.ALLOWED_FAST_THRESHOLD
+				&& this.state.remoteBitField.cardinality() < PeerProtocolConstants.ALLOWED_FAST_THRESHOLD
 		   )
 		{
 			generateAndSendAllowedFastSet();
@@ -653,9 +518,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 			//   Base protocol:  Do nothing
 			//   Fast extension: Queue the request if its piece is Allowed Fast, otherwise send an
 			//                   explicit reject
-			if (!this.weAreChoking) {
+			if (!this.state.weAreChoking) {
 				this.outboundQueue.sendPieceMessage (descriptor);
-			} else if (this.fastExtensionEnabled) {
+			} else if (this.state.fastExtensionEnabled) {
 				if (this.outboundQueue.isPieceAllowedFast (descriptor.getPieceNumber())) {
 					this.outboundQueue.sendPieceMessage (descriptor);
 				} else {
@@ -666,7 +531,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 		} else {
 
 			// TODO Semantics - This is necessary to support the Elastic extension, but is it the best semantic?
-			if (this.fastExtensionEnabled) {
+			if (this.state.fastExtensionEnabled) {
 				this.outboundQueue.sendRejectRequestMessage (descriptor);
 			} else {
 				throw new IOException ("Piece " + descriptor.getPieceNumber() + " not present");
@@ -701,7 +566,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 			this.peerStatistics.blockBytesReceivedRaw.add (descriptor.getLength());
 			this.peerServices.handleBlock (this, descriptor, null, null, data);
 		} else {
-			if (!this.fastExtensionEnabled) {
+			if (!this.state.fastExtensionEnabled) {
 				// Spam, or a request we cancelled. Can't tell the difference in the base protocol,
 				// so do nothing
 			} else {
@@ -729,7 +594,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 		//   Base protocol: Do nothing
 		//   Fast extension: Send an explicit reject
 		boolean removed = this.outboundQueue.discardPieceMessage (descriptor);
-		if (this.fastExtensionEnabled && removed) {
+		if (this.state.fastExtensionEnabled && removed) {
 			this.outboundQueue.sendRejectRequestMessage (descriptor);
 		}
 
@@ -749,7 +614,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 		// Piece a piece they don't actually have (although it would be a pretty stupid thing to
 		// do). We will simply ignore any such suggestions.
 
-		if (this.remoteBitField.get (pieceNumber)) {
+		if (this.state.remoteBitField.get (pieceNumber)) {
 			this.peerServices.setPieceSuggested (this, pieceNumber);
 		}
 
@@ -763,11 +628,11 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 		// The remote bitfield is initially all zero, and PeerProtocolParser ensures this message
 		// can only be the first message; invert the bitfield to set all bits
-		this.remoteBitField.not();
+		this.state.remoteBitField.not();
 
 		// Set our interest in the remote peer.
 		if (this.peerServices.addAvailablePieces (this)) {
-			this.weAreInterested = true;
+			this.state.weAreInterested = true;
 			this.outboundQueue.sendInterestedMessage (true);
 		}
 
@@ -806,13 +671,13 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	 */
 	public void allowedFastMessage (int pieceNumber) throws IOException {
 
-		if ((pieceNumber < 0) || (pieceNumber >= this.remoteBitField.length())) {
+		if ((pieceNumber < 0) || (pieceNumber >= this.state.remoteBitField.length())) {
 			throw new IOException ("Invalid allowed fast message");
 		}
 
 		// The Fast Extension spec explicitly allows peers to send Allowed Fast messages for pieces
 		// they don't actually have. We drop any such messages here
-		if (this.remoteBitField.get (pieceNumber)) {
+		if (this.state.remoteBitField.get (pieceNumber)) {
 			this.peerServices.setPieceAllowedFast (this, pieceNumber);
 			this.outboundQueue.setRequestAllowedFast (pieceNumber);
 		}
@@ -829,8 +694,8 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	public void extensionHandshakeMessage (Set<String> extensionsEnabled, Set<String> extensionsDisabled, BDictionary extra) throws IOException
 	{
 
-		this.remoteExtensions.addAll (extensionsEnabled);
-		this.remoteExtensions.removeAll (extensionsDisabled);
+		this.state.remoteExtensions.addAll (extensionsEnabled);
+		this.state.remoteExtensions.removeAll (extensionsDisabled);
 		this.peerServices.enableDisablePeerExtensions (this, extensionsEnabled, extensionsDisabled, extra);
 
 	}
@@ -870,7 +735,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 					new HashChain (this.pieceDatabase.getStorageDescriptor().getLength(), ByteBuffer.wrap (hashChain)), block
 			);
 		} else {
-			if (!this.fastExtensionEnabled) {
+			if (!this.state.fastExtensionEnabled) {
 				// Spam, or a request we cancelled. Can't tell the difference in the base protocol,
 				// so do nothing
 			} else {
@@ -889,24 +754,24 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	 */
 	public void elasticSignatureMessage (ViewSignature viewSignature) throws IOException {
 
-		if (viewSignature.getViewLength() > this.remoteViewDescriptor.getLength()) {
-			this.remoteViewDescriptor = new StorageDescriptor (this.remoteViewDescriptor.getPieceSize(), viewSignature.getViewLength());
+		if (viewSignature.getViewLength() > this.state.remoteView.getLength()) {
+			this.state.remoteView = new StorageDescriptor (this.state.remoteView.getPieceSize(), viewSignature.getViewLength());
 		}
 
 		int pieceSize = this.pieceDatabase.getStorageDescriptor().getPieceSize();
 		int viewNumPieces = (int)((viewSignature.getViewLength() + pieceSize - 1) / pieceSize);
-		if (viewNumPieces > this.remoteBitField.length()) {
-			this.remoteBitField.extend (viewNumPieces);
+		if (viewNumPieces > this.state.remoteBitField.length()) {
+			this.state.remoteBitField.extend (viewNumPieces);
 		}
 
 		if (!this.peerServices.handleViewSignature (viewSignature)) {
 			throw new IOException ("Signature failed verification");
 		}
 
-		if (this.remotePeerSignatures.size() > 1) {
-			this.remotePeerSignatures.pollFirstEntry();
+		if (this.state.remoteViewSignatures.size() > 1) {
+			this.state.remoteViewSignatures.pollFirstEntry();
 		}
-		this.remotePeerSignatures.put (viewSignature.getViewLength(), viewSignature);
+		this.state.remoteViewSignatures.put (viewSignature.getViewLength(), viewSignature);
 
 	}
 
@@ -929,7 +794,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 		if (this.outboundQueue.requestReceived (descriptor)) {
 			if (
 					   (hashChain != null)
-					&& (!this.remotePeerSignatures.containsKey (viewLength))
+					&& (!this.state.remoteViewSignatures.containsKey (viewLength))
 					&& (this.pieceDatabase.getInfo().getStorageDescriptor().getLength() != viewLength)
 			   )
 			{
@@ -939,11 +804,11 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 			this.peerServices.handleBlock (
 					this,
 					descriptor,
-					hashChain == null ? null : this.remotePeerSignatures.get (viewLength),
+					hashChain == null ? null : this.state.remoteViewSignatures.get (viewLength),
 					hashChain == null ? null : new HashChain (viewLength, ByteBuffer.wrap (hashChain)), block
 			);
 		} else {
-			if (!this.fastExtensionEnabled) {
+			if (!this.state.fastExtensionEnabled) {
 				// Spam, or a request we cancelled. Can't tell the difference in the base protocol,
 				// so do nothing
 			} else {
@@ -995,11 +860,11 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 				int bytesRead = this.protocolParser.parseBytes (connection);
 				this.peerStatistics.protocolBytesReceived.add (bytesRead);
 				if (bytesRead > 0) {
-					this.lastDataReceivedTime = System.currentTimeMillis();
+					this.state.lastDataReceivedTime = System.currentTimeMillis();
 				}
 			}
 
-			if (this.registeredWithPeerServices && this.weAreInterested) {
+			if (this.registeredWithPeerServices && this.state.weAreInterested) {
 				fillRequestQueue();
 			}
 	
@@ -1068,7 +933,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 				int numberOfPieces = this.pieceDatabase.getStorageDescriptor().getNumberOfPieces();
 
 				remoteAddressBytes[3] = 0;
-				byte[] infoHashBytes = this.infoHash.getBytes();
+				byte[] infoHashBytes = this.pieceDatabase.getInfo().getHash().getBytes();
 				byte[] hash = new byte[20];
 
 				MessageDigest digest = MessageDigest.getInstance ("SHA");
@@ -1118,12 +983,12 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 		int numRequests = this.outboundQueue.getRequestsNeeded();
 
 		if (numRequests > 0) {
-			List<BlockDescriptor> requests = this.peerServices.getRequests (this, numRequests, this.theyAreChoking);
+			List<BlockDescriptor> requests = this.peerServices.getRequests (this, numRequests, this.state.theyAreChoking);
 			if (requests.size() > 0) {
 				this.outboundQueue.sendRequestMessages (requests);
 			} else {
-				if (!this.theyAreChoking && !this.outboundQueue.hasOutstandingRequests()) {
-					this.weAreInterested = false;
+				if (!this.state.theyAreChoking && !this.outboundQueue.hasOutstandingRequests()) {
+					this.state.weAreInterested = false;
 					this.outboundQueue.sendInterestedMessage (false);
 				}
 			}
@@ -1143,16 +1008,15 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 		this.pieceDatabase = this.peerServices.getPieceDatabase();
 
 		StorageDescriptor initialDescriptor = this.pieceDatabase.getInfo().getStorageDescriptor();
-		this.remoteBitField = new BitField (initialDescriptor.getNumberOfPieces());
-		this.remoteViewDescriptor = initialDescriptor;
-		this.infoHash = this.pieceDatabase.getInfo().getHash();
+		this.state.remoteBitField = new BitField (initialDescriptor.getNumberOfPieces());
+		this.state.remoteView = initialDescriptor;
 		this.outboundQueue = new PeerOutboundQueue (this.connection, this.pieceDatabase, this.peerStatistics.blockBytesSent);
 		this.peerStatistics.protocolBytesSent.setParent (this.peerServices.getProtocolBytesSentCounter());
 		this.peerStatistics.protocolBytesReceived.setParent (this.peerServices.getProtocolBytesReceivedCounter());
 		this.peerStatistics.blockBytesSent.setParent (this.peerServices.getBlockBytesSentCounter());
 		this.peerStatistics.blockBytesReceivedRaw.setParent (this.peerServices.getBlockBytesReceivedCounter());
 
-		this.outboundQueue.sendHandshake (this.fastExtensionEnabled, this.extensionProtocolEnabled, this.infoHash,
+		this.outboundQueue.sendHandshake (this.state.fastExtensionEnabled, this.state.extensionProtocolEnabled, this.pieceDatabase.getInfo().getHash(),
 				this.peerServices.getLocalPeerID());
 
 	}
@@ -1171,7 +1035,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 		this.peerServicesProvider = peerServicesProvider;
 		this.connection = connection;
-		this.protocolParser = new PeerProtocolParser (this, this.fastExtensionEnabled, this.extensionProtocolEnabled);
+		this.protocolParser = new PeerProtocolParser (this, this.state.fastExtensionEnabled, this.state.extensionProtocolEnabled);
 		this.connection.setListener (this);
 
 	}
@@ -1187,7 +1051,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 		this.peerServices = peerServices;
 		this.connection = connection;
-		this.protocolParser = new PeerProtocolParser (this, this.fastExtensionEnabled, this.extensionProtocolEnabled);
+		this.protocolParser = new PeerProtocolParser (this, this.state.fastExtensionEnabled, this.state.extensionProtocolEnabled);
 		this.connection.setListener (this);
 
 		completeSetupAndHandshake();

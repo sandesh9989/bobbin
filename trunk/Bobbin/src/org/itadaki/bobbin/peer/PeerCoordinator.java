@@ -292,7 +292,7 @@ public class PeerCoordinator implements PeerSourceListener, PeerServices {
 	 */
 	public boolean peerConnected (ManageablePeer peer) {
 
-		PeerID remotePeerID = peer.getRemotePeerID();
+		PeerID remotePeerID = peer.getPeerState().getRemotePeerID();
 
 		// Apply peer limit (outbound connections are limited at source, but inbound connections
 		// are not)
@@ -335,11 +335,11 @@ public class PeerCoordinator implements PeerSourceListener, PeerServices {
 		} else {
 			if (this.connectedPeers.contains (peer)) {
 				this.connectedPeers.remove (peer);
-				this.connectedPeerIDs.remove (peer.getRemotePeerID());
+				this.connectedPeerIDs.remove (peer.getPeerState().getRemotePeerID());
 				for (PeerCoordinatorListener listener : this.listeners) {
 					listener.peerDeregistered (peer);
 				}
-				if (this.running && peer.getWeAreChoking() == false) {
+				if (this.running && peer.getPeerState().getWeAreChoking() == false) {
 					adjustChoking (false);
 				}
 			}

@@ -20,6 +20,7 @@ import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerCoordinator;
 import org.itadaki.bobbin.peer.PeerCoordinatorListener;
 import org.itadaki.bobbin.peer.PeerID;
+import org.itadaki.bobbin.peer.PeerState;
 import org.itadaki.bobbin.peer.PeerStatistics;
 import org.itadaki.bobbin.peer.ReadablePeerStatistics;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
@@ -27,6 +28,7 @@ import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
+import org.itadaki.bobbin.torrentdb.StorageDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.trackerclient.PeerIdentifier;
 import org.itadaki.bobbin.util.BitField;
@@ -207,8 +209,13 @@ public class TestPeerCoordinator {
 
 		boolean registered = peerCoordinator.peerConnected (new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return new PeerID();
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return new PeerID();
+					}
+				};
 			}
 		});
 
@@ -238,8 +245,13 @@ public class TestPeerCoordinator {
 
 		boolean registered = peerCoordinator.peerConnected (new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return localPeerID;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return localPeerID;
+					}
+				};
 			}
 		});
 
@@ -269,8 +281,13 @@ public class TestPeerCoordinator {
 		final PeerID peerID = new PeerID();
 		boolean registered1 = peerCoordinator.peerConnected (new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return peerID;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID;
+					}
+				};
 			}
 			@Override
 			public PeerStatistics getStatistics() {
@@ -281,8 +298,13 @@ public class TestPeerCoordinator {
 		});
 		boolean registered2 = peerCoordinator.peerConnected (new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return peerID;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID;
+					}
+				};
 			}
 		});
 
@@ -386,16 +408,21 @@ public class TestPeerCoordinator {
 		final PeerID peerID1 = new PeerID();
 		peerCoordinator.peerConnected (new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return peerID1;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID1;
+					}
+					@Override
+					public boolean getWeAreChoking() {
+						return true;
+					}
+				};
 			}
 			@Override
 			public BitField getRemoteBitField() {
 				return new BitField (1);
-			}
-			@Override
-			public boolean getWeAreChoking() {
-				return true;
 			}
 			@Override
 			public PeerStatistics getStatistics() {
@@ -422,8 +449,13 @@ public class TestPeerCoordinator {
 		final PeerID peerID2 = new PeerID();
 		peerCoordinator.peerConnected (new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return peerID2;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID2;
+					}
+				};
 			}
 			@Override
 			public PeerStatistics getStatistics() {
@@ -452,7 +484,7 @@ public class TestPeerCoordinator {
 		peerCoordinator.setMaximumPeerConnections (1);
 
 		assertEquals (1, peerCoordinator.getConnectedPeers().size());
-		assertEquals (peerID2, peerCoordinator.getConnectedPeers().iterator().next().getRemotePeerID());
+		assertEquals (peerID2, peerCoordinator.getConnectedPeers().iterator().next().getPeerState().getRemotePeerID());
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -478,16 +510,21 @@ public class TestPeerCoordinator {
 		final PeerID peerID1 = new PeerID();
 		peerCoordinator.peerConnected (new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return peerID1;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID1;
+					}
+					@Override
+					public boolean getWeAreChoking() {
+						return true;
+					}
+				};
 			}
 			@Override
 			public BitField getRemoteBitField() {
 				return new BitField (1);
-			}
-			@Override
-			public boolean getWeAreChoking() {
-				return true;
 			}
 			@Override
 			public PeerStatistics getStatistics() {
@@ -514,8 +551,13 @@ public class TestPeerCoordinator {
 		final PeerID peerID2 = new PeerID();
 		peerCoordinator.peerConnected (new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return peerID2;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID2;
+					}
+				};
 			}
 			@Override
 			public PeerStatistics getStatistics() {
@@ -544,7 +586,7 @@ public class TestPeerCoordinator {
 		peerCoordinator.setMaximumPeerConnections (1);
 
 		assertEquals (1, peerCoordinator.getConnectedPeers().size());
-		assertEquals (peerID2, peerCoordinator.getConnectedPeers().iterator().next().getRemotePeerID());
+		assertEquals (peerID2, peerCoordinator.getConnectedPeers().iterator().next().getPeerState().getRemotePeerID());
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -622,8 +664,13 @@ public class TestPeerCoordinator {
 		final PeerID peerID = new PeerID();
 		ManageablePeer peer = new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return peerID;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID;
+					}
+				};
 			}
 			@Override
 			public PeerStatistics getStatistics() {
@@ -653,7 +700,7 @@ public class TestPeerCoordinator {
 
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
-		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
+		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		PeerCoordinatorListener listener = new PeerCoordinatorListener() {
@@ -668,18 +715,23 @@ public class TestPeerCoordinator {
 		final PeerID peerID = new PeerID();
 		ManageablePeer peer = new MockManageablePeer() {
 			@Override
-			public void setWeAreInterested (boolean weAreInterested) { }
-			@Override
-			public PeerID getRemotePeerID() {
-				return peerID;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID;
+					}
+					@Override
+					public StorageDescriptor getRemoteView() {
+						return pieceDatabase.getStorageDescriptor();
+					}
+				};
 			}
+			@Override
+			public void setWeAreInterested (boolean weAreInterested) { }
 			@Override
 			public BitField getRemoteBitField() {
 				return new BitField(1).not();
-			}
-			@Override
-			public long getRemoteViewLength() {
-				return 16384;
 			}
 			@Override
 			public PeerStatistics getStatistics() {
@@ -723,8 +775,13 @@ public class TestPeerCoordinator {
 		final PeerID peerID = new PeerID();
 		ManageablePeer peer = new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return peerID;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID;
+					}
+				};
 			}
 			@Override
 			public BitField getRemoteBitField() {
@@ -765,8 +822,13 @@ public class TestPeerCoordinator {
 		final PeerID peerID = new PeerID();
 		ManageablePeer peer = new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return peerID;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID;
+					}
+				};
 			}
 			@Override
 			public BitField getRemoteBitField() {
@@ -807,8 +869,13 @@ public class TestPeerCoordinator {
 		final PeerID peerID = new PeerID();
 		ManageablePeer peer = new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return peerID;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID;
+					}
+				};
 			}
 			@Override
 			public PeerStatistics getStatistics() {
@@ -845,8 +912,13 @@ public class TestPeerCoordinator {
 		final PeerID peerID = new PeerID();
 		ManageablePeer peer = new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return peerID;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID;
+					}
+				};
 			}
 			@Override
 			public PeerStatistics getStatistics() {
@@ -884,20 +956,25 @@ public class TestPeerCoordinator {
 		final Boolean[] chokeSet = new Boolean[1];
 		ManageablePeer peer = new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return peerID;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID;
+					}
+					@Override
+					public boolean getTheyAreInterested() {
+						return false;
+					}
+					@Override
+					public boolean getWeAreChoking() {
+						return true;
+					}
+				};
 			}
 			@Override
 			public BitField getRemoteBitField() {
 				return new BitField(1).not();
-			}
-			@Override
-			public boolean getTheyAreInterested() {
-				return false;
-			}
-			@Override
-			public boolean getWeAreChoking() {
-				return true;
 			}
 			@Override
 			public boolean setWeAreChoking (boolean weAreChokingThem) {
@@ -950,20 +1027,25 @@ public class TestPeerCoordinator {
 		final ViewSignature[] sentViewSignature = new ViewSignature[1];
 		ManageablePeer peer = new MockManageablePeer() {
 			@Override
-			public PeerID getRemotePeerID() {
-				return peerID;
+			public PeerState getPeerState() {
+				return new MockPeerState() {
+					@Override
+					public PeerID getRemotePeerID() {
+						return peerID;
+					}
+					@Override
+					public boolean getTheyAreInterested() {
+						return false;
+					}
+					@Override
+					public boolean getWeAreChoking() {
+						return true;
+					}
+				};
 			}
 			@Override
 			public BitField getRemoteBitField() {
 				return new BitField(1).not();
-			}
-			@Override
-			public boolean getTheyAreInterested() {
-				return false;
-			}
-			@Override
-			public boolean getWeAreChoking() {
-				return true;
 			}
 			@Override
 			public boolean setWeAreChoking (boolean weAreChokingThem) {

@@ -110,17 +110,17 @@ public class TorrentWindow extends JFrame {
 				case 1:
 					return String.format (
 							"%s%s%s%s",
-							peer.getWeAreChoking() ? "C" : ".",
-							peer.getWeAreInterested() ? "I" : ".",
-							peer.getTheyAreChoking() ? "c" : ".",
-							peer.getTheyAreInterested() ? "i" : "."
+							peer.getPeerState().getWeAreChoking() ? "C" : ".",
+							peer.getPeerState().getWeAreInterested() ? "I" : ".",
+							peer.getPeerState().getTheyAreChoking() ? "c" : ".",
+							peer.getPeerState().getTheyAreInterested() ? "i" : "."
 					);
 				case 2:
 					return String.format ("%1.2f KB/s", (float)peer.getReadableStatistics().getPerSecond (PeerStatistics.Type.PROTOCOL_BYTES_SENT) / 1000);
 				case 3:
 					return String.format ("%1.2f KB/s", (float)peer.getReadableStatistics().getPerSecond (PeerStatistics.Type.PROTOCOL_BYTES_RECEIVED) / 1000);
 				case 4:
-					return peer.getRemoteViewLength();
+					return peer.getPeerState().getRemoteView().getLength();
 			}
 
 			return null;

@@ -141,10 +141,10 @@ public class Bobbin {
 					for (Peer peer : peers) {
 						System.out.format (
 								"  %s%s%s%s %s%n",
-								peer.getWeAreChoking() ? "C" : ".",
-								peer.getWeAreInterested() ? "I" : ".",
-								peer.getTheyAreChoking() ? "c" : ".",
-								peer.getTheyAreInterested() ? "i" : ".",
+								peer.getPeerState().getWeAreChoking() ? "C" : ".",
+								peer.getPeerState().getWeAreInterested() ? "I" : ".",
+								peer.getPeerState().getTheyAreChoking() ? "c" : ".",
+								peer.getPeerState().getTheyAreInterested() ? "i" : ".",
 								peer.getRemoteSocketAddress()
 						);
 					}
