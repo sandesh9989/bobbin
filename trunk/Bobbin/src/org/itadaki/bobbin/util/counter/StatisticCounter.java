@@ -11,7 +11,7 @@ import java.util.Map;
 /**
  * A counter that provides the sum of supplied data, both in total and across user specified periods
  */
-public class StatisticCounter {
+public class StatisticCounter implements ReadableStatisticCounter {
 
 	/**
 	 * The base time in system milliseconds against which the periods are measured
@@ -51,12 +51,8 @@ public class StatisticCounter {
 	}
 
 
-	/**
-	 * Gets the current total for a previously registered period
-	 * @param period The period to get the current total for
-	 *
-	 * @return The current total for the given period
-	 * @throws IllegalArgumentException if the period supplied was not previously registered
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.util.counter.ReadableStatisticCounter#getPeriodTotal(org.itadaki.bobbin.util.counter.Period)
 	 */
 	public synchronized long getPeriodTotal (Period period) {
 
@@ -71,10 +67,8 @@ public class StatisticCounter {
 	}
 
 
-	/**
-	 * Gets the grand total of the supplied data since the counter was created
-	 *
-	 * @return The grand total of the supplied data since the counter was created
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.util.counter.ReadableStatisticCounter#getTotal()
 	 */
 	public synchronized long getTotal() {
 

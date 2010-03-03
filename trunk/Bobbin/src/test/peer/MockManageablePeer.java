@@ -14,11 +14,11 @@ import java.util.Set;
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerID;
+import org.itadaki.bobbin.peer.PeerStatistics;
+import org.itadaki.bobbin.peer.ReadablePeerStatistics;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
-import org.itadaki.bobbin.util.counter.StatisticCounter;
-
 
 
 /**
@@ -43,24 +43,6 @@ public class MockManageablePeer implements ManageablePeer {
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.ManageablePeer#getBlockBytesReceivedCounter()
-	 */
-	public StatisticCounter getBlockBytesReceivedCounter() {
-		fail();
-		return null;
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.ManageablePeer#getBlockBytesSentCounter()
-	 */
-	public StatisticCounter getBlockBytesSentCounter() {
-		fail();
-		return null;
-	}
-
-
-	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.ManageablePeer#getRemoteBitField()
 	 */
 	public BitField getRemoteBitField() {
@@ -75,6 +57,15 @@ public class MockManageablePeer implements ManageablePeer {
 	public long getRemoteViewLength() {
 		fail();
 		return 0;
+	}
+
+
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.peer.ManageablePeer#getStatistics()
+	 */
+	public PeerStatistics getStatistics() {
+		fail();
+		return null;
 	}
 
 
@@ -171,60 +162,6 @@ public class MockManageablePeer implements ManageablePeer {
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getBlockBytesReceived()
-	 */
-	public long getBlockBytesReceived() {
-		fail();
-		return 0;
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getBlockBytesSent()
-	 */
-	public long getBlockBytesSent() {
-		fail();
-		return 0;
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getProtocolBytesReceived()
-	 */
-	public long getProtocolBytesReceived() {
-		fail();
-		return 0;
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getProtocolBytesReceivedPerSecond()
-	 */
-	public int getProtocolBytesReceivedPerSecond() {
-		fail();
-		return 0;
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getProtocolBytesSent()
-	 */
-	public long getProtocolBytesSent() {
-		fail();
-		return 0;
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getProtocolBytesSentPerSecond()
-	 */
-	public int getProtocolBytesSentPerSecond() {
-		fail();
-		return 0;
-	}
-
-
-	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.Peer#getRemotePeerID()
 	 */
 	public PeerID getRemotePeerID() {
@@ -237,6 +174,15 @@ public class MockManageablePeer implements ManageablePeer {
 	 * @see org.itadaki.bobbin.peer.Peer#getRemoteSocketAddress()
 	 */
 	public InetSocketAddress getRemoteSocketAddress() {
+		fail();
+		return null;
+	}
+
+
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.peer.Peer#getStatistics()
+	 */
+	public ReadablePeerStatistics getReadableStatistics() {
 		fail();
 		return null;
 	}

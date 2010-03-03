@@ -21,6 +21,7 @@ import org.itadaki.bobbin.peer.PeerHandler;
 import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.peer.PeerServices;
 import org.itadaki.bobbin.peer.PeerServicesProvider;
+import org.itadaki.bobbin.peer.PeerStatistics;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConstants;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
@@ -64,12 +65,10 @@ public class TestPeerHandler {
 		assertTrue (handler.getWeAreChoking());
 		assertFalse (handler.getTheyAreInterested());
 		assertTrue (handler.getTheyAreChoking());
-		assertEquals (0, handler.getBlockBytesReceived());
-		assertEquals (0, handler.getBlockBytesSent());
-		assertEquals (0, handler.getProtocolBytesReceived());
-		assertEquals (0, handler.getProtocolBytesSent());
-		assertEquals (0, handler.getProtocolBytesReceivedPerSecond());
-		assertEquals (0, handler.getProtocolBytesSentPerSecond());
+		assertEquals (0, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW).getTotal());
+		assertEquals (0, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.BLOCK_BYTES_SENT).getTotal());
+		assertEquals (0, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.PROTOCOL_BYTES_RECEIVED).getTotal());
+		assertEquals (0, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.PROTOCOL_BYTES_SENT).getTotal());
 		assertEquals (false, handler.getTheyHaveOutstandingRequests());
 		assertEquals (new BitField (1), handler.getRemoteBitField());
 
@@ -253,7 +252,7 @@ public class TestPeerHandler {
 		handler.connectionReady (mockConnection, true, false);
 
 		mockConnection.mockExpectNoMoreOutput();
-		assertEquals (16384, handler.getBlockBytesReceived());
+		assertEquals (16384, handler.getReadableStatistics().getTotal (PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW));
 
 
 		pieceDatabase.terminate (true);
@@ -308,7 +307,7 @@ public class TestPeerHandler {
 				pieceDatabase.readPiece (request.getPieceNumber()).getBlock (request)
 		));
 		mockConnection.mockExpectNoMoreOutput();
-		assertEquals (16384, handler.getBlockBytesSent());
+		assertEquals (16384, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.BLOCK_BYTES_SENT).getTotal());
 
 
 		pieceDatabase.terminate (true);
@@ -355,7 +354,7 @@ public class TestPeerHandler {
 		mockConnection.mockInput (PeerProtocolBuilder.pieceMessage (new BlockDescriptor (0, 0, 16384), ByteBuffer.allocate (16384)));
 		handler.connectionReady (mockConnection, true, false);
 
-		assertEquals (16476, handler.getProtocolBytesReceived());
+		assertEquals (16476, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.PROTOCOL_BYTES_RECEIVED).getTotal());
 
 
 		pieceDatabase.terminate (true);
@@ -397,7 +396,7 @@ public class TestPeerHandler {
 		mockConnection.mockInput (PeerProtocolBuilder.requestMessage (new BlockDescriptor (0, 0, 16384)));
 		handler.connectionReady (mockConnection, true, true);
 
-		assertEquals (16476, handler.getProtocolBytesSent());
+		assertEquals (16476, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.PROTOCOL_BYTES_SENT).getTotal());
 
 
 		pieceDatabase.terminate (true);
@@ -967,7 +966,7 @@ public class TestPeerHandler {
 
 		handler.connectionReady (mockConnection, true, false);
 
-		assertEquals (0, handler.getBlockBytesReceivedCounter().getTotal());
+		assertEquals (0, handler.getStatistics().getCounter(PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW).getTotal());
 
 
 		pieceDatabase.terminate (true);
@@ -999,7 +998,7 @@ public class TestPeerHandler {
 
 		handler.connectionReady (mockConnection, true, false);
 
-		assertEquals (0, handler.getBlockBytesSentCounter().getTotal());
+		assertEquals (0, handler.getStatistics().getCounter(PeerStatistics.Type.BLOCK_BYTES_SENT).getTotal());
 
 
 		pieceDatabase.terminate (true);

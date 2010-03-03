@@ -26,9 +26,9 @@ import javax.swing.SwingUtilities;
 import javax.swing.table.AbstractTableModel;
 
 import org.itadaki.bobbin.peer.Peer;
+import org.itadaki.bobbin.peer.PeerStatistics;
 import org.itadaki.bobbin.peer.TorrentManager;
 import org.itadaki.bobbin.trackerclient.TrackerClientStatus;
-
 
 
 /**
@@ -116,9 +116,9 @@ public class TorrentWindow extends JFrame {
 							peer.getTheyAreInterested() ? "i" : "."
 					);
 				case 2:
-					return String.format ("%1.2f KB/s", (float)peer.getProtocolBytesSentPerSecond() / 1000);
+					return String.format ("%1.2f KB/s", (float)peer.getReadableStatistics().getPerSecond (PeerStatistics.Type.PROTOCOL_BYTES_SENT) / 1000);
 				case 3:
-					return String.format ("%1.2f KB/s", (float)peer.getProtocolBytesReceivedPerSecond() / 1000);
+					return String.format ("%1.2f KB/s", (float)peer.getReadableStatistics().getPerSecond (PeerStatistics.Type.PROTOCOL_BYTES_RECEIVED) / 1000);
 				case 4:
 					return peer.getRemoteViewLength();
 			}

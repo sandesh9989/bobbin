@@ -9,7 +9,6 @@ import java.util.List;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
-import org.itadaki.bobbin.util.counter.StatisticCounter;
 
 
 /**
@@ -20,19 +19,14 @@ import org.itadaki.bobbin.util.counter.StatisticCounter;
 public interface ManageablePeer extends ExtensiblePeer {
 
 	/**
+	 * @return The peer's protocol statistics
+	 */
+	public PeerStatistics getStatistics();
+
+	/**
 	 * @return The remote peer's available piece bitfield. The returned bitfield must not be changed
 	 */
 	public BitField getRemoteBitField();
-
-	/**
-	 * @return The peer's block bytes sent counter
-	 */
-	public StatisticCounter getBlockBytesSentCounter();
-
-	/**
-	 * @return The peer's block bytes received counter
-	 */
-	public StatisticCounter getBlockBytesReceivedCounter();
 
 	/**
 	 * @return {@code true} if the remote peer has any outstanding requests to us, otherwise false
