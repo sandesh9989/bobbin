@@ -426,7 +426,7 @@ public class RandomRequestManager implements RequestManager {
 
 		PeerState peerState = this.peerStates.get (peer);
 
-		return peerState.allocateRequests (peer.getRemoteViewLength(), peer.getRemoteBitField(), numRequests, allowedFastOnly);
+		return peerState.allocateRequests (peer.getPeerState().getRemoteView().getLength(), peer.getRemoteBitField(), numRequests, allowedFastOnly);
 
 	}
 

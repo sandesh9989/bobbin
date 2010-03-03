@@ -61,10 +61,10 @@ public class TestPeerHandler {
 		MockConnection mockConnection = new MockConnection();
 		PeerHandler handler = new PeerHandler (peerServices, mockConnection);
 
-		assertFalse (handler.getWeAreInterested());
-		assertTrue (handler.getWeAreChoking());
-		assertFalse (handler.getTheyAreInterested());
-		assertTrue (handler.getTheyAreChoking());
+		assertFalse (handler.getPeerState().getWeAreInterested());
+		assertTrue (handler.getPeerState().getWeAreChoking());
+		assertFalse (handler.getPeerState().getTheyAreInterested());
+		assertTrue (handler.getPeerState().getTheyAreChoking());
 		assertEquals (0, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW).getTotal());
 		assertEquals (0, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.BLOCK_BYTES_SENT).getTotal());
 		assertEquals (0, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.PROTOCOL_BYTES_RECEIVED).getTotal());
@@ -99,7 +99,7 @@ public class TestPeerHandler {
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, false);
 
-		assertFalse (handler.getTheyAreChoking());
+		assertFalse (handler.getPeerState().getTheyAreChoking());
 
 	}
 
@@ -129,7 +129,7 @@ public class TestPeerHandler {
 		mockConnection.mockInput (PeerProtocolBuilder.chokeMessage());
 		handler.connectionReady (mockConnection, true, false);
 
-		assertTrue (handler.getTheyAreChoking());
+		assertTrue (handler.getPeerState().getTheyAreChoking());
 
 	}
 
@@ -162,7 +162,7 @@ public class TestPeerHandler {
 		mockConnection.mockInput (PeerProtocolBuilder.interestedMessage());
 		handler.connectionReady (mockConnection, true, false);
 
-		assertTrue (handler.getTheyAreInterested());
+		assertTrue (handler.getPeerState().getTheyAreInterested());
 
 	}
 
@@ -196,7 +196,7 @@ public class TestPeerHandler {
 		mockConnection.mockInput (PeerProtocolBuilder.notInterestedMessage());
 		handler.connectionReady (mockConnection, true, false);
 
-		assertFalse (handler.getTheyAreInterested());
+		assertFalse (handler.getPeerState().getTheyAreInterested());
 
 	}
 
@@ -480,11 +480,11 @@ public class TestPeerHandler {
 		mockConnection.mockInput (PeerProtocolBuilder.requestMessage (new BlockDescriptor (0, 0, 16384)));
 		handler.connectionReady (mockConnection, true, false);
 
-		assertFalse (handler.getWeAreChoking());
+		assertFalse (handler.getPeerState().getWeAreChoking());
 
 		handler.setWeAreChoking (true);
 
-		assertTrue (handler.getWeAreChoking());
+		assertTrue (handler.getPeerState().getWeAreChoking());
 		assertFalse (handler.getTheyHaveOutstandingRequests());
 
 
@@ -523,11 +523,11 @@ public class TestPeerHandler {
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		handler.connectionReady (mockConnection, true, true);
 
-		assertFalse (handler.getWeAreInterested());
+		assertFalse (handler.getPeerState().getWeAreInterested());
 
 		handler.setWeAreInterested (true);
 
-		assertTrue (handler.getWeAreInterested());
+		assertTrue (handler.getPeerState().getWeAreInterested());
 
 
 		pieceDatabase.terminate (true);
@@ -934,7 +934,7 @@ public class TestPeerHandler {
 
 		handler.connectionReady (mockConnection, true, false);
 
-		assertEquals (remotePeerID, handler.getRemotePeerID());
+		assertEquals (remotePeerID, handler.getPeerState().getRemotePeerID());
 
 
 		pieceDatabase.terminate (true);
@@ -1058,7 +1058,7 @@ public class TestPeerHandler {
 
 		handler.connectionReady (mockConnection, true, false);
 
-		assertFalse (handler.getWeAreChoking());
+		assertFalse (handler.getPeerState().getWeAreChoking());
 
 		handler.setWeAreChoking (true);
 		handler.connectionReady (mockConnection, false, true);
@@ -1068,7 +1068,7 @@ public class TestPeerHandler {
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.chokeMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.rejectRequestMessage (sentRequest));
 		mockConnection.mockExpectNoMoreOutput();
-		assertTrue (handler.getWeAreChoking());
+		assertTrue (handler.getPeerState().getWeAreChoking());
 		assertFalse (handler.getTheyHaveOutstandingRequests());
 
 

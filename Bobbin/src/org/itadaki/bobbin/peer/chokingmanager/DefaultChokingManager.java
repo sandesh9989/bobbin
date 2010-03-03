@@ -219,8 +219,8 @@ public class DefaultChokingManager implements ChokingManager {
 		//        more piece blocks before peers that have received fewer
 		for (PeerState peerState : this.peerStates.values()) {
 
-			if (peerState.peer.getTheyAreInterested()) {
-				if (peerState.peer.getWeAreChoking() == false) {
+			if (peerState.peer.getPeerState().getTheyAreInterested()) {
+				if (peerState.peer.getPeerState().getWeAreChoking() == false) {
 					if (
 							((currentTime - peerState.lastChokeTime) < 20000)
 							|| peerState.peer.getTheyHaveOutstandingRequests()
@@ -235,7 +235,7 @@ public class DefaultChokingManager implements ChokingManager {
 				}
 			}
 
-			if (peerState.peer.getWeAreChoking() == false) {
+			if (peerState.peer.getPeerState().getWeAreChoking() == false) {
 				previouslyUnchokedPeers.add (peerState);
 			}
 
@@ -324,15 +324,15 @@ public class DefaultChokingManager implements ChokingManager {
 				(int) peerState.peer.getStatistics().getCounter(PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW).getPeriodTotal (TWENTY_SECOND_PERIOD);
 		}
 		for (PeerState peerState : this.peerStates.values()) {
-			if (peerState.peer.getTheyAreInterested()) {
+			if (peerState.peer.getPeerState().getTheyAreInterested()) {
 				if (peerState.twentySecondReceivedBlocks > 0) {
 					eligiblePeers.add (peerState);
 				}
-				if (peerState.peer.getWeAreChoking()) {
+				if (peerState.peer.getPeerState().getWeAreChoking()) {
 					chokedInterestedPeers.add (peerState);
 				}
 			}
-			if (!peerState.peer.getWeAreChoking()) {
+			if (!peerState.peer.getPeerState().getWeAreChoking()) {
 				previouslyUnchokedPeers.add (peerState);
 			}
 		}
@@ -380,7 +380,7 @@ public class DefaultChokingManager implements ChokingManager {
 				if (!newUnchokedPeers.contains (peerState)) {
 					newUnchokedPeers.add (peerState);
 					previouslyUnchokedPeers.remove (peerState);
-					if (peerState.peer.getTheyAreInterested()) {
+					if (peerState.peer.getPeerState().getTheyAreInterested()) {
 						this.optimisticUnchokePeer = peerState.peer;
 						if (newUnchokedPeers.size() == 4)
 							break;

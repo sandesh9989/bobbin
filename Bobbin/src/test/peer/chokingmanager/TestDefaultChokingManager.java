@@ -13,7 +13,7 @@ import java.util.Set;
 
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.peer.ManageablePeer;
-import org.itadaki.bobbin.peer.PeerID;
+import org.itadaki.bobbin.peer.PeerState;
 import org.itadaki.bobbin.peer.PeerStatistics;
 import org.itadaki.bobbin.peer.ReadablePeerStatistics;
 import org.itadaki.bobbin.peer.chokingmanager.ChokingManager;
@@ -24,6 +24,8 @@ import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.counter.Period;
 import org.itadaki.bobbin.util.counter.StatisticCounter;
 import org.junit.Test;
+
+import test.peer.MockPeerState;
 
 
 
@@ -130,36 +132,22 @@ public class TestDefaultChokingManager {
 
 		public void setWeAreInterested (boolean weAreInterested) { }
 
-		public PeerID getRemotePeerID() {
-			return null;
+		public PeerState getPeerState() {
+			return new MockPeerState() {
+				@Override
+				public boolean getTheyAreInterested() {
+					return ChokingMockManageablePeer.this.theyAreInterested;
+				}
+
+				@Override
+				public boolean getWeAreChoking() {
+					return ChokingMockManageablePeer.this.weAreChoking;
+				}
+			};
 		}
 
 		public InetSocketAddress getRemoteSocketAddress() {
 			return null;
-		}
-
-		public boolean isFastExtensionEnabled() {
-			return false;
-		}
-
-		public boolean isExtensionProtocolEnabled() {
-			return false;
-		}
-
-		public boolean getTheyAreChoking() {
-			return true;
-		}
-
-		public boolean getTheyAreInterested() {
-			return this.theyAreInterested;
-		}
-
-		public boolean getWeAreChoking() {
-			return this.weAreChoking;
-		}
-
-		public boolean getWeAreInterested() {
-			return false;
 		}
 
 		public PeerStatistics getStatistics() {
@@ -180,10 +168,6 @@ public class TestDefaultChokingManager {
 
 		public BitField getRemoteBitField() {
 			return null;
-		}
-
-		public long getRemoteViewLength() {
-			return 0;
 		}
 
 		public ReadablePeerStatistics getReadableStatistics() {
