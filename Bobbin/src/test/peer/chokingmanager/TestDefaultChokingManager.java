@@ -14,6 +14,8 @@ import java.util.Set;
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerID;
+import org.itadaki.bobbin.peer.PeerStatistics;
+import org.itadaki.bobbin.peer.ReadablePeerStatistics;
 import org.itadaki.bobbin.peer.chokingmanager.ChokingManager;
 import org.itadaki.bobbin.peer.chokingmanager.DefaultChokingManager;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
@@ -160,36 +162,20 @@ public class TestDefaultChokingManager {
 			return false;
 		}
 
-		public long getBlockBytesReceived() {
-			return 0;
-		}
-
-		public long getBlockBytesSent() {
-			return 0;
-		}
-
-		public StatisticCounter getBlockBytesReceivedCounter() {
-			return this.blockBytesReceivedCounter;
-		}
-
-		public StatisticCounter getBlockBytesSentCounter() {
-			return this.blockBytesSentCounter;
-		}
-
-		public long getProtocolBytesReceived() {
-			return 0;
-		}
-
-		public long getProtocolBytesSent() {
-			return 0;
-		}
-
-		public int getProtocolBytesReceivedPerSecond() {
-			return 0;
-		}
-
-		public int getProtocolBytesSentPerSecond() {
-			return 0;
+		public PeerStatistics getStatistics() {
+			return new PeerStatistics() {
+				@Override
+				public StatisticCounter getCounter (Type type) {
+					switch (type) {
+						case BLOCK_BYTES_RECEIVED_RAW:
+							return ChokingMockManageablePeer.this.blockBytesReceivedCounter;
+						case BLOCK_BYTES_SENT:
+							return ChokingMockManageablePeer.this.blockBytesSentCounter;
+						default:
+							return null;
+					}
+				}
+			};
 		}
 
 		public BitField getRemoteBitField() {
@@ -198,6 +184,10 @@ public class TestDefaultChokingManager {
 
 		public long getRemoteViewLength() {
 			return 0;
+		}
+
+		public ReadablePeerStatistics getReadableStatistics() {
+			return null;
 		}
 
 		public void close() {

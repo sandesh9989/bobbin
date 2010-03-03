@@ -57,33 +57,8 @@ public interface Peer {
 	public boolean getWeAreInterested();
 
 	/**
-	 * @return The number of piece block bytes sent to the remote peer
+	 * @return The peer's protocol statistics
 	 */
-	public long getBlockBytesSent();
-
-	/**
-	 * @return The number of piece block bytes received from the remote peer
-	 */
-	public long getBlockBytesReceived();
-
-	/**
-	 * @return The number of protocol bytes sent to the remote peer
-	 */
-	public long getProtocolBytesSent();
-
-	/**
-	 * @return The number of protocol bytes received from the remote peer
-	 */
-	public long getProtocolBytesReceived();
-
-	/**
-	 * @return A moving one second average of he number of protocol bytes sent to the remote peer
-	 */
-	public int getProtocolBytesSentPerSecond();
-
-	/**
-	 * @return A moving one second average of he number of protocol bytes received from the remote peer
-	 */
-	public int getProtocolBytesReceivedPerSecond();
+	public ReadablePeerStatistics getReadableStatistics();
 
 }

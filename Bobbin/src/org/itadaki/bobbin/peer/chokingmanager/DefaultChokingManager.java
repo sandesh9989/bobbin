@@ -15,6 +15,7 @@ import java.util.Random;
 import java.util.Set;
 
 import org.itadaki.bobbin.peer.ManageablePeer;
+import org.itadaki.bobbin.peer.PeerStatistics;
 import org.itadaki.bobbin.util.counter.Period;
 
 
@@ -163,8 +164,8 @@ public class DefaultChokingManager implements ChokingManager {
 		}
 
 		this.peerStates.put (peer, new PeerState (peer));
-		peer.getBlockBytesReceivedCounter().addCountedPeriod (TWENTY_SECOND_PERIOD);
-		peer.getBlockBytesSentCounter().addCountedPeriod (TWENTY_SECOND_PERIOD);
+		peer.getStatistics().getCounter(PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW).addCountedPeriod (TWENTY_SECOND_PERIOD);
+		peer.getStatistics().getCounter(PeerStatistics.Type.BLOCK_BYTES_SENT).addCountedPeriod (TWENTY_SECOND_PERIOD);
 
 	}
 
@@ -240,7 +241,7 @@ public class DefaultChokingManager implements ChokingManager {
 
 		}
 		for (PeerState peerState : eligibleUnchokedPeers) {
-			peerState.twentySecondSentBlocks = (int) peerState.peer.getBlockBytesSentCounter().getPeriodTotal (TWENTY_SECOND_PERIOD);
+			peerState.twentySecondSentBlocks = (int) peerState.peer.getStatistics().getCounter(PeerStatistics.Type.BLOCK_BYTES_SENT).getPeriodTotal (TWENTY_SECOND_PERIOD);
 		}
 		Collections.sort (eligibleUnchokedPeers, seedingComparator);
 
@@ -319,7 +320,8 @@ public class DefaultChokingManager implements ChokingManager {
 		// The sort criteria for the eligible peers are :
 		//   - 1. Peers that have sent more piece blocks before peers that have sent fewer
 		for (PeerState peerState : this.peerStates.values()) {
-			peerState.twentySecondReceivedBlocks = (int) peerState.peer.getBlockBytesReceivedCounter().getPeriodTotal (TWENTY_SECOND_PERIOD);
+			peerState.twentySecondReceivedBlocks =
+				(int) peerState.peer.getStatistics().getCounter(PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW).getPeriodTotal (TWENTY_SECOND_PERIOD);
 		}
 		for (PeerState peerState : this.peerStates.values()) {
 			if (peerState.peer.getTheyAreInterested()) {

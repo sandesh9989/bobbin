@@ -824,10 +824,14 @@ public class PeerCoordinator implements PeerSourceListener, PeerServices {
 			List<ManageablePeer> peers = new ArrayList<ManageablePeer> (this.connectedPeers);
 			Collections.sort (peers, new Comparator<ManageablePeer>() {
 				public int compare (ManageablePeer peer1, ManageablePeer peer2) {
+					ReadablePeerStatistics peer1Statistics = peer1.getReadableStatistics();
+					ReadablePeerStatistics peer2Statistics = peer2.getReadableStatistics();
 					if (complete) {
-						return (int) Math.signum (peer1.getBlockBytesSent() - peer2.getBlockBytesSent());
+						return (int) Math.signum (peer1Statistics.getTotal (PeerStatistics.Type.BLOCK_BYTES_SENT)
+								- peer2Statistics.getTotal (PeerStatistics.Type.BLOCK_BYTES_SENT));
 					}
-					return (int) Math.signum (peer1.getBlockBytesReceived() - peer2.getBlockBytesReceived());
+					return (int) Math.signum (peer1Statistics.getTotal (PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW)
+							- peer2Statistics.getTotal (PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW));
 				}
 			});
 			Iterator<ManageablePeer> iterator = peers.iterator();

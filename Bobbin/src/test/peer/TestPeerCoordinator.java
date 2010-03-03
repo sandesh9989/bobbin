@@ -20,6 +20,8 @@ import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerCoordinator;
 import org.itadaki.bobbin.peer.PeerCoordinatorListener;
 import org.itadaki.bobbin.peer.PeerID;
+import org.itadaki.bobbin.peer.PeerStatistics;
+import org.itadaki.bobbin.peer.ReadablePeerStatistics;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
@@ -29,7 +31,7 @@ import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.trackerclient.PeerIdentifier;
 import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.DSAUtil;
-import org.itadaki.bobbin.util.counter.StatisticCounter;
+import org.itadaki.bobbin.util.counter.Period;
 import org.itadaki.bobbin.util.elastictree.ElasticTree;
 import org.junit.Test;
 
@@ -271,12 +273,8 @@ public class TestPeerCoordinator {
 				return peerID;
 			}
 			@Override
-			public StatisticCounter getBlockBytesReceivedCounter() {
-				return new StatisticCounter();
-			}
-			@Override
-			public StatisticCounter getBlockBytesSentCounter() {
-				return new StatisticCounter();
+			public PeerStatistics getStatistics() {
+				return new PeerStatistics();
 			}
 			@Override
 			public void close() { }
@@ -400,16 +398,20 @@ public class TestPeerCoordinator {
 				return true;
 			}
 			@Override
-			public StatisticCounter getBlockBytesReceivedCounter() {
-				return new StatisticCounter();
+			public PeerStatistics getStatistics() {
+				return new PeerStatistics();
 			}
 			@Override
-			public StatisticCounter getBlockBytesSentCounter() {
-				return new StatisticCounter();
-			}
-			@Override
-			public long getBlockBytesSent() {
-				return 10;
+			public ReadablePeerStatistics getReadableStatistics() {
+				return new PeerStatistics() {
+					@Override
+					public long getTotal (Type type) {
+						if (type == Type.BLOCK_BYTES_SENT) {
+							return 10;
+						}
+						return -1;
+					}
+				};
 			}
 			@Override
 			public void close() {
@@ -424,16 +426,20 @@ public class TestPeerCoordinator {
 				return peerID2;
 			}
 			@Override
-			public StatisticCounter getBlockBytesReceivedCounter() {
-				return new StatisticCounter();
+			public PeerStatistics getStatistics() {
+				return new PeerStatistics();
 			}
 			@Override
-			public StatisticCounter getBlockBytesSentCounter() {
-				return new StatisticCounter();
-			}
-			@Override
-			public long getBlockBytesSent() {
-				return 20;
+			public ReadablePeerStatistics getReadableStatistics() {
+				return new PeerStatistics() {
+					@Override
+					public long getTotal (Type type) {
+						if (type == Type.BLOCK_BYTES_SENT) {
+							return 20;
+						}
+						return -1;
+					}
+				};
 			}
 			@Override
 			public void close() {
@@ -484,16 +490,20 @@ public class TestPeerCoordinator {
 				return true;
 			}
 			@Override
-			public StatisticCounter getBlockBytesReceivedCounter() {
-				return new StatisticCounter();
+			public PeerStatistics getStatistics() {
+				return new PeerStatistics();
 			}
 			@Override
-			public StatisticCounter getBlockBytesSentCounter() {
-				return new StatisticCounter();
-			}
-			@Override
-			public long getBlockBytesReceived() {
-				return 10;
+			public ReadablePeerStatistics getReadableStatistics() {
+				return new PeerStatistics() {
+					@Override
+					public long getTotal (Type type) {
+						if (type == Type.BLOCK_BYTES_RECEIVED_RAW) {
+							return 10;
+						}
+						return -1;
+					}
+				};
 			}
 			@Override
 			public void close() {
@@ -508,16 +518,20 @@ public class TestPeerCoordinator {
 				return peerID2;
 			}
 			@Override
-			public StatisticCounter getBlockBytesReceivedCounter() {
-				return new StatisticCounter();
+			public PeerStatistics getStatistics() {
+				return new PeerStatistics();
 			}
 			@Override
-			public StatisticCounter getBlockBytesSentCounter() {
-				return new StatisticCounter();
-			}
-			@Override
-			public long getBlockBytesReceived() {
-				return 20;
+			public ReadablePeerStatistics getReadableStatistics() {
+				return new PeerStatistics() {
+					@Override
+					public long getTotal (Type type) {
+						if (type == Type.BLOCK_BYTES_RECEIVED_RAW) {
+							return 20;
+						}
+						return -1;
+					}
+				};
 			}
 			@Override
 			public void close() {
@@ -612,12 +626,8 @@ public class TestPeerCoordinator {
 				return peerID;
 			}
 			@Override
-			public StatisticCounter getBlockBytesReceivedCounter() {
-				return new StatisticCounter();
-			}
-			@Override
-			public StatisticCounter getBlockBytesSentCounter() {
-				return new StatisticCounter();
+			public PeerStatistics getStatistics() {
+				return new PeerStatistics();
 			}
 			@Override
 			public void close() { }
@@ -672,12 +682,8 @@ public class TestPeerCoordinator {
 				return 16384;
 			}
 			@Override
-			public StatisticCounter getBlockBytesReceivedCounter() {
-				return new StatisticCounter();
-			}
-			@Override
-			public StatisticCounter getBlockBytesSentCounter() {
-				return new StatisticCounter();
+			public PeerStatistics getStatistics() {
+				return new PeerStatistics();
 			}
 			@Override
 			public void close() { }
@@ -725,12 +731,8 @@ public class TestPeerCoordinator {
 				return new BitField(2).not();
 			}
 			@Override
-			public StatisticCounter getBlockBytesReceivedCounter() {
-				return new StatisticCounter();
-			}
-			@Override
-			public StatisticCounter getBlockBytesSentCounter() {
-				return new StatisticCounter();
+			public PeerStatistics getStatistics() {
+				return new PeerStatistics();
 			}
 			@Override
 			public void close() { }
@@ -771,12 +773,8 @@ public class TestPeerCoordinator {
 				return new BitField(2).not();
 			}
 			@Override
-			public StatisticCounter getBlockBytesReceivedCounter() {
-				return new StatisticCounter();
-			}
-			@Override
-			public StatisticCounter getBlockBytesSentCounter() {
-				return new StatisticCounter();
+			public PeerStatistics getStatistics() {
+				return new PeerStatistics();
 			}
 			@Override
 			public void close() { }
@@ -813,12 +811,8 @@ public class TestPeerCoordinator {
 				return peerID;
 			}
 			@Override
-			public StatisticCounter getBlockBytesReceivedCounter() {
-				return new StatisticCounter();
-			}
-			@Override
-			public StatisticCounter getBlockBytesSentCounter() {
-				return new StatisticCounter();
+			public PeerStatistics getStatistics() {
+				return new PeerStatistics();
 			}
 			@Override
 			public void close() { }
@@ -855,12 +849,8 @@ public class TestPeerCoordinator {
 				return peerID;
 			}
 			@Override
-			public StatisticCounter getBlockBytesReceivedCounter() {
-				return new StatisticCounter();
-			}
-			@Override
-			public StatisticCounter getBlockBytesSentCounter() {
-				return new StatisticCounter();
+			public PeerStatistics getStatistics() {
+				return new PeerStatistics();
 			}
 			@Override
 			public void close() { }
@@ -893,8 +883,6 @@ public class TestPeerCoordinator {
 		final PeerID peerID = new PeerID();
 		final Boolean[] chokeSet = new Boolean[1];
 		ManageablePeer peer = new MockManageablePeer() {
-			private StatisticCounter blockBytesReceivedCounter = new StatisticCounter();
-			private StatisticCounter blockBytesSentCounter = new StatisticCounter();
 			@Override
 			public PeerID getRemotePeerID() {
 				return peerID;
@@ -917,12 +905,10 @@ public class TestPeerCoordinator {
 				return true;
 			}
 			@Override
-			public StatisticCounter getBlockBytesReceivedCounter() {
-				return this.blockBytesReceivedCounter;
-			}
-			@Override
-			public StatisticCounter getBlockBytesSentCounter() {
-				return this.blockBytesSentCounter;
+			public PeerStatistics getStatistics() {
+				PeerStatistics peerStatistics = new PeerStatistics();
+				peerStatistics.getCounter (PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW).addCountedPeriod (new Period (500, 40));
+				return peerStatistics;
 			}
 			@Override
 			public void close() { }
@@ -963,8 +949,6 @@ public class TestPeerCoordinator {
 		final PeerID peerID = new PeerID();
 		final ViewSignature[] sentViewSignature = new ViewSignature[1];
 		ManageablePeer peer = new MockManageablePeer() {
-			private StatisticCounter blockBytesReceivedCounter = new StatisticCounter();
-			private StatisticCounter blockBytesSentCounter = new StatisticCounter();
 			@Override
 			public PeerID getRemotePeerID() {
 				return peerID;
@@ -986,12 +970,8 @@ public class TestPeerCoordinator {
 				return true;
 			}
 			@Override
-			public StatisticCounter getBlockBytesReceivedCounter() {
-				return this.blockBytesReceivedCounter;
-			}
-			@Override
-			public StatisticCounter getBlockBytesSentCounter() {
-				return this.blockBytesSentCounter;
+			public PeerStatistics getStatistics() {
+				return new PeerStatistics();
 			}
 			@Override
 			public void setWeAreInterested (boolean weAreInterested) {

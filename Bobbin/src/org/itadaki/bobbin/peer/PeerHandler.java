@@ -29,9 +29,7 @@ import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.StorageDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
-import org.itadaki.bobbin.util.counter.StatisticCounter;
 import org.itadaki.bobbin.util.elastictree.HashChain;
-
 
 
 /**
@@ -79,24 +77,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	private final PeerProtocolParser protocolParser;
 
 	/**
-	 * A counter for protocol bytes sent from this peer to the remote peer
+	 * Protocol statistics about the peer
 	 */
-	private final StatisticCounter protocolBytesSentCounter = new StatisticCounter();
-
-	/**
-	 * A counter for protocol bytes received by this peer from the remote peer
-	 */
-	private final StatisticCounter protocolBytesReceivedCounter = new StatisticCounter();
-
-	/**
-	 * A counter for piece block bytes sent from this peer to the remote peer
-	 */
-	private final StatisticCounter blockBytesSentCounter = new StatisticCounter();
-
-	/**
-	 * A counter for piece block bytes received by this peer from the remote peer
-	 */
-	private final StatisticCounter blockBytesReceivedCounter = new StatisticCounter();
+	private final PeerStatistics peerStatistics = new PeerStatistics();
 
 	/**
 	 * The PeerServicesProvider that will be asked to provide a PeerServices in the case of an
@@ -283,84 +266,32 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getBlocksReceived()
+	 * @see org.itadaki.bobbin.peer.Peer#getStatistics()
 	 */
-	public long getBlockBytesReceived() {
+	public ReadablePeerStatistics getReadableStatistics() {
 
-		return this.blockBytesReceivedCounter.getTotal();
+		return this.peerStatistics;
 
 	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getBlocksSent()
-	 */
-	public long getBlockBytesSent() {
-
-		return this.blockBytesSentCounter.getTotal();
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getProtocolBytesReceived()
-	 */
-	public long getProtocolBytesReceived() {
-
-		return this.protocolBytesReceivedCounter.getTotal();
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getProtocolBytesSent()
-	 */
-	public long getProtocolBytesSent() {
-
-		return this.protocolBytesSentCounter.getTotal();
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getProtocolBytesReceived()
-	 */
-	public int getProtocolBytesReceivedPerSecond() {
-
-		return (int) this.protocolBytesReceivedCounter.getPeriodTotal (PeerCoordinator.TWO_SECOND_PERIOD) / 2;
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.Peer#getProtocolBytesSent()
-	 */
-	public int getProtocolBytesSentPerSecond() {
-
-		return (int) this.protocolBytesSentCounter.getPeriodTotal (PeerCoordinator.TWO_SECOND_PERIOD) / 2;
-
-	}
-
 
 	/* ManageablePeer interface */
 
-
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.ManageablePeer#getBlocksReceivedCounter()
+	 * @see org.itadaki.bobbin.peer.ManageablePeer#getStatistics()
 	 */
-	public StatisticCounter getBlockBytesReceivedCounter() {
+	public PeerStatistics getStatistics() {
 
-		return this.blockBytesReceivedCounter;
+		return this.peerStatistics;
 
 	}
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.ManageablePeer#getBlocksSentCounter()
+	 * @see org.itadaki.bobbin.peer.ManageablePeer#getBitField()
 	 */
-	public StatisticCounter getBlockBytesSentCounter() {
+	public BitField getRemoteBitField() {
 
-		return this.blockBytesSentCounter;
+		return this.remoteBitField;
 
 	}
 
@@ -486,16 +417,6 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	public void sendExtensionMessage (String identifier, ByteBuffer data) {
 
 		this.outboundQueue.sendExtensionMessage (identifier, data);
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.ManageablePeer#getBitField()
-	 */
-	public BitField getRemoteBitField() {
-
-		return this.remoteBitField;
 
 	}
 
@@ -777,7 +698,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 		// Handle the block
 		if (this.outboundQueue.requestReceived (descriptor)) {
-			this.blockBytesReceivedCounter.add (descriptor.getLength());
+			this.peerStatistics.blockBytesReceivedRaw.add (descriptor.getLength());
 			this.peerServices.handleBlock (this, descriptor, null, null, data);
 		} else {
 			if (!this.fastExtensionEnabled) {
@@ -786,7 +707,6 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 			} else {
 				throw new IOException ("Unrequested piece received");
 			}
-			
 		}
 
 		// We may need to send new requests. They will be added in connectionReady() when all read
@@ -942,7 +862,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 		// Handle the block
 		if (this.outboundQueue.requestReceived (descriptor)) {
-			this.blockBytesReceivedCounter.add (descriptor.getLength());
+			this.peerStatistics.blockBytesReceivedRaw.add (descriptor.getLength());
 			this.peerServices.handleBlock (
 					this,
 					descriptor,
@@ -1015,7 +935,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 			{
 				throw new IOException ("Invalid view length in piece");
 			}
-			this.blockBytesReceivedCounter.add (descriptor.getLength());
+			this.peerStatistics.blockBytesReceivedRaw.add (descriptor.getLength());
 			this.peerServices.handleBlock (
 					this,
 					descriptor,
@@ -1073,7 +993,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 			if (readable) {
 				int bytesRead = this.protocolParser.parseBytes (connection);
-				this.protocolBytesReceivedCounter.add (bytesRead);
+				this.peerStatistics.protocolBytesReceived.add (bytesRead);
 				if (bytesRead > 0) {
 					this.lastDataReceivedTime = System.currentTimeMillis();
 				}
@@ -1085,7 +1005,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	
 			if (writeable) {
 				int bytesWritten = this.outboundQueue.sendData();
-				this.protocolBytesSentCounter.add (bytesWritten);
+				this.peerStatistics.protocolBytesSent.add (bytesWritten);
 			}
 
 		} catch (IOException e) {
@@ -1226,11 +1146,11 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 		this.remoteBitField = new BitField (initialDescriptor.getNumberOfPieces());
 		this.remoteViewDescriptor = initialDescriptor;
 		this.infoHash = this.pieceDatabase.getInfo().getHash();
-		this.outboundQueue = new PeerOutboundQueue (this.connection, this.pieceDatabase, this.blockBytesSentCounter);
-		this.protocolBytesSentCounter.setParent (this.peerServices.getProtocolBytesSentCounter());
-		this.protocolBytesReceivedCounter.setParent (this.peerServices.getProtocolBytesReceivedCounter());
-		this.blockBytesSentCounter.setParent (this.peerServices.getBlockBytesSentCounter());
-		this.blockBytesReceivedCounter.setParent (this.peerServices.getBlockBytesReceivedCounter());
+		this.outboundQueue = new PeerOutboundQueue (this.connection, this.pieceDatabase, this.peerStatistics.blockBytesSent);
+		this.peerStatistics.protocolBytesSent.setParent (this.peerServices.getProtocolBytesSentCounter());
+		this.peerStatistics.protocolBytesReceived.setParent (this.peerServices.getProtocolBytesReceivedCounter());
+		this.peerStatistics.blockBytesSent.setParent (this.peerServices.getBlockBytesSentCounter());
+		this.peerStatistics.blockBytesReceivedRaw.setParent (this.peerServices.getBlockBytesReceivedCounter());
 
 		this.outboundQueue.sendHandshake (this.fastExtensionEnabled, this.extensionProtocolEnabled, this.infoHash,
 				this.peerServices.getLocalPeerID());
@@ -1254,9 +1174,6 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 		this.protocolParser = new PeerProtocolParser (this, this.fastExtensionEnabled, this.extensionProtocolEnabled);
 		this.connection.setListener (this);
 
-		this.protocolBytesReceivedCounter.addCountedPeriod (PeerCoordinator.TWO_SECOND_PERIOD);
-		this.protocolBytesSentCounter.addCountedPeriod (PeerCoordinator.TWO_SECOND_PERIOD);
-
 	}
 
 
@@ -1272,9 +1189,6 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 		this.connection = connection;
 		this.protocolParser = new PeerProtocolParser (this, this.fastExtensionEnabled, this.extensionProtocolEnabled);
 		this.connection.setListener (this);
-
-		this.protocolBytesReceivedCounter.addCountedPeriod (PeerCoordinator.TWO_SECOND_PERIOD);
-		this.protocolBytesSentCounter.addCountedPeriod (PeerCoordinator.TWO_SECOND_PERIOD);
 
 		completeSetupAndHandshake();
 

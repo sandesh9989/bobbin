@@ -16,13 +16,14 @@ import java.util.Set;
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerID;
+import org.itadaki.bobbin.peer.PeerStatistics;
+import org.itadaki.bobbin.peer.ReadablePeerStatistics;
 import org.itadaki.bobbin.peer.requestmanager.RandomRequestManager;
 import org.itadaki.bobbin.peer.requestmanager.RequestManager;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.StorageDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
-import org.itadaki.bobbin.util.counter.StatisticCounter;
 import org.junit.Test;
 
 import test.Util;
@@ -134,40 +135,16 @@ public class TestRandomRequestManager {
 			return false;
 		}
 
-		public long getBlockBytesReceived() {
-			return 0;
-		}
-
-		public long getBlockBytesSent() {
-			return 0;
-		}
-
-		public StatisticCounter getBlockBytesReceivedCounter() {
-			return null;
-		}
-
-		public StatisticCounter getBlockBytesSentCounter() {
-			return null;
-		}
-
-		public long getProtocolBytesReceived() {
-			return 0;
-		}
-
-		public long getProtocolBytesSent() {
-			return 0;
-		}
-
-		public int getProtocolBytesReceivedPerSecond() {
-			return 0;
-		}
-
-		public int getProtocolBytesSentPerSecond() {
-			return 0;
-		}
-
 		public BitField getRemoteBitField() {
 			return this.peerBitField;
+		}
+
+		public ReadablePeerStatistics getReadableStatistics() {
+			return null;
+		}
+
+		public PeerStatistics getStatistics() {
+			return null;
 		}
 
 		public void close() {
