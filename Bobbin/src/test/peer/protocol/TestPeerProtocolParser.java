@@ -255,8 +255,12 @@ public class TestPeerProtocolParser {
 				parsedPeerID[0] = peerID;
 			}
 			@Override
-			public void chokeMessage (boolean choked) {
+			public void haveNoneMessage() {
 				assertEquals (3, this.callCount++);
+			}
+			@Override
+			public void chokeMessage (boolean choked) {
+				assertEquals (4, this.callCount++);
 				parsedChoke[0] = new Boolean (choked);
 			}
 		};
@@ -304,8 +308,12 @@ public class TestPeerProtocolParser {
 				parsedPeerID[0] = peerID;
 			}
 			@Override
-			public void chokeMessage (boolean choked) {
+			public void haveNoneMessage() {
 				assertEquals (3, this.callCount++);
+			}
+			@Override
+			public void chokeMessage (boolean choked) {
+				assertEquals (4, this.callCount++);
 				parsedChoke[0] = new Boolean (choked);
 			}
 		};
@@ -353,8 +361,12 @@ public class TestPeerProtocolParser {
 				parsedPeerID[0] = peerID;
 			}
 			@Override
-			public void interestedMessage (boolean choked) {
+			public void haveNoneMessage() {
 				assertEquals (3, this.callCount++);
+			}
+			@Override
+			public void interestedMessage (boolean choked) {
+				assertEquals (4, this.callCount++);
 				parsedInterested[0] = new Boolean (choked);
 			}
 		};
@@ -402,8 +414,12 @@ public class TestPeerProtocolParser {
 				parsedPeerID[0] = peerID;
 			}
 			@Override
-			public void interestedMessage (boolean choked) {
+			public void haveNoneMessage() {
 				assertEquals (3, this.callCount++);
+			}
+			@Override
+			public void interestedMessage (boolean choked) {
+				assertEquals (4, this.callCount++);
 				parsedInterested[0] = new Boolean (choked);
 			}
 		};
@@ -452,8 +468,12 @@ public class TestPeerProtocolParser {
 				parsedPeerID[0] = peerID;
 			}
 			@Override
-			public void haveMessage (int pieceIndex) {
+			public void haveNoneMessage() {
 				assertEquals (3, this.callCount++);
+			}
+			@Override
+			public void haveMessage (int pieceIndex) {
+				assertEquals (4, this.callCount++);
 				parsedPieceIndex[0] = pieceIndex;
 			}
 		};
@@ -561,8 +581,12 @@ public class TestPeerProtocolParser {
 				parsedPeerID[0] = peerID;
 			}
 			@Override
-			public void requestMessage (BlockDescriptor blockDescriptor) {
+			public void haveNoneMessage() {
 				assertEquals (3, this.callCount++);
+			}
+			@Override
+			public void requestMessage (BlockDescriptor blockDescriptor) {
+				assertEquals (4, this.callCount++);
 				parsedBlockRequest[0] = blockDescriptor;
 			}
 		};
@@ -617,8 +641,12 @@ public class TestPeerProtocolParser {
 				parsedPeerID[0] = peerID;
 			}
 			@Override
-			public void pieceMessage (BlockDescriptor blockDescriptor, byte[] data) {
+			public void haveNoneMessage() {
 				assertEquals (3, this.callCount++);
+			}
+			@Override
+			public void pieceMessage (BlockDescriptor blockDescriptor, byte[] data) {
+				assertEquals (4, this.callCount++);
 				parsedBlockRequest[0] = blockDescriptor;
 				parsedData[0] = data;
 			}
@@ -675,8 +703,12 @@ public class TestPeerProtocolParser {
 				parsedPeerID[0] = peerID;
 			}
 			@Override
-			public void cancelMessage (BlockDescriptor blockDescriptor) {
+			public void haveNoneMessage() {
 				assertEquals (3, this.callCount++);
+			}
+			@Override
+			public void cancelMessage (BlockDescriptor blockDescriptor) {
+				assertEquals (4, this.callCount++);
 				parsedBlockRequest[0] = blockDescriptor;
 			}
 		};
@@ -1587,8 +1619,12 @@ public class TestPeerProtocolParser {
 				parsedPeerID[0] = peerID;
 			}
 			@Override
-			public void unknownMessage (int messageID, byte[] data) {
+			public void haveNoneMessage() {
 				assertEquals (3, this.callCount++);
+			}
+			@Override
+			public void unknownMessage (int messageID, byte[] data) {
+				assertEquals (4, this.callCount++);
 				parsedMessageID[0] = messageID;
 				parsedData[0] = data;
 			}
@@ -1658,6 +1694,10 @@ public class TestPeerProtocolParser {
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
 			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
+			}
 		};
 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
@@ -1701,6 +1741,10 @@ public class TestPeerProtocolParser {
 			@Override
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
+			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
 			}
 		};
 
@@ -1746,6 +1790,10 @@ public class TestPeerProtocolParser {
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
 			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
+			}
 		};
 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
@@ -1789,6 +1837,10 @@ public class TestPeerProtocolParser {
 			@Override
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
+			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
 			}
 		};
 
@@ -1834,6 +1886,10 @@ public class TestPeerProtocolParser {
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
 			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
+			}
 		};
 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
@@ -1877,6 +1933,10 @@ public class TestPeerProtocolParser {
 			@Override
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
+			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
 			}
 		};
 
@@ -1980,6 +2040,10 @@ public class TestPeerProtocolParser {
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
 			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
+			}
 		};
 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
@@ -2023,6 +2087,10 @@ public class TestPeerProtocolParser {
 			@Override
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
+			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
 			}
 		};
 
@@ -2068,6 +2136,10 @@ public class TestPeerProtocolParser {
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
 			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
+			}
 		};
 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
@@ -2111,6 +2183,10 @@ public class TestPeerProtocolParser {
 			@Override
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
+			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
 			}
 		};
 
@@ -2156,6 +2232,10 @@ public class TestPeerProtocolParser {
 			@Override
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
+			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
 			}
 		};
 
@@ -2287,8 +2367,12 @@ public class TestPeerProtocolParser {
 				assertEquals (2, this.callCount++);
 			}
 			@Override
-			public void pieceMessage (BlockDescriptor blockDescriptor, byte[] data) {
+			public void haveNoneMessage() {
 				assertEquals (3, this.callCount++);
+			}
+			@Override
+			public void pieceMessage (BlockDescriptor blockDescriptor, byte[] data) {
+				assertEquals (4, this.callCount++);
 				pieceMessageCalled[0] = true;
 			}
 		};
@@ -2376,6 +2460,10 @@ public class TestPeerProtocolParser {
 			@Override
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
+			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
 			}
 		};
 
@@ -2509,6 +2597,10 @@ public class TestPeerProtocolParser {
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
 			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
+			}
 		};
 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
@@ -2552,6 +2644,10 @@ public class TestPeerProtocolParser {
 			@Override
 			public void handshakePeerID (PeerID peerID) {
 				assertEquals (2, this.callCount++);
+			}
+			@Override
+			public void haveNoneMessage() {
+				assertEquals (3, this.callCount++);
 			}
 		};
 

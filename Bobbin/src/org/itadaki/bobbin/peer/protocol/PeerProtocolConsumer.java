@@ -14,7 +14,6 @@ import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 
 
-
 /**
  * An interface for a consumer of BitTorrent peer protocol messages
  */

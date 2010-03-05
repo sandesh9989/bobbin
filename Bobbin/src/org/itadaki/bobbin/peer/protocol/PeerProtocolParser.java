@@ -26,8 +26,6 @@ import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 
 
-
-
 /**
  * A state machine to incrementally parse a peer protocol stream.
  * <p>Complete, successful decoding of the header and subsequent messages through successive calls
@@ -438,15 +436,21 @@ public class PeerProtocolParser {
 						byte messageType = this.messageData.get();
 
 						if (
-								   this.fastExtensionEnabled
-								&& this.firstMessage
+								   this.firstMessage
 								&& (messageType != PeerProtocolConstants.MESSAGE_TYPE_BITFIELD)
 								&& (messageType != PeerProtocolConstants.MESSAGE_TYPE_HAVE_ALL)
 								&& (messageType != PeerProtocolConstants.MESSAGE_TYPE_HAVE_NONE)
 						   )
 						{
-							this.parserState = ParserState.ERROR;
-							throw new IOException ("Invalid message sequence");
+							if (this.fastExtensionEnabled) {
+								this.parserState = ParserState.ERROR;
+								throw new IOException ("Invalid message sequence");
+							}
+
+							// Synthesize a "have none" message if no bitfield message was sent
+							if ((messageType != PeerProtocolConstants.MESSAGE_TYPE_BITFIELD)) {
+								this.consumer.haveNoneMessage();
+							}
 						}
 
 						switch (messageType) {

@@ -18,6 +18,7 @@ import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.connectionmanager.Connection;
 import org.itadaki.bobbin.connectionmanager.ConnectionManager;
 import org.itadaki.bobbin.connectionmanager.ConnectionReadyListener;
+import org.itadaki.bobbin.peer.protocol.DefaultPeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConstants;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
@@ -62,7 +63,7 @@ import org.itadaki.bobbin.util.elastictree.HashChain;
  * requests to the remote peer, the handling of received piece block data, and the invocation of the
  * choking algorithm when required.
  */
-public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, ConnectionReadyListener {
+public class PeerHandler extends DefaultPeerProtocolConsumer implements ManageablePeer, ConnectionReadyListener {
 
 	/**
 	 * The connection to the remote peer
@@ -96,7 +97,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	private PeerOutboundQueue outboundQueue;
 
 	/**
-	 * The torrent's FileDatabse
+	 * The torrent's PieceDatabase
 	 */
 	private PieceDatabase pieceDatabase;
 
@@ -308,8 +309,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	/* PeerProtocolConsumer interface */
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#handshakeExtensions(boolean)
+	 * @see org.itadaki.bobbin.peer.protocol.DefaultPeerProtocolConsumer#handshakeBasicExtensions(boolean, boolean)
 	 */
+	@Override
 	public void handshakeBasicExtensions (boolean fastExtensionEnabled, boolean extensionProtocolEnabled) {
 
 		this.state.fastExtensionEnabled &= fastExtensionEnabled;
@@ -319,8 +321,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerProtocolConsumer#handshakeInfoHash(byte[])
+	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#handshakeInfoHash(byte[])
 	 */
+	@Override
 	public void handshakeInfoHash (InfoHash infoHash) throws IOException {
 
 		if (this.pieceDatabase != null) {
@@ -368,8 +371,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerProtocolConsumer#handshakePeerID(PeerID)
+	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#handshakePeerID(PeerID)
 	 */
+	@Override
 	public void handshakePeerID (PeerID peerID) throws IOException {
 
 		this.state.remotePeerID = peerID;
@@ -404,8 +408,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerProtocolConsumer#keepAliveMessage()
+	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#keepAliveMessage()
 	 */
+	@Override
 	public void keepAliveMessage() {
 		// Do nothing
 		// The time of the last received data, which is implicitly updated by the receipt of a
@@ -414,8 +419,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerProtocolConsumer#chokeMessage(boolean)
+	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#chokeMessage(boolean)
 	 */
+	@Override
 	public void chokeMessage (boolean choked) {
 
 		this.state.theyAreChoking = choked;
@@ -432,8 +438,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerProtocolConsumer#interestedMessage(boolean)
+	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#interestedMessage(boolean)
 	 */
+	@Override
 	public void interestedMessage (boolean interested) {
 
 		this.state.theyAreInterested = interested;
@@ -443,8 +450,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerProtocolConsumer#haveMessage(int)
+	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#haveMessage(int)
 	 */
+	@Override
 	public void haveMessage (int pieceIndex) throws IOException {
 
 		if ((pieceIndex < 0) || (pieceIndex >= this.pieceDatabase.getStorageDescriptor().getNumberOfPieces())) {
@@ -472,8 +480,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerProtocolConsumer#bitfieldMessage(byte[])
+	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#bitfieldMessage(byte[])
 	 */
+	@Override
 	public void bitfieldMessage (byte[] bitField) throws IOException {
 
 		// Validate the bitfield
@@ -503,8 +512,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerProtocolConsumer#requestMessage(int, int, int)
+	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#requestMessage(int, int, int)
 	 */
+	@Override
 	public void requestMessage (BlockDescriptor descriptor) throws IOException {
 
 		// Validate the descriptor
@@ -543,8 +553,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerProtocolConsumer#pieceMessage(int, int, byte[])
+	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#pieceMessage(int, int, byte[])
 	 */
+	@Override
 	public void pieceMessage (BlockDescriptor descriptor, byte[] data) throws IOException {
 
 		if (this.pieceDatabase.getInfo().isMerkle()) {
@@ -581,8 +592,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerProtocolConsumer#cancelMessage(int, int, int)
+	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#cancelMessage(int, int, int)
 	 */
+	@Override
 	public void cancelMessage (BlockDescriptor descriptor) throws IOException {
 
 		// Validate the descriptor
@@ -604,6 +616,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#suggestPieceMessage(int)
 	 */
+	@Override
 	public void suggestPieceMessage (int pieceNumber) throws IOException {
 
 		if ((pieceNumber < 0) || (pieceNumber >= this.pieceDatabase.getStorageDescriptor().getNumberOfPieces())) {
@@ -624,6 +637,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#haveAllMessage()
 	 */
+	@Override
 	public void haveAllMessage() {
 
 		// The remote bitfield is initially all zero, and PeerProtocolParser ensures this message
@@ -642,12 +656,13 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#haveNoneMessage()
 	 */
+	@Override
 	public void haveNoneMessage() {
 
 		// The remote bitfield is initially all zero, so there's no need to do anything to it
 
 		// Send an Allowed Fast set
-		if (!this.pieceDatabase.getInfo().isElastic()) {
+		if (this.state.fastExtensionEnabled && !this.pieceDatabase.getInfo().isElastic()) {
 			generateAndSendAllowedFastSet();
 		}
 
@@ -657,6 +672,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#rejectRequestMessage(org.itadaki.bobbin.peer.BlockDescriptor)
 	 */
+	@Override
 	public void rejectRequestMessage (BlockDescriptor descriptor) throws IOException {
 
 		if (!this.outboundQueue.rejectReceived (descriptor)) {
@@ -669,6 +685,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#allowedFastMessage(int)
 	 */
+	@Override
 	public void allowedFastMessage (int pieceNumber) throws IOException {
 
 		if ((pieceNumber < 0) || (pieceNumber >= this.state.remoteBitField.length())) {
@@ -691,6 +708,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#extensionHandshakeMessage(java.util.Set, java.util.Set, org.itadaki.bobbin.bencode.BDictionary)
 	 */
+	@Override
 	public void extensionHandshakeMessage (Set<String> extensionsEnabled, Set<String> extensionsDisabled, BDictionary extra) throws IOException
 	{
 
@@ -704,6 +722,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#extensionMessage(java.lang.String, byte[])
 	 */
+	@Override
 	public void extensionMessage (String identifier, byte[] data) throws IOException {
 
 		this.peerServices.processExtensionMessage (this, identifier, data);
@@ -714,6 +733,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#merklePieceMessage(org.itadaki.bobbin.torrentdb.BlockDescriptor, byte[], byte[])
 	 */
+	@Override
 	public void merklePieceMessage (BlockDescriptor descriptor, byte[] hashChain, byte[] block) throws IOException {
 
 		if (!this.pieceDatabase.getInfo().isMerkle()) {
@@ -752,6 +772,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#elasticSignatureMessage(org.itadaki.bobbin.peer.ViewSignature)
 	 */
+	@Override
 	public void elasticSignatureMessage (ViewSignature viewSignature) throws IOException {
 
 		if (viewSignature.getViewLength() > this.state.remoteView.getLength()) {
@@ -779,6 +800,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#elasticPieceMessage(long, org.itadaki.bobbin.torrentdb.BlockDescriptor, byte[], byte[])
 	 */
+	@Override
 	public void elasticPieceMessage (BlockDescriptor descriptor, Long viewLength, byte[] hashChain, byte[] block) throws IOException {
 
 		if (!this.pieceDatabase.getInfo().isElastic()) {
@@ -825,6 +847,7 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#elasticBitfieldMessage(byte[])
 	 */
+	@Override
 	public void elasticBitfieldMessage (byte[] bitField) throws IOException {
 
 		// TODO Temporary - to be replaced when new Elastic Bitfield format is decided
@@ -834,8 +857,9 @@ public class PeerHandler implements PeerProtocolConsumer, ManageablePeer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerProtocolConsumer#unknownMessage(int, byte[])
+	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#unknownMessage(int, byte[])
 	 */
+	@Override
 	public void unknownMessage (int messageID, byte[] messageBytes) {
 
 		// Ignore it
