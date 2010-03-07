@@ -42,7 +42,7 @@ public class PeerState {
 	/**
 	 * The remote peer's view
 	 */
-	StorageDescriptor remoteView;
+	StorageDescriptor remoteView = null;
 
 	/**
 	 * The set of signatures implicitly valid from the remote peer
@@ -120,7 +120,7 @@ public class PeerState {
 	 */
 	public BitField getRemoteBitField() {
 
-		return this.remoteBitField;
+		return this.remoteBitField.clone();
 
 	}
 

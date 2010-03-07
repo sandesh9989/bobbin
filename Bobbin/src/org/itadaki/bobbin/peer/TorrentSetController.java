@@ -145,7 +145,11 @@ public class TorrentSetController {
 		public PeerServices getPeerServices (InfoHash infoHash) {
 
 			synchronized (TorrentSetController.this.stateMachine) {
-				return TorrentSetController.this.torrentManagers.get(infoHash).getPeerCoordinator();
+				TorrentManager manager = TorrentSetController.this.torrentManagers.get (infoHash);
+				if (manager != null) {
+					return manager.getPeerCoordinator();
+				}
+				return null;
 			}
 
 		}

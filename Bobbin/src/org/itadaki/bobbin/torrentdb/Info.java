@@ -340,7 +340,17 @@ public final class Info {
 
 
 	/**
-	 * @return {@code true} if the Info represents an Merkle torrent, else {@code false}
+	 * @return {@code true} if the Info represents a plain torrent, else {@code false}
+	 */
+	public boolean isPlain() {
+
+		return (this.dictionary.get ("pieces") != null);
+
+	}
+
+
+	/**
+	 * @return {@code true} if the Info represents a Merkle torrent, else {@code false}
 	 */
 	public boolean isMerkle() {
 

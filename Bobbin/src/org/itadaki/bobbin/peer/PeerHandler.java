@@ -899,15 +899,7 @@ public class PeerHandler extends DefaultPeerProtocolConsumer implements Manageab
 
 		} catch (IOException e) {
 
-			try {
-				this.connection.close();
-			} catch (IOException e1) {
-				// Shouldn't happen, and nothing we can do if it does
-			}
-
-			if (this.peerServices != null) {
-				this.peerServices.peerDisconnected (this);
-			}
+			close();
 
 		}
 
