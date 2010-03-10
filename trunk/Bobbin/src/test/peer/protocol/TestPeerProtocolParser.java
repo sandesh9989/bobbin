@@ -1338,7 +1338,7 @@ public class TestPeerProtocolParser {
 
 		ByteBuffer[] buffers = PeerProtocolBuilder.merklePieceMessage (
 				expectedDescriptor,
-				expectedHashChain,
+				expectedHashChain.duplicate(),
 				expectedBlock
 		);
 

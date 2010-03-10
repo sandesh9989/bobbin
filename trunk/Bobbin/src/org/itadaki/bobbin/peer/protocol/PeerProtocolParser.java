@@ -19,6 +19,7 @@ import org.itadaki.bobbin.bencode.BBinary;
 import org.itadaki.bobbin.bencode.BDecoder;
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.bencode.BInteger;
+import org.itadaki.bobbin.bencode.BList;
 import org.itadaki.bobbin.bencode.BValue;
 import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
@@ -256,15 +257,39 @@ public class PeerProtocolParser {
 		int offset = readInt();
 		int hashChainLength = readInt();
 
-		if ((hashChainLength < 0) || (hashChainLength > this.messageData.limit() - 14) || ((hashChainLength % 20) != 0)) {
-			throw new IOException ("Invalid message size");
+		if ((hashChainLength < 0) || (hashChainLength > this.messageData.limit() - 14)) {
+			throw new IOException ("Invalid hash chain");
 		}
 
+		byte[] encodedHashChain = null;
 		byte[] hashChain = null;
 		if (hashChainLength > 0) {
-			hashChain = new byte[hashChainLength];
-			this.messageData.get (hashChain);
+			encodedHashChain = new byte[hashChainLength];
+			this.messageData.get (encodedHashChain);
+
+			BValue hashChainValue = BDecoder.decode (encodedHashChain);
+			if (!(hashChainValue instanceof BList)) {
+				throw new IOException ("Invalid hash chain");
+			}
+			BList hashChainList = (BList)hashChainValue;
+
+			hashChain = new byte[20 * hashChainList.size()];
+			int position = 0;
+			for (BValue hashChainListElement : hashChainList) {
+				if (!(hashChainListElement instanceof BList)) {
+					throw new IOException ("Invalid hash chain");
+				}
+				BList elementList = (BList)hashChainListElement;
+				if ((elementList.size() != 2) || (!(elementList.get (0) instanceof BInteger)) || (!(elementList.get (1) instanceof BBinary))) {
+					throw new IOException ("Invalid hash chain");
+				}
+				BBinary hashBinary = (BBinary)(elementList.get (1));
+				System.arraycopy (hashBinary.value(), 0, hashChain, position, 20);
+				position += 20;
+			}
+
 		}
+
 		byte[] block = new byte[this.messageData.limit() - hashChainLength - 14];
 		this.messageData.get (block);
 		this.consumer.merklePieceMessage (new BlockDescriptor (pieceNumber, offset, block.length), hashChain, block);

@@ -7,15 +7,17 @@ package org.itadaki.bobbin.peer.protocol;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
+import org.itadaki.bobbin.bencode.BBinary;
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.bencode.BEncoder;
+import org.itadaki.bobbin.bencode.BInteger;
+import org.itadaki.bobbin.bencode.BList;
 import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.CharsetUtil;
-
 
 
 /**
@@ -429,7 +431,6 @@ public class PeerProtocolBuilder {
 	 * @param descriptor The descriptor of the block to send
 	 * @param hashChain The concatenated sibling hash chain of the block to send
 	 * @param block The block to send
-	 *
 	 * @return An array of ByteBuffers containing the encoded message
 	 */
 	public static ByteBuffer[] merklePieceMessage (BlockDescriptor descriptor, ByteBuffer hashChain, ByteBuffer block) {
@@ -438,9 +439,38 @@ public class PeerProtocolBuilder {
 			throw new IllegalArgumentException ("Invalid block data length");
 		}
 
+		if ((hashChain != null) && ((hashChain.remaining() % 20) != 0)) {
+			throw new IllegalArgumentException ("Invalid hash chain length");
+		}
+
 		int pieceNumber = descriptor.getPieceNumber();
 		int offset = descriptor.getOffset();
-		int hashChainLength = (hashChain == null) ? 0 : hashChain.remaining();
+		int hashChainLength = 0;
+		ByteBuffer encodedHashChain = null;
+		if (hashChain != null) {
+			int treeHeight = (hashChain.remaining() / 20) - 1;
+			int path = descriptor.getPieceNumber();
+			int breadthFirstIndex = (1 << (treeHeight - 1)) - 1 + descriptor.getPieceNumber();
+			BList outerList = new BList();
+			byte[] hash = new byte[20];
+			hashChain.get (hash);
+			outerList.add (new BList (new BInteger (breadthFirstIndex), new BBinary (hash)));
+			for (int i = 0; i < treeHeight - 1; i++) {
+				int siblingIndex = breadthFirstIndex + (((path & 0x01) == 0) ? 1 : -1);
+				breadthFirstIndex = (breadthFirstIndex - 1) >> 1;
+				path >>>= 1;
+				hash = new byte[20];
+				hashChain.get (hash);
+				outerList.add (new BList (new BInteger (siblingIndex), new BBinary (hash)));
+			}
+			if (treeHeight > 0) {
+				hash = new byte[20];
+				hashChain.get (hash);
+				outerList.add (new BList (new BInteger (0), new BBinary (hash)));
+			}
+			encodedHashChain = ByteBuffer.wrap (BEncoder.encode (outerList));
+			hashChainLength = encodedHashChain.remaining();
+		}
 
 		byte[] messageHeaderBytes =  new byte[12];
 		messageHeaderBytes[0] = (byte)((pieceNumber >>> 24) & 0xff);
@@ -460,7 +490,7 @@ public class PeerProtocolBuilder {
 			return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE, ByteBuffer.wrap (messageHeaderBytes), block);
 		}
 
-		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE, ByteBuffer.wrap (messageHeaderBytes), hashChain, block);
+		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE, ByteBuffer.wrap (messageHeaderBytes), encodedHashChain, block);
 
 	}
 
@@ -511,6 +541,10 @@ public class PeerProtocolBuilder {
 
 		if (descriptor.getLength() != block.remaining()) {
 			throw new IllegalArgumentException ("Invalid block data length");
+		}
+
+		if ((hashChain != null) && ((hashChain.remaining() % 20) != 0)) {
+			throw new IllegalArgumentException ("Invalid hash chain length");
 		}
 
 		int pieceNumber = descriptor.getPieceNumber();

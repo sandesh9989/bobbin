@@ -525,15 +525,13 @@ public class ElasticTreeView {
 
 		for (int i = 0, offset = 0; !cursor.atRoot(); i += 2, cursor.goPathUp()) {
 			if (i == 0) {
-				byte[][] siblings = cursor.getSiblings();
-				System.arraycopy (siblings[0], 0, hashChain, offset, 20);
-				System.arraycopy (siblings[1], 0, hashChain, offset + 20, 20);
-				offset += 40;
-			} else {
-				byte[] sibling = cursor.getOtherSibling();
-				System.arraycopy (sibling, 0, hashChain, offset, 20);
+				byte[] hash = cursor.getHash();
+				System.arraycopy (hash, 0, hashChain, offset, 20);
 				offset += 20;
 			}
+			byte[] sibling = cursor.getOtherSibling();
+			System.arraycopy (sibling, 0, hashChain, offset, 20);
+			offset += 20;
 		}
 
 		System.arraycopy (cursor.getHash(), 0, hashChain, hashChain.length - 20, 20);
@@ -568,18 +566,18 @@ public class ElasticTreeView {
 			Cursor cursor = new Cursor (leafNumber, true);
 			hashes.position (0);
 			ByteBuffer fullHashes = ByteBuffer.allocate (20 * ((2 * this.graphHeight) - 2));
-			byte[] parentHash2 = null;
+			byte[] parentHash = null;
 			while (!cursor.atRoot()) {
 				byte[] siblingHashes = new byte[40];
 				if (cursor.atLeaf()) {
-					hashes.get (siblingHashes);
-					fullHashes.put (siblingHashes);
+					hashes.get (siblingHashes, cursor.cursorNodeIsLeft() ? 0 : 20, 20);
+					hashes.get (siblingHashes, cursor.cursorNodeIsLeft() ? 20 : 0, 20);
 				} else {
 					hashes.get (siblingHashes, cursor.cursorNodeIsLeft() ? 20 : 0, 20);
-					System.arraycopy (parentHash2, 0, siblingHashes, cursor.cursorNodeIsLeft() ? 0 : 20, 20);
-					fullHashes.put (siblingHashes);
+					System.arraycopy (parentHash, 0, siblingHashes, cursor.cursorNodeIsLeft() ? 0 : 20, 20);
 				}
-				parentHash2 = this.tree.buildHash (siblingHashes, 0, 40);
+				fullHashes.put (siblingHashes);
+				parentHash = this.tree.buildHash (siblingHashes, 0, 40);
 				cursor.goPathUp();
 			}
 
@@ -587,11 +585,11 @@ public class ElasticTreeView {
 
 			byte[] siblingHashes = new byte[40];
 			while (!cursor.atLeaf()) {
-				byte[] parentHash = cursor.getHash();
+				byte[] checkParentHash = cursor.getHash();
 				fullHashes.position (hashPosition);
 				fullHashes.get (siblingHashes);
 
-				if (!ElasticTree.arraysEqual (parentHash, this.tree.buildHash (siblingHashes, 0, 40))) {
+				if (!ElasticTree.arraysEqual (checkParentHash, this.tree.buildHash (siblingHashes, 0, 40))) {
 					return false;
 				}
 
