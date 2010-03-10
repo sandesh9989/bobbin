@@ -405,14 +405,14 @@ public class TestPeerProtocolBuilder {
 	public void testMerklePieceMessageWithHashes() {
 
 		byte[] expectedBytes = {
-				0, 0, 0, 38,
+				0, 0, 0, 58,
 				20,
 				1,
 				0, 0, 0, 1,
 				0, 0, 0, 0,
-				0, 0, 0, 20,
-				0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-				50, 51, 52, 53
+				0, 0, 0, 40,
+				108, 108, 105, 45, 50, 49, 52, 55, 52, 56, 51, 54, 52, 56, 101, 50, 48, 58, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 101, 101,
+				50, 51, 52, 53, 
 		};
 
 		ByteBuffer[] buffers = PeerProtocolBuilder.merklePieceMessage (

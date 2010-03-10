@@ -4,14 +4,12 @@
  */
 package org.itadaki.bobbin.torrentdb;
 
-
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 
 import org.itadaki.bobbin.util.elastictree.HashChain;
-
 
 
 /**
