@@ -39,9 +39,7 @@ import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.CharsetUtil;
 import org.itadaki.bobbin.util.WorkQueue;
 import org.itadaki.bobbin.util.counter.Period;
-import org.itadaki.bobbin.util.counter.StatisticCounter;
 import org.itadaki.bobbin.util.elastictree.HashChain;
-
 
 
 /**
@@ -124,24 +122,9 @@ public class PeerCoordinator implements PeerSourceListener, PeerServices {
 	private final Set<PeerID> connectedPeerIDs = new HashSet<PeerID>();
 
 	/**
-	 * A shared counter for protocol bytes sent from this peer to the peer set
+	 * Protocol statistics for the entire peer set
 	 */
-	private final StatisticCounter protocolBytesSentCounter = new StatisticCounter();
-
-	/**
-	 * A shared counter for protocol bytes received by this peer from the peer set
-	 */
-	private final StatisticCounter protocolBytesReceivedCounter = new StatisticCounter();
-
-	/**
-	 * A shared counter for piece block bytes sent from this peer to the peer set
-	 */
-	private final StatisticCounter blockBytesSentCounter = new StatisticCounter();
-
-	/**
-	 * A shared counter for piece block bytes received by this peer from the peer set
-	 */
-	private final StatisticCounter blockBytesReceivedCounter = new StatisticCounter();
+	private PeerStatistics peerSetStatistics = new PeerStatistics();
 
 	/**
 	 * if {@code true}, the PeerCoordinator is running; offered connections will be accepted and
@@ -520,41 +503,11 @@ public class PeerCoordinator implements PeerSourceListener, PeerServices {
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#getProtocolBytesSentCounter()
+	 * @see org.itadaki.bobbin.peer.PeerServices#getStatistics()
 	 */
-	public StatisticCounter getProtocolBytesSentCounter() {
+	public PeerStatistics getStatistics() {
 
-		return this.protocolBytesSentCounter;
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#getProtocolBytesReceivedCounter()
-	 */
-	public StatisticCounter getProtocolBytesReceivedCounter() {
-
-		return this.protocolBytesReceivedCounter;
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#getBlockBytesSentCounter()
-	 */
-	public StatisticCounter getBlockBytesSentCounter() {
-
-		return this.blockBytesSentCounter;
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#getBlockBytesReceivedCounter()
-	 */
-	public StatisticCounter getBlockBytesReceivedCounter() {
-
-		return this.blockBytesReceivedCounter;
+		return this.peerSetStatistics;
 
 	}
 
@@ -1023,8 +976,6 @@ public class PeerCoordinator implements PeerSourceListener, PeerServices {
 		this.extensionManager = new ExtensionManager();
 		this.listeners.add (this.extensionManager);
 
-		this.protocolBytesSentCounter.addCountedPeriod (PeerCoordinator.TWO_SECOND_PERIOD);
-		this.protocolBytesReceivedCounter.addCountedPeriod (PeerCoordinator.TWO_SECOND_PERIOD);
 		this.workQueue.scheduleWithFixedDelay (this.maintenanceRunnable, 10, 10, TimeUnit.SECONDS);
 
 	}

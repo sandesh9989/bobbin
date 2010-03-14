@@ -11,7 +11,6 @@ import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
-import org.itadaki.bobbin.util.counter.StatisticCounter;
 import org.itadaki.bobbin.util.elastictree.HashChain;
 
 
@@ -177,30 +176,9 @@ public interface PeerServices {
 	/**
 	 * <p><b>Thread safety:</b> This method is thread safe
 	 *
-	 * @return The shared counter for protocol bytes sent from this peer to the peer set
+	 * @return The parent statistic set for the entire peer set
 	 */
-	public StatisticCounter getProtocolBytesSentCounter();
-
-	/**
-	 * <p><b>Thread safety:</b> This method is thread safe
-	 *
-	 * @return The shared counter for protocol bytes received by this peer from the peer set
-	 */
-	public StatisticCounter getProtocolBytesReceivedCounter();
-
-	/**
-	 * <p><b>Thread safety:</b> This method is thread safe
-	 *
-	 * @return The shared counter for whole blocks sent from this peer to the peer set
-	 */
-	public StatisticCounter getBlockBytesSentCounter();
-
-	/**
-	 * <p><b>Thread safety:</b> This method is thread safe
-	 *
-	 * @return The shared counter for whole blocks received by this peer from the peer set
-	 */
-	public StatisticCounter getBlockBytesReceivedCounter();
+	public PeerStatistics getStatistics();
 
 	/**
 	 * Acquires the reentrant peer context lock. All peer and peer set management (including that in

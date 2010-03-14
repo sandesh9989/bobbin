@@ -90,6 +90,21 @@ public class PeerStatistics implements ReadablePeerStatistics {
 
 
 	/**
+	 * Sets the parent counters for the counters in this PeerStatistics
+	 *
+	 * @param statistics The PeerStatistics to use as parent
+	 */
+	public void setParent (PeerStatistics statistics) {
+
+		this.protocolBytesSent.setParent (statistics.protocolBytesSent);
+		this.protocolBytesReceived.setParent (statistics.protocolBytesReceived);
+		this.blockBytesSent.setParent (statistics.blockBytesSent);
+		this.blockBytesReceivedRaw.setParent (statistics.blockBytesReceivedRaw);
+
+	}
+
+
+	/**
 	 * @param type The identifier of the counter to return
 	 * @return The counter
 	 */

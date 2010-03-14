@@ -1027,10 +1027,7 @@ public class PeerHandler extends DefaultPeerProtocolConsumer implements Manageab
 		this.state.remoteBitField = new BitField (initialDescriptor.getNumberOfPieces());
 		this.state.remoteView = initialDescriptor;
 		this.outboundQueue = new PeerOutboundQueue (this.connection, this.pieceDatabase, this.peerStatistics.blockBytesSent);
-		this.peerStatistics.protocolBytesSent.setParent (this.peerServices.getProtocolBytesSentCounter());
-		this.peerStatistics.protocolBytesReceived.setParent (this.peerServices.getProtocolBytesReceivedCounter());
-		this.peerStatistics.blockBytesSent.setParent (this.peerServices.getBlockBytesSentCounter());
-		this.peerStatistics.blockBytesReceivedRaw.setParent (this.peerServices.getBlockBytesReceivedCounter());
+		this.peerStatistics.setParent (this.peerServices.getStatistics());
 
 		this.outboundQueue.sendHandshake (this.state.fastExtensionEnabled, this.state.extensionProtocolEnabled, this.pieceDatabase.getInfo().getHash(),
 				this.peerServices.getLocalPeerID());

@@ -60,6 +60,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 
 		MockConnection mockConnection = new MockConnection();
 		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
@@ -92,6 +93,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected(any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
 		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
@@ -121,6 +123,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected(any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
 		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
@@ -151,6 +154,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected(any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
 		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
@@ -181,6 +185,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected(any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
 		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
@@ -215,6 +220,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (Arrays.asList (new BlockDescriptor[] { request }));
@@ -266,6 +272,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
@@ -320,6 +327,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (Arrays.asList (new BlockDescriptor[] { request }));
@@ -360,6 +368,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
@@ -400,6 +409,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
@@ -439,6 +449,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
@@ -486,6 +497,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
@@ -527,6 +539,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
@@ -570,6 +583,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
@@ -621,6 +635,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
@@ -666,6 +681,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
 		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
@@ -699,6 +715,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
@@ -735,6 +752,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		MockConnection mockConnection = new MockConnection();
 		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
 
@@ -804,6 +822,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
 		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
@@ -839,6 +858,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 
 		MockConnection mockConnection = new MockConnection();
 		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
@@ -867,6 +887,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
 		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
@@ -899,6 +920,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
 		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
@@ -931,6 +953,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
 		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
@@ -964,6 +987,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
@@ -1035,6 +1059,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
@@ -1072,6 +1097,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
@@ -1109,6 +1135,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
@@ -1147,6 +1174,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
@@ -1193,6 +1221,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
 		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
@@ -1251,6 +1280,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
 		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
@@ -1303,6 +1333,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
 		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
@@ -1370,6 +1401,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
@@ -1414,6 +1446,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
 		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
@@ -1460,6 +1493,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
@@ -1501,6 +1535,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
@@ -1546,6 +1581,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
@@ -1611,6 +1647,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
@@ -1668,6 +1705,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
@@ -1735,6 +1773,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (true)))
@@ -1782,6 +1821,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (true))).thenReturn (new ArrayList<BlockDescriptor>());
@@ -1829,6 +1869,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
@@ -1867,6 +1908,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
@@ -1919,6 +1961,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
@@ -1989,6 +2032,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (true))).thenReturn (new ArrayList<BlockDescriptor>());
@@ -2067,6 +2111,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), anyBoolean())).thenReturn (new ArrayList<BlockDescriptor>());
@@ -2127,6 +2172,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), anyBoolean())).thenReturn (new ArrayList<BlockDescriptor>());
@@ -2197,6 +2243,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), anyBoolean())).thenReturn (new ArrayList<BlockDescriptor>());
@@ -2271,6 +2318,7 @@ public class TestPeerHandler {
 		PeerServices mockPeerServices = mock (PeerServices.class);
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
+		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
 		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
