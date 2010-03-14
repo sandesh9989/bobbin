@@ -251,8 +251,8 @@ public class TorrentManager {
 						// Update the tracker client with the number of peers we want to connect to and the current statistics
 						TorrentManager.this.trackerClient.setPeersWanted (TorrentManager.this.peerCoordinator.getPeersWanted());
 						TorrentManager.this.trackerClient.updateLocalPeerStatistics (
-								TorrentManager.this.peerCoordinator.getBlockBytesSentCounter().getTotal(),
-								TorrentManager.this.peerCoordinator.getBlockBytesReceivedCounter().getTotal(),
+								TorrentManager.this.peerCoordinator.getStatistics().getCounter (PeerStatistics.Type.BLOCK_BYTES_SENT).getTotal(),
+								TorrentManager.this.peerCoordinator.getStatistics().getCounter (PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW).getTotal(),
 								TorrentManager.this.peerCoordinator.getNeededPieceCount() *
 										TorrentManager.this.pieceDatabase.getStorageDescriptor().getPieceSize()
 						);
@@ -792,7 +792,7 @@ public class TorrentManager {
 	 */
 	public int getProtocolBytesSentPerSecond() {
 
-		return (int) this.peerCoordinator.getProtocolBytesSentCounter().getPeriodTotal (PeerCoordinator.TWO_SECOND_PERIOD) / 2;
+		return (int) this.peerCoordinator.getStatistics().getCounter (PeerStatistics.Type.PROTOCOL_BYTES_SENT).getPeriodTotal (PeerCoordinator.TWO_SECOND_PERIOD) / 2;
 
 	}
 
@@ -804,7 +804,7 @@ public class TorrentManager {
 	 */
 	public int getProtocolBytesReceivedPerSecond() {
 
-		return (int) this.peerCoordinator.getProtocolBytesReceivedCounter().getPeriodTotal (PeerCoordinator.TWO_SECOND_PERIOD) / 2;
+		return (int) this.peerCoordinator.getStatistics().getCounter (PeerStatistics.Type.PROTOCOL_BYTES_RECEIVED).getPeriodTotal (PeerCoordinator.TWO_SECOND_PERIOD) / 2;
 
 	}
 
