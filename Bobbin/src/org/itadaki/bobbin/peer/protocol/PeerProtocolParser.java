@@ -131,12 +131,9 @@ public class PeerProtocolParser {
 	private Map<Integer,String> extensionIdentifiers = new TreeMap<Integer,String>();
 
 	/**
-	 * {@code true} until the first message has been processed. In the base protocol, a "bitfield"
-	 * message may, but does not have to be sent as the first message of the stream. When the Fast
-	 * extension is enabled, a "bitfield", "have all" or "have none" message must be sent as the
-	 * first message of the stream.
+	 * {@code false} until a "Bitfield", "Have None" or "Have All" message has been received
 	 */
-	private boolean firstMessage = true;
+	private boolean bitfieldReceived = false;
 
 
 	/**
@@ -440,12 +437,6 @@ public class PeerProtocolParser {
 					case MESSAGE_LENGTH:
 						int length = readInt();
 						if (length == 0) {
-							// A zero length message is a keep alive
-							if (this.fastExtensionEnabled && this.firstMessage) {
-								this.parserState = ParserState.ERROR;
-								throw new IOException ("Invalid message sequence");
-							}
-							this.firstMessage = false;
 							this.consumer.keepAliveMessage();
 							resetMessageBuffer (4);
 						} else if (length > PeerProtocolConstants.MAXIMUM_MESSAGE_LENGTH) {
@@ -459,24 +450,6 @@ public class PeerProtocolParser {
 
 					case MESSAGE:
 						byte messageType = this.messageData.get();
-
-						if (
-								   this.firstMessage
-								&& (messageType != PeerProtocolConstants.MESSAGE_TYPE_BITFIELD)
-								&& (messageType != PeerProtocolConstants.MESSAGE_TYPE_HAVE_ALL)
-								&& (messageType != PeerProtocolConstants.MESSAGE_TYPE_HAVE_NONE)
-						   )
-						{
-							if (this.fastExtensionEnabled) {
-								this.parserState = ParserState.ERROR;
-								throw new IOException ("Invalid message sequence");
-							}
-
-							// Synthesize a "have none" message if no bitfield message was sent
-							if ((messageType != PeerProtocolConstants.MESSAGE_TYPE_BITFIELD)) {
-								this.consumer.haveNoneMessage();
-							}
-						}
 
 						switch (messageType) {
 
@@ -527,7 +500,8 @@ public class PeerProtocolParser {
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_BITFIELD:
-								if (this.firstMessage) {
+								if (!this.bitfieldReceived) {
+									this.bitfieldReceived = true;
 									byte[] bitFieldBytes = new byte[this.messageData.limit() - 1];
 									this.messageData.get (bitFieldBytes);
 									this.consumer.bitfieldMessage (bitFieldBytes);
@@ -585,7 +559,8 @@ public class PeerProtocolParser {
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_HAVE_ALL:
-								if (this.fastExtensionEnabled && this.firstMessage && (this.messageData.limit() == 1)) {
+								if (this.fastExtensionEnabled && (this.messageData.limit() == 1) && !this.bitfieldReceived) {
+									this.bitfieldReceived = true;
 									this.consumer.haveAllMessage();
 								} else {
 									this.parserState = ParserState.ERROR;
@@ -594,7 +569,8 @@ public class PeerProtocolParser {
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_HAVE_NONE:
-								if (this.fastExtensionEnabled && this.firstMessage && (this.messageData.limit() == 1)) {
+								if (this.fastExtensionEnabled && (this.messageData.limit() == 1) && !this.bitfieldReceived) {
+									this.bitfieldReceived = true;
 									this.consumer.haveNoneMessage();
 								} else {
 									this.parserState = ParserState.ERROR;
@@ -656,7 +632,6 @@ public class PeerProtocolParser {
 
 						}
 
-						this.firstMessage = false;
 						this.parserState = ParserState.MESSAGE_LENGTH;
 						resetMessageBuffer (4);
 						continue;

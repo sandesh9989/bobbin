@@ -662,7 +662,7 @@ public class PeerHandler extends DefaultPeerProtocolConsumer implements Manageab
 		// The remote bitfield is initially all zero, so there's no need to do anything to it
 
 		// Send an Allowed Fast set
-		if (this.state.fastExtensionEnabled && !this.pieceDatabase.getInfo().isElastic()) {
+		if (!this.pieceDatabase.getInfo().isElastic()) {
 			generateAndSendAllowedFastSet();
 		}
 
