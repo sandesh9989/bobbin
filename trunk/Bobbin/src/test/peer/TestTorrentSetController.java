@@ -5,6 +5,7 @@
 package test.peer;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,15 +26,18 @@ import org.itadaki.bobbin.peer.TorrentManagerListener;
 import org.itadaki.bobbin.peer.TorrentSetController;
 import org.itadaki.bobbin.peer.TorrentSetControllerListener;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
+import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.MetaInfo;
 import org.itadaki.bobbin.torrentdb.Metadata;
 import org.itadaki.bobbin.torrentdb.MetadataProvider;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import test.Util;
-import test.peer.protocol.MockProtocolConsumer;
 
 
 /**
@@ -185,17 +189,16 @@ public class TestTorrentSetController {
 		final SocketChannel socketChannel = SocketChannel.open (new InetSocketAddress (InetAddress.getLocalHost (), localPort));
 		socketChannel.write (PeerProtocolBuilder.handshake (false, false, metaInfo.getInfo().getHash(), new PeerID()));
 		socketChannel.configureBlocking (false);
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		final boolean[] peerIDReceived = new boolean[1];
-		PeerProtocolParser parser = new PeerProtocolParser (new MockProtocolConsumer() {
-			@Override
-			public void handshakeBasicExtensions (boolean fastExtensionEnabled, boolean extensionProtocolEnabled) { }
-			@Override
-			public void handshakeInfoHash (InfoHash infoHash) { }
-			@Override
-			public void handshakePeerID (PeerID peerID) {
+		doAnswer (new Answer<Object>() {
+			public Object answer (InvocationOnMock invocation) throws Throwable {
 				peerIDReceived[0] = true;
+				return null;
 			}
-		}, false, false);
+		}).when (mockConsumer).handshakePeerID (any (PeerID.class));
+
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 		while (!peerIDReceived[0]) {
 			parser.parseBytes (socketChannel);
 		}
@@ -336,25 +339,26 @@ public class TestTorrentSetController {
 		assertEquals (0, manager.getPeers().size());
 
 		// Handshake through the port and wait to hear that the coordinator has replied
-		final SocketChannel socketChannel = SocketChannel.open (new InetSocketAddress (InetAddress.getLocalHost (), localPort));
+		final SocketChannel socketChannel = SocketChannel.open (new InetSocketAddress (InetAddress.getLocalHost(), localPort));
 		socketChannel.write (PeerProtocolBuilder.handshake (false, false, metaInfo.getInfo().getHash(), new PeerID()));
 		socketChannel.configureBlocking (false);
-		final PeerID[] receivedPeerID = new PeerID[1];
-		PeerProtocolParser parser = new PeerProtocolParser (new MockProtocolConsumer() {
-			@Override
-			public void handshakeBasicExtensions (boolean fastExtensionEnabled, boolean extensionProtocolEnabled) { }
-			@Override
-			public void handshakeInfoHash (InfoHash infoHash) { }
-			@Override
-			public void handshakePeerID (PeerID peerID) {
-				receivedPeerID[0] = peerID;
+		final boolean[] peerIDReceived = new boolean[1];
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		doAnswer (new Answer<Object>() {
+			public Object answer (InvocationOnMock invocation) throws Throwable {
+				peerIDReceived[0] = true;
+				return null;
 			}
-		}, false, false);
-		while (receivedPeerID[0] == null) {
+		}).when (mockConsumer).handshakePeerID (any (PeerID.class));
+
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
+		while (!peerIDReceived[0]) {
 			parser.parseBytes (socketChannel);
 		}
 
-		assertEquals (controller.getLocalPeerID(), receivedPeerID[0]);
+		ArgumentCaptor<PeerID> captor = ArgumentCaptor.forClass (PeerID.class);
+		verify (mockConsumer).handshakePeerID (captor.capture());
+		assertEquals (controller.getLocalPeerID(), captor.getValue());
 
 		socketChannel.close();
 		controller.terminate (true);

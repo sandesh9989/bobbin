@@ -276,4 +276,41 @@ public class Util {
 	}
 
 
+	/**
+	 * Creates a ReadableByteChannel for a given list of ByteBuffers that does not report the end of
+	 * the stream
+	 *
+	 * @param buffers The buffers to read frmo
+	 * @return The created ReadableByteChannel
+	 */
+	public static ReadableByteChannel infiniteReadableByteChannelFor (ByteBuffer... buffers) {
+
+		int totalSize = 0;
+		for (ByteBuffer buffer : buffers) {
+			totalSize += buffer.remaining();
+		}
+		final ByteBuffer assembledBuffer = ByteBuffer.allocate (totalSize);
+		for (ByteBuffer buffer : buffers) {
+			assembledBuffer.put (buffer);
+		}
+		assembledBuffer.rewind();
+
+		ReadableByteChannel wrappedChannel = new ReadableByteChannel() {
+			public int read (ByteBuffer dst) throws IOException {
+				int bytesRead = Math.min (assembledBuffer.capacity() - assembledBuffer.position(), dst.remaining());
+				assembledBuffer.limit (assembledBuffer.position() + bytesRead);
+				dst.put (assembledBuffer);
+				return bytesRead;
+
+			}
+			public void close() throws IOException { }
+			public boolean isOpen() {
+				return true;
+			}
+		};
+
+		return wrappedChannel;
+
+	}
+
 }

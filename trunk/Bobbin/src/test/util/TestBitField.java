@@ -1265,8 +1265,7 @@ public class TestBitField {
 
 		assertFalse (bitField.get (8));
 		assertEquals (2, bitField.byteLength());
-		byte[] bytes = new byte[2];
-		bitField.copyTo (bytes, 0);
+		byte[] bytes = bitField.content();
 		assertArrayEquals (new byte[] { (byte)~0, 0 }, bytes);
 
 	}
