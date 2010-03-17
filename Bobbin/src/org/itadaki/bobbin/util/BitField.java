@@ -393,6 +393,16 @@ public class BitField implements Cloneable, Iterable<Integer> {
 
 
 	/**
+	 * @return A copy of the bytes of the bit field
+	 */
+	public byte[] content() {
+
+		return Arrays.copyOf (this.bits, this.bits.length);
+
+	}
+
+
+	/**
 	 * Copies the represented bit field into the given array
 	 *
 	 * @param destination The array into which to copy the bit field

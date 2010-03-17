@@ -5,6 +5,7 @@
 package test.peer;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 import java.net.ServerSocket;
 import java.nio.ByteBuffer;
@@ -24,9 +25,9 @@ import org.itadaki.bobbin.peer.PeerState;
 import org.itadaki.bobbin.peer.PeerStatistics;
 import org.itadaki.bobbin.peer.ReadablePeerStatistics;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
+import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
-import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.StorageDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
@@ -36,9 +37,10 @@ import org.itadaki.bobbin.util.DSAUtil;
 import org.itadaki.bobbin.util.counter.Period;
 import org.itadaki.bobbin.util.elastictree.ElasticTree;
 import org.junit.Test;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import test.Util;
-import test.peer.protocol.MockProtocolConsumer;
 import test.torrentdb.MockPieceDatabase;
 
 
@@ -166,18 +168,14 @@ public class TestPeerCoordinator {
 		socketChannel.write (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		socketChannel.configureBlocking (false);
 		final boolean[] bitfieldReceived = new boolean[1];
-		PeerProtocolParser parser = new PeerProtocolParser (new MockProtocolConsumer() {
-			@Override
-			public void handshakeBasicExtensions (boolean fastExtensionEnabled, boolean extensionProtocolEnabled) { }
-			@Override
-			public void handshakeInfoHash (InfoHash infoHash) { }
-			@Override
-			public void handshakePeerID (PeerID peerID) { }
-			@Override
-			public void bitfieldMessage (byte[] bitField) {
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		doAnswer (new Answer<Object>() {
+			public Object answer (InvocationOnMock invocation) throws Throwable {
 				bitfieldReceived[0] = true;
+				return null;
 			}
-		}, false, false);
+		}).when (mockConsumer).bitfieldMessage(any (byte[].class));
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 		while (!bitfieldReceived[0]) {
 			parser.parseBytes (socketChannel);
 		}
