@@ -5,29 +5,21 @@
 package test.peer.requestmanager;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
-import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerState;
-import org.itadaki.bobbin.peer.PeerStatistics;
-import org.itadaki.bobbin.peer.ReadablePeerStatistics;
 import org.itadaki.bobbin.peer.requestmanager.RandomRequestManager;
 import org.itadaki.bobbin.peer.requestmanager.RequestManager;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.StorageDescriptor;
-import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 import test.Util;
-import test.peer.MockPeerState;
 
 
 /**
@@ -36,101 +28,18 @@ import test.peer.MockPeerState;
 public class TestRandomRequestManager {
 
 	/**
-	 * A mock ManageablePeer object for use in testing RandomRequestManager
+	 * @param descriptor The remote peer's view
+	 * @param peerBitField The remote peer's bitfield
+	 * @return A standard mock peer
 	 */
-	private static class MockManageablePeer implements ManageablePeer {
+	private static ManageablePeer mockManageablePeer (StorageDescriptor descriptor, BitField peerBitField) {
 
-		/**
-		 * The peer's available piece bitfield
-		 */
-		private BitField peerBitField;
-
-		/**
-		 * The peer"s view
-		 */
-		private StorageDescriptor peerView;
-
-		public void cancelRequests (List<BlockDescriptor> requests) {
-			fail();
-		}
-
-		public boolean getTheyHaveOutstandingRequests() {
-			fail();
-			return false;
-		}
-
-		public void rejectPiece (int pieceNumber) {
-			fail();
-		}
-
-		public void sendExtensionHandshake (Set<String> extensionsAdded, Set<String> extensionsRemoved, BDictionary extra) {
-			fail();
-		}
-
-		public void sendExtensionMessage (String identifier, ByteBuffer data) {
-			fail();
-		};
-
-		public void sendHavePiece (int pieceNumber) {
-			fail();
-		}
-
-		public void sendKeepaliveOrClose() {
-			fail();
-		}
-
-		public void sendViewSignature (ViewSignature viewSignature) {
-			fail();
-		}
-
-		public boolean setWeAreChoking (boolean weAreChokingThem) {
-			fail();
-			return false;
-		}
-
-		public void setWeAreInterested (boolean weAreInterested) {
-			fail();
-		}
-
-		public InetSocketAddress getRemoteSocketAddress() {
-			fail();
-			return null;
-		}
-
-		@Override
-		public PeerState getPeerState() {
-			return new MockPeerState() {
-				@Override
-				public StorageDescriptor getRemoteView() {
-					return MockManageablePeer.this.peerView;
-				}
-			};
-		}
-
-		public BitField getRemoteBitField() {
-			return this.peerBitField;
-		}
-
-		public ReadablePeerStatistics getReadableStatistics() {
-			return null;
-		}
-
-		public PeerStatistics getStatistics() {
-			return null;
-		}
-
-		public void close() {
-			fail();
-		}
-
-		/**
-		 * @param peerView The peer's view
-		 * @param peerBitField The peer's available piece bitfield
-		 */
-		public MockManageablePeer (StorageDescriptor peerView, BitField peerBitField) {
-			this.peerView = peerView;
-			this.peerBitField = peerBitField;
-		}
+		PeerState mockPeerState = mock (PeerState.class);
+		when (mockPeerState.getRemoteView()).thenReturn (descriptor);
+		ManageablePeer mockPeer = mock (ManageablePeer.class);
+		when (mockPeer.getPeerState()).thenReturn (mockPeerState);
+		when (mockPeer.getRemoteBitField()).thenReturn (peerBitField);
+		return mockPeer;
 
 	}
 
@@ -145,25 +54,26 @@ public class TestRandomRequestManager {
 	@Test
 	public void testAllocateHave1Peer0() throws Exception {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize;
-
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField (1);
 		RequestManager requestManager = new RandomRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
-
 		BitField peerBitField = new BitField (1);
-		ManageablePeer peer = new MockManageablePeer (descriptor, peerBitField);
+		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 		requestManager.peerRegistered (peer);
 
+		// When
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 1, false);
 
+		// Then
 		assertEquals (0, blocks.size());
 
 	}
 
-	
+
 	/**
 	 * Test piece allocation : We have 1/1 pieces, peer has 1; no allocation
 	 *
@@ -172,21 +82,22 @@ public class TestRandomRequestManager {
 	@Test
 	public void testAllocateHave1Peer1() throws Exception {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize;
-
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField (1);
 		RequestManager requestManager = new RandomRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
-
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
-		ManageablePeer peer = new MockManageablePeer (descriptor, peerBitField);
+		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 		requestManager.peerRegistered (peer);
 
+		// When
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 1, false);
 
+		// Then
 		assertEquals (0, blocks.size());
 
 	}
@@ -200,20 +111,21 @@ public class TestRandomRequestManager {
 	@Test
 	public void testAllocateHave0Peer0() throws Exception {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize;
-
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
 		RequestManager requestManager = new RandomRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
-
 		BitField peerBitField = new BitField (1);
-		ManageablePeer peer = new MockManageablePeer (descriptor, peerBitField);
+		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 		requestManager.peerRegistered (peer);
 
+		// When
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 1, false);
 
+		// Then
 		assertEquals (0, blocks.size());
 
 	}
@@ -227,21 +139,22 @@ public class TestRandomRequestManager {
 	@Test
 	public void testAllocateHave0Peer1() throws Exception {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize;
-
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
 		RequestManager requestManager = new RandomRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
-
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
-		ManageablePeer peer = new MockManageablePeer (descriptor, peerBitField);
+		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 		requestManager.peerRegistered (peer);
 
+		// When
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 1, false);
 
+		// Then
 		assertEquals (1, blocks.size());
 
 	}
@@ -255,6 +168,7 @@ public class TestRandomRequestManager {
 	@Test
 	public void testAllocateHave0PeerA1PeerB1() throws Exception {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize;
 
@@ -265,19 +179,21 @@ public class TestRandomRequestManager {
 
 		BitField peerABitField = new BitField (1);
 		peerABitField.set (0);
-		ManageablePeer peerA = new MockManageablePeer (descriptor, peerABitField);
+		ManageablePeer peerA = mockManageablePeer (descriptor, peerABitField);
 		requestManager.peerRegistered (peerA);
 
 		BitField peerBBitField = new BitField (1);
 		peerBBitField.set (0);
-		ManageablePeer peerB = new MockManageablePeer (descriptor, peerBBitField);
+		ManageablePeer peerB = mockManageablePeer (descriptor, peerBBitField);
 		requestManager.peerRegistered (peerB);
 
+		// When
 		List<BlockDescriptor> blocksA1 = requestManager.allocateRequests (peerA, 16, false);
 		List<BlockDescriptor> blocksA2 = requestManager.allocateRequests (peerA, 16, false);
 		List<BlockDescriptor> blocksB1 = requestManager.allocateRequests (peerB, 16, false);
 		List<BlockDescriptor> blocksB2 = requestManager.allocateRequests (peerB, 16, false);
 
+		// Then
 		assertEquals (16, blocksA1.size());
 		assertEquals (0, blocksA2.size());
 		assertEquals (16, blocksB1.size());
@@ -295,6 +211,7 @@ public class TestRandomRequestManager {
 	@Test
 	public void testAllocateSize2Have0PeerA1PeerB1() throws Exception {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize * 2;
 
@@ -305,27 +222,23 @@ public class TestRandomRequestManager {
 
 		BitField peerABitField = new BitField (2);
 		peerABitField.not();
-		ManageablePeer peerA = new MockManageablePeer (descriptor, peerABitField);
+		ManageablePeer peerA = mockManageablePeer (descriptor, peerABitField);
 		requestManager.peerRegistered (peerA);
 
 		BitField peerBBitField = new BitField (2);
 		peerBBitField.not();
-		ManageablePeer peerB = new MockManageablePeer (descriptor, peerBBitField);
+		ManageablePeer peerB = mockManageablePeer (descriptor, peerBBitField);
 		requestManager.peerRegistered (peerB);
 
+		// When
 		List<BlockDescriptor> blocksA1 = requestManager.allocateRequests (peerA, 16, false);
 		List<BlockDescriptor> blocksB1 = requestManager.allocateRequests (peerB, 16, false);
-		Set<BlockDescriptor> allBlocks = new HashSet<BlockDescriptor>();
-		allBlocks.addAll (blocksA1);
-		allBlocks.addAll (blocksB1);
-
-		assertEquals (16, blocksA1.size());
-		assertEquals (16, blocksB1.size());
-		assertEquals (32, allBlocks.size());
-
 		List<BlockDescriptor> blocksA2 = requestManager.allocateRequests (peerA, 16, false);
 		List<BlockDescriptor> blocksB2 = requestManager.allocateRequests (peerB, 16, false);
 
+		// Then
+		assertEquals (16, blocksA1.size());
+		assertEquals (16, blocksB1.size());
 		assertEquals (16, blocksA2.size());
 		assertEquals (16, blocksB2.size());
 		assertArrayEquals (blocksA1.toArray(), blocksB2.toArray());
@@ -342,6 +255,7 @@ public class TestRandomRequestManager {
 	@Test
 	public void testAllocateSize16Have0PeerA8PeerB8() throws Exception {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize * 16;
 
@@ -352,28 +266,23 @@ public class TestRandomRequestManager {
 
 		BitField peerABitField = new BitField (16);
 		peerABitField.not();
-		ManageablePeer peerA = new MockManageablePeer (descriptor, peerABitField);
+		ManageablePeer peerA = mockManageablePeer (descriptor, peerABitField);
 		requestManager.peerRegistered (peerA);
 
 		BitField peerBBitField = new BitField (16);
 		peerBBitField.not();
-		ManageablePeer peerB = new MockManageablePeer (descriptor, peerBBitField);
+		ManageablePeer peerB = mockManageablePeer (descriptor, peerBBitField);
 		requestManager.peerRegistered (peerB);
 
-
+		// When
 		List<BlockDescriptor> blocksA1 = requestManager.allocateRequests (peerA, 16 * 8, false);
 		List<BlockDescriptor> blocksB1 = requestManager.allocateRequests (peerB, 16 * 8, false);
-		Set<BlockDescriptor> allBlocks = new HashSet<BlockDescriptor>();
-		allBlocks.addAll (blocksA1);
-		allBlocks.addAll (blocksB1);
-
-		assertEquals (16 * 8, blocksA1.size());
-		assertEquals (16 * 8, blocksB1.size());
-		assertEquals (32 * 8, allBlocks.size());
-
 		List<BlockDescriptor> blocksA2 = requestManager.allocateRequests (peerA, 16 * 8, false);
 		List<BlockDescriptor> blocksB2 = requestManager.allocateRequests (peerB, 16 * 8, false);
 
+		// Then
+		assertEquals (16 * 8, blocksA1.size());
+		assertEquals (16 * 8, blocksB1.size());
 		assertEquals (16 * 8, blocksA2.size());
 		assertEquals (16 * 8, blocksB2.size());
 		assertArrayEquals (blocksA1.toArray(), blocksB2.toArray());
@@ -392,6 +301,7 @@ public class TestRandomRequestManager {
 	@Test
 	public void testPieceHandlingLastPiece() throws Exception {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize;
 
@@ -403,15 +313,11 @@ public class TestRandomRequestManager {
 
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
-		ManageablePeer peer = new MockManageablePeer (descriptor, peerBitField) {
-			@Override
-			public void setWeAreInterested (boolean interested) { }
-		};
+		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 		requestManager.peerRegistered (peer);
 
+		// When
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 16, false);
-
-		assertEquals (16, blocks.size());
 
 		byte[] piece = Util.pseudoRandomBlock (0, 262144, 262144);
 		int position = 0;
@@ -426,6 +332,8 @@ public class TestRandomRequestManager {
 
 		List<BlockDescriptor> blocks2 = requestManager.allocateRequests (peer, 16, false);
 
+		// Then
+		assertEquals (16, blocks.size());
 		assertEquals (0, blocks2.size());
 
 	}
@@ -436,11 +344,11 @@ public class TestRandomRequestManager {
 	 *
 	 * @throws Exception
 	 */
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testDoubleAllocationCancel() throws Exception {
 
-		final List<BlockDescriptor> peer2CancelledRequests = new ArrayList<BlockDescriptor>();
-
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize;
 
@@ -452,37 +360,17 @@ public class TestRandomRequestManager {
 		BitField peerBitField = new BitField (1);
 		BitField peer2BitField = new BitField (1);
 
-		ManageablePeer peer = new MockManageablePeer (descriptor, peerBitField) {
-			@Override
-			public void cancelRequests (List<BlockDescriptor> requests) {
-				fail();
-			}
-			@Override
-			public void setWeAreInterested (boolean weAreInterested) {
-			}
-		};
-		ManageablePeer peer2 = new MockManageablePeer (descriptor, peer2BitField) {
-			@Override
-			public void cancelRequests (List<BlockDescriptor> requests) {
-				peer2CancelledRequests.addAll (requests);
-			}
-
-			@Override
-			public void setWeAreInterested (boolean weAreInterested) {
-			}
-		};
-
+		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
+		ManageablePeer peer2 = mockManageablePeer (descriptor, peer2BitField);
+		ArgumentCaptor<List> peer2captor = ArgumentCaptor.forClass (List.class);
 		peerBitField.set (0);
 		requestManager.peerRegistered (peer);
-
 		peer2BitField.set (0);
 		requestManager.peerRegistered (peer2);
 
+		// When
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 16, false);
 		List<BlockDescriptor> blocks2 = requestManager.allocateRequests (peer2, 16, false);
-
-		assertEquals (16, blocks.size());
-		assertArrayEquals (blocks.toArray(), blocks2.toArray());
 
 		byte[] piece = Util.pseudoRandomBlock (0, 262144, 262144);
 		int position = 0;
@@ -496,7 +384,11 @@ public class TestRandomRequestManager {
 			}
 		}
 
-		assertTrue (peer2CancelledRequests.size() > 0);
+		assertEquals (16, blocks.size());
+		assertArrayEquals (blocks.toArray(), blocks2.toArray());
+		verify (peer, never()).cancelRequests (any (List.class));
+		verify (peer2).cancelRequests (peer2captor.capture());
+		assertEquals (16, peer2captor.getValue().size());
 
 	}
 
@@ -510,6 +402,7 @@ public class TestRandomRequestManager {
 	@Test
 	public void testPieceHandlingAbort() throws Exception {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize;
 
@@ -520,12 +413,15 @@ public class TestRandomRequestManager {
 
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
-		ManageablePeer peer = new MockManageablePeer (descriptor, peerBitField);
+		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
+
+		BitField peer2BitField = new BitField (1);
+		peer2BitField.set (0);
+		ManageablePeer peer2 = mockManageablePeer (descriptor, peer2BitField);
+
+		// When
 		requestManager.peerRegistered (peer);
-
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 16, false);
-
-		assertEquals (16, blocks.size());
 
 		byte[] piece = Util.pseudoRandomBlock (0, 262144, 262144);
 		int position = 0;
@@ -539,12 +435,6 @@ public class TestRandomRequestManager {
 
 		requestManager.peerDeregistered (peer);
 
-		BitField peer2BitField = new BitField (1);
-		peer2BitField.set (0);
-		ManageablePeer peer2 = new MockManageablePeer (descriptor, peer2BitField) {
-			@Override
-			public void setWeAreInterested (boolean weAreInterested) { }
-		};
 		requestManager.peerRegistered (peer2);
 
 		List<BlockDescriptor> blocks2 = requestManager.allocateRequests (peer2, 16, false);
@@ -560,6 +450,8 @@ public class TestRandomRequestManager {
 
 		}
 
+		// Then
+		assertEquals (16, blocks.size());
 		assertEquals (8, blocks2.size());
 
 	}
@@ -582,6 +474,7 @@ public class TestRandomRequestManager {
 	@Test
 	public void testPieceHandlingAbortDestroysOrphan() throws Exception {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize;
 
@@ -593,34 +486,24 @@ public class TestRandomRequestManager {
 		// Register 3 peers
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
-		ManageablePeer peer = new MockManageablePeer (descriptor, peerBitField);
-		requestManager.peerRegistered (peer);
-
+		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 		BitField peer2BitField = new BitField (1);
 		peer2BitField.set (0);
-		ManageablePeer peer2 = new MockManageablePeer (descriptor, peer2BitField) {
-			@Override
-			public void setWeAreInterested (boolean weAreInterested) {
-			}
-		};
-		requestManager.peerRegistered (peer2);
-
+		ManageablePeer peer2 = mockManageablePeer (descriptor, peer2BitField);
 		BitField peer3BitField = new BitField (1);
 		peer3BitField.set (0);
-		ManageablePeer peer3 = new MockManageablePeer (descriptor, peer3BitField) {
-			@Override
-			public void setWeAreInterested (boolean weAreInterested) {
-			}
-		};
+		ManageablePeer peer3 = mockManageablePeer (descriptor, peer3BitField);
+
+		// When
+		requestManager.peerRegistered (peer);
+		requestManager.peerRegistered (peer2);
 		requestManager.peerRegistered (peer3);
 
 		// Allocation for peer 1 - piece 1
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 16, false);
-		assertEquals (16, blocks.size());
 
 		// Allocation for peer 2 - piece 1
 		List<BlockDescriptor> blocks2 = requestManager.allocateRequests (peer2, 16, false);
-		assertEquals (16, blocks2.size());
 
 		// Peer 1 aborts
 		requestManager.peerDeregistered (peer);
@@ -641,6 +524,9 @@ public class TestRandomRequestManager {
 		// Allocation for peer 3
 		List<BlockDescriptor> blocks3 = requestManager.allocateRequests (peer3, 16, false);
 
+		// Then
+		assertEquals (16, blocks.size());
+		assertEquals (16, blocks2.size());
 		assertEquals (0, blocks3.size());
 
 	}
@@ -652,9 +538,11 @@ public class TestRandomRequestManager {
 	 * Tests setNeededPieces on a single peer
 	 * @throws Exception 
 	 */
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testSetNeededPieces() throws Exception {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize;
 
@@ -663,37 +551,27 @@ public class TestRandomRequestManager {
 		RequestManager requestManager = new RandomRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
-		final Boolean[] interestSet = new Boolean[1];
-		final boolean[] cancelRequestsCalled = new boolean[1];
-
-		// Register a peer
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
-		ManageablePeer peer = new MockManageablePeer (descriptor, peerBitField) {
-			@Override
-			public void setWeAreInterested (boolean weAreInterested) {
-				interestSet[0] = weAreInterested;
-			}
-			@Override
-			public void cancelRequests(List<BlockDescriptor> requests) {
-				cancelRequestsCalled[0] = true;
-			}
-
-		};
+		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 		requestManager.peerRegistered (peer);
 
+		// When
 		// Allocation for peer 1 - piece 1
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 16, false);
 		assertEquals (16, blocks.size());
 
-		assertNull (interestSet[0]);
-		assertFalse (cancelRequestsCalled[0]);
+		// Then
+		verify(peer, never()).setWeAreInterested (anyBoolean());
+		verify(peer, never()).cancelRequests (any (List.class));
 
+		// When
 		// Set the only piece not needed
 		requestManager.setNeededPieces (new BitField (1));
 
-		assertFalse (interestSet[0]);
-		assertTrue (cancelRequestsCalled[0]);
+		// Then
+		verify(peer).setWeAreInterested (anyBoolean());
+		verify(peer).cancelRequests(any(List.class));
 
 	}
 
@@ -702,9 +580,11 @@ public class TestRandomRequestManager {
 	 * Tests setNeededPieces on two peers
 	 * @throws Exception 
 	 */
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testSetNeededPiecesTwoPeers() throws Exception {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize * 2;
 
@@ -713,56 +593,40 @@ public class TestRandomRequestManager {
 		RequestManager requestManager = new RandomRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
-		final Boolean[] peer1InterestSet = new Boolean[1];
-		final boolean[] peer1CancelRequestsCalled = new boolean[1];
-		final Boolean[] peer2InterestSet = new Boolean[1];
-
-		// Register two peers
 		BitField peerBitField = new BitField (2);
 		peerBitField.set (0);
-		ManageablePeer peer = new MockManageablePeer (descriptor, peerBitField) {
-			@Override
-			public void setWeAreInterested (boolean weAreInterested) {
-				peer1InterestSet[0] = weAreInterested;
-			}
-			@Override
-			public void cancelRequests(List<BlockDescriptor> requests) {
-				peer1CancelRequestsCalled[0] = true;
-			}
-
-		};
-		requestManager.peerRegistered (peer);
+		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 
 		BitField peer2BitField = new BitField (2);
 		peer2BitField.set (1);
-		ManageablePeer peer2 = new MockManageablePeer (descriptor, peer2BitField) {
-			@Override
-			public void setWeAreInterested (boolean weAreInterested) {
-				peer2InterestSet[0] = weAreInterested;
-			}
-		};
+		ManageablePeer peer2 = mockManageablePeer (descriptor, peer2BitField);
+
+		requestManager.peerRegistered (peer);
 		requestManager.peerRegistered (peer2);
 
+		// When
 		// Allocation for peer 1 - piece 1
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 16, false);
-		assertEquals (16, blocks.size());
-
 		// Allocation for peer 2 - piece 2
 		List<BlockDescriptor> blocks2 = requestManager.allocateRequests (peer2, 16, false);
+
+		// Then
+		assertEquals (16, blocks.size());
 		assertEquals (16, blocks2.size());
+		verify(peer, never()).setWeAreInterested (anyBoolean());
+		verify(peer, never()).cancelRequests (any (List.class));
+		verify(peer2, never()).setWeAreInterested (anyBoolean());
 
-		assertNull (peer1InterestSet[0]);
-		assertFalse (peer1CancelRequestsCalled[0]);
-		assertNull (peer2InterestSet[0]);
-
+		// When
 		// Set the only piece not needed
 		BitField newNeededPieces = new BitField (2);
 		newNeededPieces.set (1);
 		requestManager.setNeededPieces (newNeededPieces);
 
-		assertFalse (peer1InterestSet[0]);
-		assertTrue (peer1CancelRequestsCalled[0]);
-		assertTrue (peer2InterestSet[0]);
+		// Then
+		verify(peer).setWeAreInterested (false);
+		verify(peer).cancelRequests (any (List.class));
+		verify(peer2).setWeAreInterested (true);
 
 	}
 
@@ -773,22 +637,23 @@ public class TestRandomRequestManager {
 	@Test
 	public void testAllocateAllowedFastRequests1() {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize;
-
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
 		RequestManager requestManager = new RandomRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
-
-		// Register a peer
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
-		ManageablePeer peer = new MockManageablePeer (descriptor, peerBitField);
+		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 		requestManager.peerRegistered (peer);
 
-		// Should not allocate
+		// When
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 16, true);
+
+		// Then
+		// Should not allocate
 		assertEquals (0, blocks.size());
 
 	}
@@ -800,6 +665,7 @@ public class TestRandomRequestManager {
 	@Test
 	public void testAllocateAllowedFastRequests2() {
 
+		// Given
 		int pieceSize = 262144;
 		long totalLength = pieceSize;
 
@@ -808,15 +674,16 @@ public class TestRandomRequestManager {
 		RequestManager requestManager = new RandomRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
-		// Register a peer
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
-		ManageablePeer peer = new MockManageablePeer (descriptor, peerBitField);
+		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 		requestManager.peerRegistered (peer);
 		requestManager.setPieceAllowedFast (peer, 0);
 
-		// Allocation for peer 1 - piece 1
+		// When
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 16, true);
+
+		// Then
 		assertEquals (16, blocks.size());
 
 	}
@@ -828,6 +695,7 @@ public class TestRandomRequestManager {
 	@Test
 	public void testAllocateSuggestedPieces() {
 
+		// Given
 		int pieceSize = 16384;
 		long totalLength = pieceSize * 5;
 
@@ -836,15 +704,16 @@ public class TestRandomRequestManager {
 		RequestManager requestManager = new RandomRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
-		// Register a peer
 		BitField peerBitField = new BitField (5);
 		peerBitField.not();
-		ManageablePeer peer = new MockManageablePeer (descriptor, peerBitField);
+		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 		requestManager.peerRegistered (peer);
 		requestManager.setPieceSuggested (peer, 3);
 
-		// Should allocate piece 3
+		// When
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 1, false);
+
+		// Then
 		assertEquals (1, blocks.size());
 		assertEquals (3, blocks.get(0).getPieceNumber());
 
@@ -857,17 +726,19 @@ public class TestRandomRequestManager {
 	@Test
 	public void testExtend() {
 
+		// Given
 		int pieceSize = 16384;
 		long totalLength = pieceSize * 5;
-
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(5).not();
 		RequestManager requestManager = new RandomRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
+		// When
 		requestManager.extend (new StorageDescriptor (pieceSize, pieceSize * 6));
 		requestManager.setNeededPieces (new BitField(6).not());
 
+		// Then
 		assertEquals (6, requestManager.getNeededPieceCount());
 
 	}
@@ -880,21 +751,22 @@ public class TestRandomRequestManager {
 	@Test
 	public void testDifferentRemoteView1p768x1p512() throws Exception {
 
+		// Given
 		int pieceSize = 1024;
 		long ourTotalLength = pieceSize + 768;
 		long theirTotalLength = pieceSize + 512;
-
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, ourTotalLength);
 		BitField neededBitField = new BitField(2).not();
 		RequestManager requestManager = new RandomRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
-
 		BitField peerBitField = new BitField(2).not();
-		ManageablePeer peer = new MockManageablePeer (new StorageDescriptor (pieceSize, theirTotalLength), peerBitField);
+		ManageablePeer peer = mockManageablePeer (new StorageDescriptor (pieceSize, theirTotalLength), peerBitField);
 		requestManager.peerRegistered (peer);
 
+		// When
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 2, false);
 
+		// Then
 		assertEquals (1, blocks.size());
 
 	}
@@ -907,21 +779,22 @@ public class TestRandomRequestManager {
 	@Test
 	public void testDifferentRemoteView2p512x2p0() throws Exception {
 
+		// Given
 		int pieceSize = 1024;
 		long ourTotalLength = (2 * pieceSize) + 512;
 		long theirTotalLength = (2 * pieceSize);
-
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, ourTotalLength);
 		BitField neededBitField = new BitField(3).not();
 		RequestManager requestManager = new RandomRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
-
 		BitField peerBitField = new BitField(2).not();
-		ManageablePeer peer = new MockManageablePeer (new StorageDescriptor (pieceSize, theirTotalLength), peerBitField);
+		ManageablePeer peer = mockManageablePeer (new StorageDescriptor (pieceSize, theirTotalLength), peerBitField);
 		requestManager.peerRegistered (peer);
 
+		// When
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 3, false);
 
+		// Then
 		assertEquals (2, blocks.size());
 
 	}
