@@ -19,24 +19,22 @@ import java.util.List;
 import org.itadaki.bobbin.connectionmanager.ConnectionManager;
 import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerCoordinator;
-import org.itadaki.bobbin.peer.PeerCoordinatorListener;
 import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.peer.PeerState;
 import org.itadaki.bobbin.peer.PeerStatistics;
-import org.itadaki.bobbin.peer.ReadablePeerStatistics;
+import org.itadaki.bobbin.peer.PeerStatistics.Type;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
-import org.itadaki.bobbin.torrentdb.StorageDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.trackerclient.PeerIdentifier;
 import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.DSAUtil;
-import org.itadaki.bobbin.util.counter.Period;
 import org.itadaki.bobbin.util.elastictree.ElasticTree;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -50,12 +48,29 @@ import test.torrentdb.MockPieceDatabase;
 public class TestPeerCoordinator {
 
 	/**
+	 * @param peerID The peer ID
+	 * @return A mock ManageablePeer
+	 */
+	private ManageablePeer mockManageablePeer (PeerID peerID) {
+
+		PeerState mockPeerState = mock (PeerState.class);
+		when (mockPeerState.getRemotePeerID()).thenReturn (peerID);
+		ManageablePeer mockPeer = mock (ManageablePeer.class);
+		when (mockPeer.getPeerState()).thenReturn (mockPeerState);
+
+		return mockPeer;
+
+	}
+
+
+	/**
 	 * Test peersDiscovered on an empty list
 	 * @throws Exception
 	 */
 	@Test
 	public void testPeersDiscoveredEmpty() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = null;
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
@@ -63,7 +78,12 @@ public class TestPeerCoordinator {
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
 
+		// When
 		peerCoordinator.peersDiscovered (new ArrayList<PeerIdentifier>());
+
+		// Then
+		// ... nothing
+
 
 		pieceDatabase.terminate (true);
 
@@ -77,25 +97,27 @@ public class TestPeerCoordinator {
 	@Test
 	public void testPeersDiscoveredFail() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
-
 		// Open then close a port so we are reasonably sure of having an uncontactable destination port
 		ServerSocket serverSocket = new ServerSocket (0);
 		int port = serverSocket.getLocalPort();
 		serverSocket.close();
 
+		// When
 		peerCoordinator.peersDiscovered (Arrays.asList (new PeerIdentifier[] {
 			new PeerIdentifier (new byte[20], "localhost", port)
 		}));
-
 		Thread.sleep (100); // Hack
 
+		// Then
 		assertEquals (peerCoordinator.getDesiredPeerConnections(), peerCoordinator.getPeersWanted());
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -111,24 +133,25 @@ public class TestPeerCoordinator {
 	@Test
 	public void testPeersDiscoveredSuccess() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
-
-		// Open a port
 		ServerSocket serverSocket = new ServerSocket (0);
 		int port = serverSocket.getLocalPort();
 
+		// When
 		peerCoordinator.peersDiscovered (Arrays.asList (new PeerIdentifier[] {
 			new PeerIdentifier (new byte[20], "localhost", port)
 		}));
-
 		serverSocket.accept();
 
+		// Then
 		assertEquals (peerCoordinator.getDesiredPeerConnections() - 1, peerCoordinator.getPeersWanted());
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -144,6 +167,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testGetConnectedPeers() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
@@ -151,18 +175,19 @@ public class TestPeerCoordinator {
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
-
-		// Open a port
 		ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
 		serverSocketChannel.socket().bind (null);
 
+		// When
 		// Trigger the coordinator to connect
 		peerCoordinator.peersDiscovered (Arrays.asList (new PeerIdentifier[] {
 			new PeerIdentifier (new byte[20], "localhost", serverSocketChannel.socket().getLocalPort())
 		}));
 
+		//Then
 		assertEquals (0, peerCoordinator.getConnectedPeers().size());
 
+		// When
 		// Handshake through the port and wait to hear that the coordinator has replied
 		final SocketChannel socketChannel = serverSocketChannel.accept();
 		socketChannel.write (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
@@ -180,7 +205,9 @@ public class TestPeerCoordinator {
 			parser.parseBytes (socketChannel);
 		}
 
+		// Then
 		assertEquals (1, peerCoordinator.getConnectedPeers().size());
+
 
 		socketChannel.close();
 		serverSocketChannel.close();
@@ -198,6 +225,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testPeerConnectedStopped() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
@@ -205,19 +233,12 @@ public class TestPeerCoordinator {
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 
-		boolean registered = peerCoordinator.peerConnected (new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return new PeerID();
-					}
-				};
-			}
-		});
+		// When
+		boolean registered = peerCoordinator.peerConnected (mockManageablePeer (new PeerID()));
 
+		// Then
 		assertFalse (registered);
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -233,6 +254,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testPeerConnectedSelf() throws Exception {
 
+		// Given
 		final PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
@@ -241,19 +263,12 @@ public class TestPeerCoordinator {
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
 
-		boolean registered = peerCoordinator.peerConnected (new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return localPeerID;
-					}
-				};
-			}
-		});
+		// When
+		boolean registered = peerCoordinator.peerConnected (mockManageablePeer (localPeerID));
 
+		// Then
 		assertFalse (registered);
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -268,6 +283,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testPeerConnectedDuplicate() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
@@ -275,39 +291,19 @@ public class TestPeerCoordinator {
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
+		PeerID peerID = new PeerID();
+		ManageablePeer peer1 = mockManageablePeer (peerID);
+		when(peer1.getStatistics()).thenReturn (new PeerStatistics());
+		ManageablePeer peer2 = mockManageablePeer (peerID);
 
-		final PeerID peerID = new PeerID();
-		boolean registered1 = peerCoordinator.peerConnected (new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID;
-					}
-				};
-			}
-			@Override
-			public PeerStatistics getStatistics() {
-				return new PeerStatistics();
-			}
-			@Override
-			public void close() { }
-		});
-		boolean registered2 = peerCoordinator.peerConnected (new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID;
-					}
-				};
-			}
-		});
+		// When
+		boolean registered1 = peerCoordinator.peerConnected (peer1);
+		boolean registered2 = peerCoordinator.peerConnected (peer2);
 
+		// Then
 		assertTrue (registered1);
 		assertFalse (registered2);
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -322,6 +318,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testSetDesiredPeerConnections() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
@@ -330,8 +327,12 @@ public class TestPeerCoordinator {
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
 
+		// When
 		peerCoordinator.setDesiredPeerConnections (20);
+
+		// Then
 		assertEquals (20, peerCoordinator.getDesiredPeerConnections());
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -346,6 +347,7 @@ public class TestPeerCoordinator {
 	@Test(expected=IllegalArgumentException.class)
 	public void testSetDesiredPeerConnectionsInvalid() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
@@ -354,12 +356,16 @@ public class TestPeerCoordinator {
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
 
+		// When
 		try {
 			peerCoordinator.setDesiredPeerConnections (-1);
 		} finally {
 			peerCoordinator.terminate();
 			pieceDatabase.terminate (true);
 		}
+
+		// Then
+		// ... exception
 
 	}
 
@@ -371,6 +377,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testSetMaximumPeerConnections() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
@@ -379,8 +386,12 @@ public class TestPeerCoordinator {
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
 
+		// When
 		peerCoordinator.setMaximumPeerConnections (30);
+
+		// Then
 		assertEquals (30, peerCoordinator.getMaximumPeerConnections());
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -395,6 +406,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testSetMaximumPeerConnectionsShedPeersSeeding() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
@@ -403,86 +415,57 @@ public class TestPeerCoordinator {
 		final PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
 
-		final PeerID peerID1 = new PeerID();
-		peerCoordinator.peerConnected (new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID1;
-					}
-					@Override
-					public boolean getWeAreChoking() {
-						return true;
-					}
-				};
-			}
-			@Override
-			public BitField getRemoteBitField() {
-				return new BitField (1);
-			}
-			@Override
-			public PeerStatistics getStatistics() {
-				return new PeerStatistics();
-			}
-			@Override
-			public ReadablePeerStatistics getReadableStatistics() {
-				return new PeerStatistics() {
-					@Override
-					public long getTotal (Type type) {
-						if (type == Type.BLOCK_BYTES_SENT) {
-							return 10;
-						}
-						return -1;
-					}
-				};
-			}
-			@Override
-			public void close() {
-				peerCoordinator.peerDisconnected (this);
-			}
-		});
+		PeerID peerID1 = new PeerID();
+		final ManageablePeer peer1 = mock (ManageablePeer.class);
+		PeerState peer1State = mock (PeerState.class);
+		when (peer1State.getRemotePeerID()).thenReturn (peerID1);
+		when (peer1State.getWeAreChoking()).thenReturn (true);
+		when (peer1State.getRemoteBitField()).thenReturn (new BitField (1));
+		PeerStatistics peer1Statistics = mock (PeerStatistics.class);
+		when (peer1Statistics.getTotal (Type.BLOCK_BYTES_SENT)).thenReturn (10L);
+		when (peer1.getStatistics()).thenReturn (new PeerStatistics());
+		when (peer1.getReadableStatistics()).thenReturn (peer1Statistics);
+		when (peer1.getPeerState()).thenReturn (peer1State);
+		when (peer1.getRemoteBitField()).thenReturn (new BitField (1));
+		doAnswer(new Answer<Object>() {
+			public Object answer (InvocationOnMock invocation) throws Throwable {
+				peerCoordinator.peerDisconnected (peer1);
+				return null;
+			};
+		}).when(peer1).close();
 
-		final PeerID peerID2 = new PeerID();
-		peerCoordinator.peerConnected (new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID2;
-					}
-				};
-			}
-			@Override
-			public PeerStatistics getStatistics() {
-				return new PeerStatistics();
-			}
-			@Override
-			public ReadablePeerStatistics getReadableStatistics() {
-				return new PeerStatistics() {
-					@Override
-					public long getTotal (Type type) {
-						if (type == Type.BLOCK_BYTES_SENT) {
-							return 20;
-						}
-						return -1;
-					}
-				};
-			}
-			@Override
-			public void close() {
-				peerCoordinator.peerDisconnected (this);
-			}
-		});
+		PeerID peerID2 = new PeerID();
+		final ManageablePeer peer2 = mock (ManageablePeer.class);
+		PeerState peer2State = mock (PeerState.class);
+		when (peer2State.getRemotePeerID()).thenReturn (peerID2);
+		when (peer2State.getRemoteBitField()).thenReturn (new BitField (1));
+		PeerStatistics peer2Statistics = mock (PeerStatistics.class);
+		when (peer2Statistics.getTotal (Type.BLOCK_BYTES_SENT)).thenReturn (20L);
+		when (peer2.getStatistics()).thenReturn (new PeerStatistics());
+		when (peer2.getReadableStatistics()).thenReturn (peer2Statistics);
+		when (peer2.getPeerState()).thenReturn (peer2State);
+		when (peer2.getRemoteBitField()).thenReturn (new BitField (1));
+		doAnswer(new Answer<Object>() {
+			public Object answer (InvocationOnMock invocation) throws Throwable {
+				peerCoordinator.peerDisconnected (peer2);
+				return null;
+			};
+		}).when(peer2).close();
 
+		// When
+		peerCoordinator.peerConnected (peer1);
+		peerCoordinator.peerConnected (peer2);
+
+		// Then
 		assertEquals (2, peerCoordinator.getConnectedPeers().size());
 
+		// When
 		peerCoordinator.setMaximumPeerConnections (1);
 
+		// Then
 		assertEquals (1, peerCoordinator.getConnectedPeers().size());
 		assertEquals (peerID2, peerCoordinator.getConnectedPeers().iterator().next().getPeerState().getRemotePeerID());
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -497,6 +480,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testSetMaximumPeerConnectionsShedPeersDownloading() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
@@ -505,86 +489,58 @@ public class TestPeerCoordinator {
 		final PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
 
-		final PeerID peerID1 = new PeerID();
-		peerCoordinator.peerConnected (new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID1;
-					}
-					@Override
-					public boolean getWeAreChoking() {
-						return true;
-					}
-				};
-			}
-			@Override
-			public BitField getRemoteBitField() {
-				return new BitField (1);
-			}
-			@Override
-			public PeerStatistics getStatistics() {
-				return new PeerStatistics();
-			}
-			@Override
-			public ReadablePeerStatistics getReadableStatistics() {
-				return new PeerStatistics() {
-					@Override
-					public long getTotal (Type type) {
-						if (type == Type.BLOCK_BYTES_RECEIVED_RAW) {
-							return 10;
-						}
-						return -1;
-					}
-				};
-			}
-			@Override
-			public void close() {
-				peerCoordinator.peerDisconnected (this);
-			}
-		});
+		PeerID peerID1 = new PeerID();
+		final ManageablePeer peer1 = mock (ManageablePeer.class);
+		PeerState peer1State = mock (PeerState.class);
+		when (peer1State.getRemotePeerID()).thenReturn (peerID1);
+		when (peer1State.getWeAreChoking()).thenReturn (true);
+		when (peer1State.getRemoteBitField()).thenReturn (new BitField (1));
+		PeerStatistics peer1Statistics = mock (PeerStatistics.class);
+		when (peer1Statistics.getTotal (Type.BLOCK_BYTES_RECEIVED_RAW)).thenReturn (10L);
+		when (peer1.getStatistics()).thenReturn (new PeerStatistics());
+		when (peer1.getReadableStatistics()).thenReturn (peer1Statistics);
+		when (peer1.getPeerState()).thenReturn (peer1State);
+		when (peer1.getRemoteBitField()).thenReturn (new BitField (1));
+		doAnswer(new Answer<Object>() {
+			public Object answer (InvocationOnMock invocation) throws Throwable {
+				peerCoordinator.peerDisconnected (peer1);
+				return null;
+			};
+		}).when(peer1).close();
 
-		final PeerID peerID2 = new PeerID();
-		peerCoordinator.peerConnected (new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID2;
-					}
-				};
-			}
-			@Override
-			public PeerStatistics getStatistics() {
-				return new PeerStatistics();
-			}
-			@Override
-			public ReadablePeerStatistics getReadableStatistics() {
-				return new PeerStatistics() {
-					@Override
-					public long getTotal (Type type) {
-						if (type == Type.BLOCK_BYTES_RECEIVED_RAW) {
-							return 20;
-						}
-						return -1;
-					}
-				};
-			}
-			@Override
-			public void close() {
-				peerCoordinator.peerDisconnected (this);
-			}
-		});
+		PeerID peerID2 = new PeerID();
+		final ManageablePeer peer2 = mock (ManageablePeer.class);
+		PeerState peer2State = mock (PeerState.class);
+		when (peer2State.getRemotePeerID()).thenReturn (peerID2);
+		when (peer2State.getRemoteBitField()).thenReturn (new BitField (1));
+		PeerStatistics peer2Statistics = mock (PeerStatistics.class);
+		when (peer2Statistics.getTotal (Type.BLOCK_BYTES_RECEIVED_RAW)).thenReturn (20L);
+		when (peer2.getStatistics()).thenReturn (new PeerStatistics());
+		when (peer2.getReadableStatistics()).thenReturn (peer2Statistics);
+		when (peer2.getPeerState()).thenReturn (peer2State);
+		when (peer2.getRemoteBitField()).thenReturn (new BitField (1));
+		doAnswer(new Answer<Object>() {
+			public Object answer (InvocationOnMock invocation) throws Throwable {
+				peerCoordinator.peerDisconnected (peer2);
+				return null;
+			};
+		}).when(peer2).close();
 
+
+		// When
+		peerCoordinator.peerConnected (peer1);
+		peerCoordinator.peerConnected (peer2);
+
+		// Then
 		assertEquals (2, peerCoordinator.getConnectedPeers().size());
 
+		// When
 		peerCoordinator.setMaximumPeerConnections (1);
 
+		// Then
 		assertEquals (1, peerCoordinator.getConnectedPeers().size());
 		assertEquals (peerID2, peerCoordinator.getConnectedPeers().iterator().next().getPeerState().getRemotePeerID());
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -599,6 +555,7 @@ public class TestPeerCoordinator {
 	@Test(expected=IllegalArgumentException.class)
 	public void testSetMaximumPeerConnectionsInvalid() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
@@ -607,6 +564,7 @@ public class TestPeerCoordinator {
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
 
+		// When
 		try {
 			peerCoordinator.setMaximumPeerConnections (-1);
 		} finally {
@@ -614,6 +572,8 @@ public class TestPeerCoordinator {
 			pieceDatabase.terminate (true);
 		}
 
+		// Then
+		// ... exception
 	}
 
 
@@ -624,19 +584,26 @@ public class TestPeerCoordinator {
 	@Test
 	public void testSetWantedPeers() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+
+		// When
 		peerCoordinator.start();
 
+		// Then
 		assertEquals (1, peerCoordinator.getWantedPieces().cardinality());
 
+		// When
 		peerCoordinator.setWantedPieces (new BitField (1));
 
+		// Then
 		assertEquals (0, peerCoordinator.getWantedPieces().cardinality());
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -651,6 +618,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testHandleBlockNoRequest() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
@@ -658,30 +626,16 @@ public class TestPeerCoordinator {
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
+		ManageablePeer peer = mockManageablePeer (new PeerID());
+		when (peer.getStatistics()).thenReturn (new PeerStatistics());
 
-		final PeerID peerID = new PeerID();
-		ManageablePeer peer = new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID;
-					}
-				};
-			}
-			@Override
-			public PeerStatistics getStatistics() {
-				return new PeerStatistics();
-			}
-			@Override
-			public void close() { }
-		};
+		// When
 		peerCoordinator.peerConnected (peer);
-
 		peerCoordinator.handleBlock (peer, new BlockDescriptor (0, 0, 16384), null, null, Util.pseudoRandomBlock (0, 16384, 16384));
 
+		// Then
 		assertEquals (0, pieceDatabase.getPresentPieces().cardinality());
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -696,58 +650,37 @@ public class TestPeerCoordinator {
 	@Test
 	public void testHandleBlockValid() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
-		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
+		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinatorListener listener = new PeerCoordinatorListener() {
-			public void peerCoordinatorCompleted() { }
-			public void peerRegistered (ManageablePeer peer) { }
-			public void peerDeregistered (ManageablePeer peer) { }
-		};
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
-		peerCoordinator.addListener (listener);
 		peerCoordinator.start();
 
-		final PeerID peerID = new PeerID();
-		ManageablePeer peer = new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID;
-					}
-					@Override
-					public StorageDescriptor getRemoteView() {
-						return pieceDatabase.getStorageDescriptor();
-					}
-				};
-			}
-			@Override
-			public void setWeAreInterested (boolean weAreInterested) { }
-			@Override
-			public BitField getRemoteBitField() {
-				return new BitField(1).not();
-			}
-			@Override
-			public PeerStatistics getStatistics() {
-				return new PeerStatistics();
-			}
-			@Override
-			public void close() { }
-		};
+		PeerID peerID = new PeerID();
+		PeerState peerState = mock (PeerState.class);
+		when(peerState.getRemotePeerID()).thenReturn (peerID);
+		when(peerState.getRemoteView()).thenReturn (pieceDatabase.getStorageDescriptor());
+		ManageablePeer peer = mock (ManageablePeer.class);
+		when(peer.getPeerState()).thenReturn (peerState);
+		when(peer.getRemoteBitField()).thenReturn (new BitField(1).not());
+		when(peer.getStatistics()).thenReturn (new PeerStatistics());
 		peerCoordinator.peerConnected (peer);
 
+		// Then
 		assertEquals (0, pieceDatabase.getPresentPieces().cardinality());
 
+		// When
 		List<BlockDescriptor> descriptors = peerCoordinator.getRequests (peer, 1, false);
 		assertEquals (1, descriptors.size());
 		assertEquals (new BlockDescriptor (0, 0, 16384), descriptors.get (0));
 		peerCoordinator.handleBlock (peer, descriptors.get (0), null, null, Util.pseudoRandomBlock (0, 16384, 16384));
 
+		// Then
 		assertEquals (1, pieceDatabase.getPresentPieces().cardinality());
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -762,6 +695,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testAddAvailablePiecesWanted() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("00", 16384);
@@ -770,31 +704,18 @@ public class TestPeerCoordinator {
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
 
-		final PeerID peerID = new PeerID();
-		ManageablePeer peer = new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID;
-					}
-				};
-			}
-			@Override
-			public BitField getRemoteBitField() {
-				return new BitField(2).not();
-			}
-			@Override
-			public PeerStatistics getStatistics() {
-				return new PeerStatistics();
-			}
-			@Override
-			public void close() { }
-		};
+		PeerID peerID = new PeerID();
+		PeerState peerState = mock (PeerState.class);
+		when(peerState.getRemotePeerID()).thenReturn (peerID);
+		ManageablePeer peer = mock (ManageablePeer.class);
+		when(peer.getPeerState()).thenReturn (peerState);
+		when(peer.getRemoteBitField()).thenReturn (new BitField(2).not());
+		when(peer.getStatistics()).thenReturn (new PeerStatistics());
 		peerCoordinator.peerConnected (peer);
 
+		// Then
 		assertTrue (peerCoordinator.addAvailablePieces (peer));
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -809,6 +730,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testAddAvailablePiecesUnwanted() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("11", 16384);
@@ -817,31 +739,18 @@ public class TestPeerCoordinator {
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
 
-		final PeerID peerID = new PeerID();
-		ManageablePeer peer = new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID;
-					}
-				};
-			}
-			@Override
-			public BitField getRemoteBitField() {
-				return new BitField(2).not();
-			}
-			@Override
-			public PeerStatistics getStatistics() {
-				return new PeerStatistics();
-			}
-			@Override
-			public void close() { }
-		};
+		PeerID peerID = new PeerID();
+		PeerState peerState = mock (PeerState.class);
+		when(peerState.getRemotePeerID()).thenReturn (peerID);
+		ManageablePeer peer = mock (ManageablePeer.class);
+		when(peer.getPeerState()).thenReturn (peerState);
+		when(peer.getRemoteBitField()).thenReturn (new BitField(2).not());
+		when(peer.getStatistics()).thenReturn (new PeerStatistics());
 		peerCoordinator.peerConnected (peer);
 
+		// Then
 		assertFalse (peerCoordinator.addAvailablePieces (peer));
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -856,6 +765,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testAddAvailablePieceWanted() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("00", 16384);
@@ -864,27 +774,17 @@ public class TestPeerCoordinator {
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
 
-		final PeerID peerID = new PeerID();
-		ManageablePeer peer = new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID;
-					}
-				};
-			}
-			@Override
-			public PeerStatistics getStatistics() {
-				return new PeerStatistics();
-			}
-			@Override
-			public void close() { }
-		};
+		PeerID peerID = new PeerID();
+		PeerState peerState = mock (PeerState.class);
+		when(peerState.getRemotePeerID()).thenReturn (peerID);
+		ManageablePeer peer = mock (ManageablePeer.class);
+		when(peer.getPeerState()).thenReturn (peerState);
+		when(peer.getStatistics()).thenReturn (new PeerStatistics());
 		peerCoordinator.peerConnected (peer);
 
+		// Then
 		assertTrue (peerCoordinator.addAvailablePiece (peer, 0));
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -899,6 +799,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testAddAvailablePieceUnwanted() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("11", 16384);
@@ -908,26 +809,16 @@ public class TestPeerCoordinator {
 		peerCoordinator.start();
 
 		final PeerID peerID = new PeerID();
-		ManageablePeer peer = new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID;
-					}
-				};
-			}
-			@Override
-			public PeerStatistics getStatistics() {
-				return new PeerStatistics();
-			}
-			@Override
-			public void close() { }
-		};
+		PeerState peerState = mock (PeerState.class);
+		when(peerState.getRemotePeerID()).thenReturn (peerID);
+		ManageablePeer peer = mock (ManageablePeer.class);
+		when(peer.getPeerState()).thenReturn (peerState);
+		when(peer.getStatistics()).thenReturn (new PeerStatistics());
 		peerCoordinator.peerConnected (peer);
 
+		// Then
 		assertFalse (peerCoordinator.addAvailablePiece (peer, 0));
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -942,6 +833,7 @@ public class TestPeerCoordinator {
 	@Test
 	public void testAdjustChoking() throws Exception {
 
+		// Given
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
@@ -950,52 +842,29 @@ public class TestPeerCoordinator {
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
 
-		final PeerID peerID = new PeerID();
-		final Boolean[] chokeSet = new Boolean[1];
-		ManageablePeer peer = new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID;
-					}
-					@Override
-					public boolean getTheyAreInterested() {
-						return false;
-					}
-					@Override
-					public boolean getWeAreChoking() {
-						return true;
-					}
-				};
-			}
-			@Override
-			public BitField getRemoteBitField() {
-				return new BitField(1).not();
-			}
-			@Override
-			public boolean setWeAreChoking (boolean weAreChokingThem) {
-				chokeSet[0] = weAreChokingThem;
-				return true;
-			}
-			@Override
-			public PeerStatistics getStatistics() {
-				PeerStatistics peerStatistics = new PeerStatistics();
-				peerStatistics.getCounter (PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW).addCountedPeriod (new Period (500, 40));
-				return peerStatistics;
-			}
-			@Override
-			public void close() { }
-		};
+		PeerID peerID = new PeerID();
+		PeerState peerState = mock (PeerState.class);
+		when(peerState.getRemotePeerID()).thenReturn (peerID);
+		when(peerState.getTheyAreInterested()).thenReturn (false);
+		when(peerState.getWeAreChoking()).thenReturn (true);
+		ManageablePeer peer = mock (ManageablePeer.class);
+		when(peer.getPeerState()).thenReturn (peerState);
+		when(peer.getRemoteBitField()).thenReturn (new BitField(1).not());
+		when(peer.getStatistics()).thenReturn (new PeerStatistics());
+
+		// When
 		peerCoordinator.peerConnected (peer);
 
-		assertNull (chokeSet[0]);
+		// Then
+		verify(peer, never()).setWeAreChoking (anyBoolean());
 
+		// When
 		peerCoordinator.addAvailablePieces (peer);
 		peerCoordinator.adjustChoking(false);
 
-		assertFalse (chokeSet[0]);
+		// Then
+		verify(peer).setWeAreChoking (false);
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
@@ -1010,9 +879,9 @@ public class TestPeerCoordinator {
 	@Test
 	public void testSignatureExtends() throws Exception {
 
+		// Given
 		int pieceSize = 16384;
 		int totalLength = pieceSize;
-
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.createElastic ("0", pieceSize);
@@ -1021,48 +890,16 @@ public class TestPeerCoordinator {
 		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
 		peerCoordinator.start();
 
-		final PeerID peerID = new PeerID();
-		final ViewSignature[] sentViewSignature = new ViewSignature[1];
-		ManageablePeer peer = new MockManageablePeer() {
-			@Override
-			public PeerState getPeerState() {
-				return new MockPeerState() {
-					@Override
-					public PeerID getRemotePeerID() {
-						return peerID;
-					}
-					@Override
-					public boolean getTheyAreInterested() {
-						return false;
-					}
-					@Override
-					public boolean getWeAreChoking() {
-						return true;
-					}
-				};
-			}
-			@Override
-			public BitField getRemoteBitField() {
-				return new BitField(1).not();
-			}
-			@Override
-			public boolean setWeAreChoking (boolean weAreChokingThem) {
-				return true;
-			}
-			@Override
-			public PeerStatistics getStatistics() {
-				return new PeerStatistics();
-			}
-			@Override
-			public void setWeAreInterested (boolean weAreInterested) {
-			}
-			@Override
-			public void sendViewSignature (ViewSignature viewSignature) {
-				sentViewSignature[0] = viewSignature;
-			}
-			@Override
-			public void close() { }
-		};
+		PeerID peerID = new PeerID();
+		PeerState peerState = mock (PeerState.class);
+		when(peerState.getRemotePeerID()).thenReturn (peerID);
+		when(peerState.getTheyAreInterested()).thenReturn (false);
+		when(peerState.getWeAreChoking()).thenReturn (true);
+		ManageablePeer peer = mock (ManageablePeer.class);
+		when(peer.getPeerState()).thenReturn (peerState);
+		when(peer.getRemoteBitField()).thenReturn (new BitField(1).not());
+		when(peer.setWeAreChoking(false)).thenReturn (true);
+		when(peer.getStatistics()).thenReturn (new PeerStatistics());
 		peerCoordinator.peerConnected (peer);
 		peerCoordinator.addAvailablePieces (peer);
 
@@ -1083,10 +920,17 @@ public class TestPeerCoordinator {
 
 		ViewSignature receivedViewSignature = new ViewSignature (totalLength, ByteBuffer.wrap (extendedRootHash),
 				ByteBuffer.wrap (DSAUtil.derSignatureToP1363Signature(derSignature)));
+
+		// When
 		peerCoordinator.handleViewSignature (receivedViewSignature);
+
+		// Then
 		assertEquals (totalLength, pieceDatabase.getStorageDescriptor().getLength());
 		assertEquals (2, peerCoordinator.getWantedPieces().cardinality());
-		assertEquals (receivedViewSignature, sentViewSignature[0]);
+		ArgumentCaptor<ViewSignature> captor = ArgumentCaptor.forClass (ViewSignature.class);
+		verify(peer).sendViewSignature (captor.capture());
+		assertEquals (receivedViewSignature, captor.getValue());
+
 
 		peerCoordinator.terminate();
 		pieceDatabase.terminate (true);
