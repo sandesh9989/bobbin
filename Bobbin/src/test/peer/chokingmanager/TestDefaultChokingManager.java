@@ -5,6 +5,7 @@
 package test.peer.chokingmanager;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -24,9 +25,6 @@ import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.counter.Period;
 import org.itadaki.bobbin.util.counter.StatisticCounter;
 import org.junit.Test;
-
-import test.peer.MockPeerState;
-
 
 
 /**
@@ -133,17 +131,10 @@ public class TestDefaultChokingManager {
 		public void setWeAreInterested (boolean weAreInterested) { }
 
 		public PeerState getPeerState() {
-			return new MockPeerState() {
-				@Override
-				public boolean getTheyAreInterested() {
-					return ChokingMockManageablePeer.this.theyAreInterested;
-				}
-
-				@Override
-				public boolean getWeAreChoking() {
-					return ChokingMockManageablePeer.this.weAreChoking;
-				}
-			};
+			PeerState peerState = mock (PeerState.class);
+			when (peerState.getTheyAreInterested()).thenReturn (ChokingMockManageablePeer.this.theyAreInterested);
+			when (peerState.getWeAreChoking()).thenReturn (ChokingMockManageablePeer.this.weAreChoking);
+			return peerState;
 		}
 
 		public InetSocketAddress getRemoteSocketAddress() {
