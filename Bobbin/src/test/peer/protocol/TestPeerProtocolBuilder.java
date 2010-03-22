@@ -4,16 +4,17 @@
  */
 package test.peer.protocol;
 
-
 import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
 
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
+import org.itadaki.bobbin.peer.protocol.ResourceType;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
@@ -74,7 +75,10 @@ public class TestPeerProtocolBuilder {
 	@Test
 	public void testChokeMessage() {
 
-		byte[] expectedBytes = { 0, 0, 0, 1, 0 };
+		byte[] expectedBytes = {
+				0, 0, 0, 1,
+				0
+		};
 
 		byte[] messageBytes = PeerProtocolBuilder.chokeMessage().array();
 
@@ -89,7 +93,10 @@ public class TestPeerProtocolBuilder {
 	@Test
 	public void testUnchokeMessage() {
 
-		byte[] expectedBytes = { 0, 0, 0, 1, 1 };
+		byte[] expectedBytes = {
+				0, 0, 0, 1,
+				1
+		};
 
 		byte[] messageBytes = PeerProtocolBuilder.unchokeMessage().array();
 
@@ -104,7 +111,10 @@ public class TestPeerProtocolBuilder {
 	@Test
 	public void testInterestedMessage() {
 
-		byte[] expectedBytes = { 0, 0, 0, 1, 2 };
+		byte[] expectedBytes = {
+				0, 0, 0, 1,
+				2
+		};
 
 		byte[] messageBytes = PeerProtocolBuilder.interestedMessage().array();
 
@@ -119,7 +129,10 @@ public class TestPeerProtocolBuilder {
 	@Test
 	public void testNotInterestedMessage() {
 
-		byte[] expectedBytes = { 0, 0, 0, 1, 3 };
+		byte[] expectedBytes = {
+				0, 0, 0, 1,
+				3
+		};
 
 		byte[] messageBytes = PeerProtocolBuilder.notInterestedMessage().array();
 
@@ -134,7 +147,11 @@ public class TestPeerProtocolBuilder {
 	@Test
 	public void testHaveMessage() {
 
-		byte[] expectedBytes = { 0, 0, 0, 5, 4, 9, 8, 7, 6 };
+		byte[] expectedBytes = {
+				0, 0, 0, 5,
+				4,
+				9, 8, 7, 6
+		};
 
 		byte[] messageBytes = PeerProtocolBuilder.haveMessage ((9 << 24) + (8 << 16) + (7 << 8) + 6).array();
 
@@ -149,7 +166,11 @@ public class TestPeerProtocolBuilder {
 	@Test
 	public void testBitfieldMessage() {
 
-		byte[] expectedBytes = { 0, 0, 0, 6, 5, -128, 64, 32, 16, 8 };
+		byte[] expectedBytes = {
+				0, 0, 0, 6,
+				5,
+				-128, 64, 32, 16, 8
+		};
 
 		BitField bitField = new BitField (40);
 		bitField.set (0);
@@ -264,7 +285,11 @@ public class TestPeerProtocolBuilder {
 	@Test
 	public void testSuggestPieceMessage() {
 
-		byte[] expectedBytes = { 0, 0, 0, 5, 13, 9, 8, 7, 6 };
+		byte[] expectedBytes = {
+				0, 0, 0, 5,
+				13,
+				9, 8, 7, 6
+		};
 
 		byte[] messageBytes = PeerProtocolBuilder.suggestPieceMessage ((9 << 24) + (8 << 16) + (7 << 8) + 6).array();
 
@@ -279,7 +304,10 @@ public class TestPeerProtocolBuilder {
 	@Test
 	public void testHaveAllMessage() {
 
-		byte[] expectedBytes = { 0, 0, 0, 1, 14 };
+		byte[] expectedBytes = {
+				0, 0, 0, 1,
+				14
+		};
 
 		byte[] messageBytes = PeerProtocolBuilder.haveAllMessage().array();
 
@@ -294,7 +322,10 @@ public class TestPeerProtocolBuilder {
 	@Test
 	public void testHaveNoneMessage() {
 
-		byte[] expectedBytes = { 0, 0, 0, 1, 15 };
+		byte[] expectedBytes = {
+				0, 0, 0, 1,
+				15
+		};
 
 		byte[] messageBytes = PeerProtocolBuilder.haveNoneMessage().array();
 
@@ -334,7 +365,11 @@ public class TestPeerProtocolBuilder {
 	@Test
 	public void testAllowedFastMessage() {
 
-		byte[] expectedBytes = { 0, 0, 0, 5, 17, 9, 8, 7, 6 };
+		byte[] expectedBytes = {
+				0, 0, 0, 5,
+				17,
+				9, 8, 7, 6
+		};
 
 		byte[] messageBytes = PeerProtocolBuilder.allowedFastMessage ((9 << 24) + (8 << 16) + (7 << 8) + 6).array();
 
@@ -387,7 +422,11 @@ public class TestPeerProtocolBuilder {
 	@Test
 	public void testExtensionMessage() {
 
-		byte[] expectedBytes = { 0, 0, 0, 6, 20, 1, 2, 3, 4, 5 };
+		byte[] expectedBytes = {
+				0, 0, 0, 6,
+				20,
+				1, 2, 3, 4, 5
+		};
 
 		ByteBuffer[] buffers = PeerProtocolBuilder.extensionMessage (1, ByteBuffer.wrap (new byte[] { 2, 3, 4, 5 }));
 
@@ -547,10 +586,7 @@ public class TestPeerProtocolBuilder {
 				ByteBuffer.wrap (new byte[] { 54, 55, 56, 57 })
 		);
 
-		byte[] messageBytes = new byte[buffers[0].capacity() + buffers[1].capacity() + buffers[2].capacity()];
-		buffers[0].get (messageBytes, 0, buffers[0].capacity());
-		buffers[1].get (messageBytes, buffers[0].capacity(), buffers[1].capacity());
-		buffers[2].get (messageBytes, buffers[0].capacity() + buffers[1].capacity(), buffers[2].capacity());
+		byte[] messageBytes = Util.flattenBuffers(buffers).array();
 
 		assertArrayEquals (expectedBytes, messageBytes);
 
@@ -578,14 +614,231 @@ public class TestPeerProtocolBuilder {
 		bitField.set (27);
 		bitField.set (36);
 
-		ByteBuffer[] buffers = PeerProtocolBuilder.elasticBitfieldMessage (bitField);
-
-		byte[] messageBytes = new byte[buffers[0].capacity() + buffers[1].capacity()];
-		buffers[0].get (messageBytes, 0, buffers[0].capacity());
-		buffers[1].get (messageBytes, buffers[0].capacity(), buffers[1].capacity());
+		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.elasticBitfieldMessage (bitField)).array();
 
 		assertArrayEquals (expectedBytes, messageBytes);
 
 	}
+
+
+	/**
+	 * Resouce directory message
+	 */
+	@Test
+	public void testResourceDirectoryMessage() {
+
+		byte[] expectedBytes = {
+				0, 0, 0, 53, 
+				20,
+				3,
+				0,
+				108,
+				108, 105, 49, 101, 52, 58, 105, 110, 102, 111, 105, 49, 50, 51, 52, 101, 101,
+				108, 105, 50, 101, 49, 55, 58, 120, 46, 53, 48, 57, 32, 99, 101, 114, 116, 105, 102, 105, 99, 97, 116, 101, 105, 53, 54, 55, 56, 101, 101,
+				101
+		};
+
+		ByteBuffer[] buffers = PeerProtocolBuilder.resourceDirectoryMessage (
+				Arrays.asList (new ResourceType[] { ResourceType.INFO, ResourceType.X509_CERTIFICATE }),
+				Arrays.asList (new Integer[] { 1234, 5678 })
+		);
+		byte[] messageBytes = Util.flattenBuffers(buffers).array();
+
+		assertArrayEquals (expectedBytes, messageBytes);
+
+	}
+
+
+	/**
+	 * Resource have message
+	 */
+	@Test
+	public void testResourceSubscribeMessage() {
+
+		byte[] expectedBytes = {
+				0, 0, 0, 4,
+				20,
+				3,
+				2,
+				63,
+		};
+
+		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceSubscribeMessage (63)).array();
+
+		assertArrayEquals (expectedBytes, messageBytes);
+
+	}
+
+
+	/**
+	 * Resource have message
+	 */
+	@Test
+	public void testResourceHaveMessage() {
+
+		byte[] expectedBytes = {
+				0, 0, 0, 9,
+				20,
+				3,
+				1,
+				63,
+				4,
+				9, 8, 7, 6
+		};
+
+		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceHaveMessage (63, (9 << 24) + (8 << 16) + (7 << 8) + 6)).array();
+
+		assertArrayEquals (expectedBytes, messageBytes);
+
+	}
+
+
+	/**
+	 * Resource bitfield message
+	 */
+	@Test
+	public void testResourceBitfieldMessage() {
+
+		byte[] expectedBytes = {
+				0, 0, 0, 10,
+				20,
+				3,
+				1,
+				63,
+				5,
+				-128, 64, 32, 16, 8
+		};
+
+		BitField bitField = new BitField (40);
+		bitField.set (0);
+		bitField.set (9);
+		bitField.set (18);
+		bitField.set (27);
+		bitField.set (36);
+
+		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceBitfieldMessage (63, bitField)).array();
+
+		assertArrayEquals (expectedBytes, messageBytes);
+
+	}
+
+
+	/**
+	 * Resource request message
+	 */
+	@Test
+	public void testResourceRequestMessage() {
+
+		int pieceIndex = (4 << 24) + (3 << 16) + (2 << 8) + 1;
+		int offset = (10 << 24) + (9 << 16) + (8 << 8) + 7;
+		int length = (14 << 24) + (13 << 16) + (12 << 8) + 11;
+
+		byte[] expectedBytes = new byte[] {
+				0, 0, 0, 17,
+				20,
+				3,
+				1,
+				63,
+				6,
+				4, 3, 2, 1,
+				10, 9, 8, 7,
+				14, 13, 12, 11
+		};
+
+		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceRequestMessage (63, new BlockDescriptor (pieceIndex, offset, length))).array();
+
+		assertArrayEquals (expectedBytes, messageBytes);
+
+	}
+
+
+
+	/**
+	 * Resource cancel message
+	 */
+	@Test
+	public void testResourceCancelMessage() {
+
+		int pieceIndex = (4 << 24) + (3 << 16) + (2 << 8) + 1;
+		int offset = (10 << 24) + (9 << 16) + (8 << 8) + 7;
+		int length = (14 << 24) + (13 << 16) + (12 << 8) + 11;
+
+		byte[] expectedBytes = new byte[] {
+				0, 0, 0, 17,
+				20,
+				3,
+				1,
+				63,
+				8,
+				4, 3, 2, 1,
+				10, 9, 8, 7,
+				14, 13, 12, 11
+		};
+
+		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceCancelMessage (63, new BlockDescriptor (pieceIndex, offset, length))).array();
+
+		assertArrayEquals (expectedBytes, messageBytes);
+
+	}
+
+
+	/**
+	 * Resource piece message
+	 */
+	@Test
+	public void testResourcePieceMessage() {
+
+		int pieceIndex = (4 << 24) + (3 << 16) + (2 << 8) + 1;
+		int offset = (10 << 24) + (9 << 16) + (8 << 8) + 7;
+		byte[] data = new byte[] { 40, 41, 42, 43, 44, 45, 46 };
+
+		byte[] expectedBytes = new byte[] {
+				0, 0, 0, 20,
+				20,
+				3,
+				1,
+				63,
+				7,
+				4, 3, 2, 1,
+				10, 9, 8, 7,
+				40, 41, 42, 43, 44, 45, 46
+		};
+
+		ByteBuffer[] buffers = PeerProtocolBuilder.resourcePieceMessage (63, new BlockDescriptor (pieceIndex, offset, data.length), ByteBuffer.wrap (data));
+		byte[] messageBytes = Util.flattenBuffers(buffers).array();
+
+		assertArrayEquals (expectedBytes, messageBytes);
+
+	}
+
+
+	/**
+	 * Resource reject request message
+	 */
+	@Test
+	public void testResourceRejectRequestMessage() {
+
+		int pieceIndex = (4 << 24) + (3 << 16) + (2 << 8) + 1;
+		int offset = (10 << 24) + (9 << 16) + (8 << 8) + 7;
+		int length = (14 << 24) + (13 << 16) + (12 << 8) + 11;
+
+		byte[] expectedBytes = new byte[] {
+				0, 0, 0, 17,
+				20,
+				3,
+				1,
+				63,
+				16,
+				4, 3, 2, 1,
+				10, 9, 8, 7,
+				14, 13, 12, 11
+		};
+
+		byte[] messageBytes = Util.flattenBuffers (PeerProtocolBuilder.resourceRejectRequestMessage (63, new BlockDescriptor (pieceIndex, offset, length))).array();
+
+		assertArrayEquals (expectedBytes, messageBytes);
+
+	}
+
 
 }
