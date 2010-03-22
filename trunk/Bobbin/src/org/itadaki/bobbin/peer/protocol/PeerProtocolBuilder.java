@@ -5,6 +5,7 @@
 package org.itadaki.bobbin.peer.protocol;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Map;
 
 import org.itadaki.bobbin.bencode.BBinary;
@@ -186,7 +187,6 @@ public class PeerProtocolBuilder {
 				(byte)((length >>> 16) & 0xff),
 				(byte)((length >>> 8) & 0xff),
 				(byte)(length & 0xff)
-
 		};
 
 		return ByteBuffer.wrap (messageBytes);
@@ -199,7 +199,7 @@ public class PeerProtocolBuilder {
 	 *
 	 * @param descriptor The descriptor of the block to send
 	 * @param block The block to send
-	 * @return A byte array containing the encoded message
+	 * @return An array of Bytebuffers containing the encoded message
 	 * @throws IllegalArgumentException if descriptor.getLength() is not equal to data.length
 	 */
 	public static ByteBuffer[] pieceMessage (BlockDescriptor descriptor, ByteBuffer block) {
@@ -212,20 +212,21 @@ public class PeerProtocolBuilder {
 		int offset = descriptor.getOffset();
 		int messageLength = 9 + block.remaining();
 
-		byte[] headerBytes =  new byte[13];
-		headerBytes[0] = (byte)((messageLength >>> 24) & 0xff);
-		headerBytes[1] = (byte)((messageLength >>> 16) & 0xff);
-		headerBytes[2] = (byte)((messageLength >>> 8) & 0xff);
-		headerBytes[3] = (byte)(messageLength & 0xff);
-		headerBytes[4] = PeerProtocolConstants.MESSAGE_TYPE_PIECE;
-		headerBytes[5] = (byte)((pieceNumber >>> 24) & 0xff);
-		headerBytes[6] = (byte)((pieceNumber >>> 16) & 0xff);
-		headerBytes[7] = (byte)((pieceNumber >>> 8) & 0xff);
-		headerBytes[8] = (byte)(pieceNumber & 0xff);
-		headerBytes[9] = (byte)((offset >>> 24) & 0xff);
-		headerBytes[10] = (byte)((offset >>> 16) & 0xff);
-		headerBytes[11] = (byte)((offset >>> 8) & 0xff);
-		headerBytes[12] = (byte)(offset & 0xff);
+		byte[] headerBytes =  new byte[] {
+				(byte)((messageLength >>> 24) & 0xff),
+				(byte)((messageLength >>> 16) & 0xff),
+				(byte)((messageLength >>> 8) & 0xff),
+				(byte)(messageLength & 0xff),
+				PeerProtocolConstants.MESSAGE_TYPE_PIECE,
+				(byte)((pieceNumber >>> 24) & 0xff),
+				(byte)((pieceNumber >>> 16) & 0xff),
+				(byte)((pieceNumber >>> 8) & 0xff),
+				(byte)(pieceNumber & 0xff),
+				(byte)((offset >>> 24) & 0xff),
+				(byte)((offset >>> 16) & 0xff),
+				(byte)((offset >>> 8) & 0xff),
+				(byte)(offset & 0xff)
+		};
 
 		return new ByteBuffer[] { ByteBuffer.wrap (headerBytes), block };
 
@@ -316,7 +317,7 @@ public class PeerProtocolBuilder {
 	/**
 	 * Constructs a ByteBuffer containing a "reject request" message
 	 *
-	 * @param descriptor
+	 * @param descriptor The descriptor of the rejected request
 	 * @return A ByteBuffer containing the encoded message
 	 */
 	public static ByteBuffer rejectRequestMessage (BlockDescriptor descriptor) {
@@ -340,7 +341,6 @@ public class PeerProtocolBuilder {
 				(byte)((length >>> 16) & 0xff),
 				(byte)((length >>> 8) & 0xff),
 				(byte)(length & 0xff)
-
 		};
 
 		return ByteBuffer.wrap (messageBytes);
@@ -593,10 +593,255 @@ public class PeerProtocolBuilder {
 
 
 	/**
+	 * Constructs a Resource extension directory message
+	 *
+	 * @param resources The resources to announce
+	 * @param lengths The lengths of the resources
+	 * @return An array of ByteBuffers containing the encoded message
+	 */
+	public static ByteBuffer[] resourceDirectoryMessage (List<ResourceType> resources, List<Integer> lengths) {
+
+		if (resources.size() != lengths.size()) {
+			throw new IllegalArgumentException ("Invalid resource length array");
+		}
+
+		BList directory = new BList();
+
+		for (int i = 0; i < resources.size(); i++) {
+			ResourceType resource = resources.get (i);
+			BList resourceList = new BList();
+			resourceList.add (new BInteger (resource.id));
+			resourceList.add (resource.name);
+			resourceList.add (new BInteger (lengths.get (i)));
+			directory.add (resourceList);
+		}
+
+		ByteBuffer encodedDirectory = ByteBuffer.wrap (BEncoder.encode (directory));
+
+		return extensionMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				ByteBuffer.wrap (new byte[] { PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_DIRECTORY }),
+				encodedDirectory
+		);
+
+	}
+
+
+	/**
+	 * Constructs a Resource extension directory message
+	 *
+	 * @param resourceID The ID of the resource to subscribe to
+	 * @return An array of ByteBuffers containing the encoded message
+	 */
+	public static ByteBuffer[] resourceSubscribeMessage (int resourceID) {
+
+		byte[] messageBytes = new byte[] {
+				PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_SUBSCRIBE,
+				(byte)(resourceID & 0xff)
+		};
+
+		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (messageBytes));
+
+	}
+
+
+	/**
+	 * Constructs a Resource extension have message
+	 *
+	 * @param resourceID The ID of the resource referred to
+	 * @param pieceNumber The piece number to send
+	 * @return An array of ByteBuffers containing the encoded message
+	 */
+	public static ByteBuffer[] resourceHaveMessage (int resourceID, int pieceNumber) {
+
+		byte[] messageBytes = new byte[] {
+				PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_TRANSFER,
+				(byte)(resourceID & 0xff),
+				PeerProtocolConstants.MESSAGE_TYPE_HAVE,
+				(byte)((pieceNumber >>> 24) & 0xff),
+				(byte)((pieceNumber >>> 16) & 0xff),
+				(byte)((pieceNumber >>> 8) & 0xff),
+				(byte)(pieceNumber & 0xff)
+		};
+
+		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (messageBytes));
+
+	}
+
+
+	/**
+	 * Constructs a Resource extension bitfield message
+	 *
+	 * @param resourceID 
+	 * @param bitField The bitfield to send
+	 * @return An array of ByteBuffers containing the encoded message
+	 */
+	public static ByteBuffer[] resourceBitfieldMessage (int resourceID, BitField bitField) {
+
+		byte[] messageBytes =  new byte[bitField.byteLength() + 3];
+		messageBytes[0] = PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_TRANSFER;
+		messageBytes[1] = (byte)(resourceID & 0xff);
+		messageBytes[2] = PeerProtocolConstants.MESSAGE_TYPE_BITFIELD;
+		bitField.copyTo (messageBytes, 3);
+
+		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (messageBytes));
+
+	}
+
+
+	/**
+	 * Constructs a Resource extension request message
+	 *
+	 * @param resourceID The ID of the resource referred to
+	 * @param descriptor The descriptor of the block to request
+	 * @return An array of ByteBuffers containing the encoded message
+	 */
+	public static ByteBuffer[] resourceRequestMessage (int resourceID, BlockDescriptor descriptor) {
+
+
+		int pieceNumber = descriptor.getPieceNumber();
+		int offset = descriptor.getOffset();
+		int length = descriptor.getLength();
+
+		byte[] messageBytes = new byte[] {
+				PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_TRANSFER,
+				(byte)(resourceID & 0xff),
+				PeerProtocolConstants.MESSAGE_TYPE_REQUEST,
+				(byte)((pieceNumber >>> 24) & 0xff),
+				(byte)((pieceNumber >>> 16) & 0xff),
+				(byte)((pieceNumber >>> 8) & 0xff),
+				(byte)(pieceNumber & 0xff),
+				(byte)((offset >>> 24) & 0xff),
+				(byte)((offset >>> 16) & 0xff),
+				(byte)((offset >>> 8) & 0xff),
+				(byte)(offset & 0xff),
+				(byte)((length >>> 24) & 0xff),
+				(byte)((length >>> 16) & 0xff),
+				(byte)((length >>> 8) & 0xff),
+				(byte)(length & 0xff)
+		};
+
+		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (messageBytes));
+
+	}
+
+
+	/**
+	 * Constructs a Resource extension cancel message
+	 *
+	 * @param resourceID The ID of the resource referred to
+	 * @param descriptor The descriptor of the block to cancel
+	 * @return An array of ByteBuffers containing the encoded message
+	 */
+	public static ByteBuffer[] resourceCancelMessage (int resourceID, BlockDescriptor descriptor) {
+
+
+		int pieceNumber = descriptor.getPieceNumber();
+		int offset = descriptor.getOffset();
+		int length = descriptor.getLength();
+
+		byte[] messageBytes = new byte[] {
+				PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_TRANSFER,
+				(byte)(resourceID & 0xff),
+				PeerProtocolConstants.MESSAGE_TYPE_CANCEL,
+				(byte)((pieceNumber >>> 24) & 0xff),
+				(byte)((pieceNumber >>> 16) & 0xff),
+				(byte)((pieceNumber >>> 8) & 0xff),
+				(byte)(pieceNumber & 0xff),
+				(byte)((offset >>> 24) & 0xff),
+				(byte)((offset >>> 16) & 0xff),
+				(byte)((offset >>> 8) & 0xff),
+				(byte)(offset & 0xff),
+				(byte)((length >>> 24) & 0xff),
+				(byte)((length >>> 16) & 0xff),
+				(byte)((length >>> 8) & 0xff),
+				(byte)(length & 0xff)
+		};
+
+		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (messageBytes));
+
+	}
+
+
+	/**
+	 * Constructs a Resource extension piece message
+	 *
+	 * @param resourceID The ID of the resource referred to
+	 * @param descriptor The descriptor of the block to send
+	 * @param block The block to send
+	 * @return An array of ByteBuffers containing the encoded message
+	 * @throws IllegalArgumentException if descriptor.getLength() is not equal to data.length
+	 */
+	public static ByteBuffer[] resourcePieceMessage (int resourceID, BlockDescriptor descriptor, ByteBuffer block) {
+
+		if (descriptor.getLength() != block.remaining()) {
+			throw new IllegalArgumentException ("Invalid block data length");
+		}
+
+		int pieceNumber = descriptor.getPieceNumber();
+		int offset = descriptor.getOffset();
+
+		byte[] headerBytes =  new byte[] {
+				PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_TRANSFER,
+				(byte)(resourceID & 0xff),
+				PeerProtocolConstants.MESSAGE_TYPE_PIECE,
+				(byte)((pieceNumber >>> 24) & 0xff),
+				(byte)((pieceNumber >>> 16) & 0xff),
+				(byte)((pieceNumber >>> 8) & 0xff),
+				(byte)(pieceNumber & 0xff),
+				(byte)((offset >>> 24) & 0xff),
+				(byte)((offset >>> 16) & 0xff),
+				(byte)((offset >>> 8) & 0xff),
+				(byte)(offset & 0xff)
+		};
+
+		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (headerBytes), block);
+
+	}
+
+	
+	/**
+	 * Constructs a Resource extension reject request message
+	 *
+	 * @param resourceID The ID of the resource referred to
+	 * @param descriptor The descriptor of the rejected request
+	 * @return An array of ByteBuffers containing the encoded message
+	 */
+	public static ByteBuffer[] resourceRejectRequestMessage (int resourceID, BlockDescriptor descriptor) {
+
+		int pieceNumber = descriptor.getPieceNumber();
+		int offset = descriptor.getOffset();
+		int length = descriptor.getLength();
+
+		byte[] messageBytes = new byte[] {
+				PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_TRANSFER,
+				(byte)(resourceID & 0xff),
+				PeerProtocolConstants.MESSAGE_TYPE_REJECT_REQUEST,
+				(byte)((pieceNumber >>> 24) & 0xff),
+				(byte)((pieceNumber >>> 16) & 0xff),
+				(byte)((pieceNumber >>> 8) & 0xff),
+				(byte)(pieceNumber & 0xff),
+				(byte)((offset >>> 24) & 0xff),
+				(byte)((offset >>> 16) & 0xff),
+				(byte)((offset >>> 8) & 0xff),
+				(byte)(offset & 0xff),
+				(byte)((length >>> 24) & 0xff),
+				(byte)((length >>> 16) & 0xff),
+				(byte)((length >>> 8) & 0xff),
+				(byte)(length & 0xff)
+		};
+
+		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (messageBytes));
+
+	}
+
+
+	/**
 	 * Not instantiable
 	 */
 	private PeerProtocolBuilder() {
 
 	}
+
 
 }

@@ -170,9 +170,14 @@ public class PeerProtocolConstants {
 	public static final byte EXTENDED_MESSAGE_TYPE_ELASTIC = 2;
 
 	/**
+	 * Resource extension
+	 */
+	public static final byte EXTENDED_MESSAGE_TYPE_RESOURCE = 3;
+
+	/**
 	 * The first available custom extended message
 	 */
-	public static final byte EXTENDED_MESSAGE_TYPE_CUSTOM = 3;
+	public static final byte EXTENDED_MESSAGE_TYPE_CUSTOM = 4;
 
 
 	/* Elastic extension message subtypes */
@@ -191,6 +196,24 @@ public class PeerProtocolConstants {
 	 * Elastic bitfield message
 	 */
 	public static final byte ELASTIC_MESSAGE_TYPE_BITFIELD = 2;
+
+
+	/* Resource extension message subtypes */
+
+	/**
+	 * Resource directory message
+	 */
+	public static final byte RESOURCE_MESSAGE_TYPE_DIRECTORY = 0;
+
+	/**
+	 * Resource transfer message
+	 */
+	public static final byte RESOURCE_MESSAGE_TYPE_TRANSFER = 1;
+
+	/**
+	 * Resource subscribe message
+	 */
+	public static final byte RESOURCE_MESSAGE_TYPE_SUBSCRIBE = 2;
 
 
 	/* Extension protocol identifiers */
@@ -219,6 +242,11 @@ public class PeerProtocolConstants {
 	 * Elastic extension
 	 */
 	public static final String EXTENSION_ELASTIC = "bo_elastic";
+
+	/**
+	 * Resource extension
+	 */
+	public static final String EXTENSION_RESOURCE = "bo_resource";
 
 
 	/**

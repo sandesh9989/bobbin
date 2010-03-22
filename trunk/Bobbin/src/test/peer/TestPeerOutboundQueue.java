@@ -1348,7 +1348,7 @@ public class TestPeerOutboundQueue {
 
 		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, infoHash, peerID));
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
-		expectedExtensions.put ("bl_ah", 3);
+		expectedExtensions.put ("bl_ah", (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM);
 		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, null));
 		connection.mockExpectNoMoreOutput();
 
@@ -1386,7 +1386,7 @@ public class TestPeerOutboundQueue {
 
 		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, infoHash, peerID));
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
-		expectedExtensions.put ("bl_ah", 3);
+		expectedExtensions.put ("bl_ah", (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM);
 		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, null));
 		Map<String,Integer> expectedExtensions2 = new TreeMap<String,Integer>();
 		expectedExtensions2.put ("bl_ah", 0);
@@ -1427,9 +1427,9 @@ public class TestPeerOutboundQueue {
 
 		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, infoHash, peerID));
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
-		expectedExtensions.put ("bl_ah", 3);
+		expectedExtensions.put ("bl_ah", (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM);
 		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, null));
-		connection.mockExpectOutput (PeerProtocolBuilder.extensionMessage (3, ByteBuffer.wrap (new byte[] { 1, 2, 3, 4})));
+		connection.mockExpectOutput (PeerProtocolBuilder.extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM, ByteBuffer.wrap (new byte[] { 1, 2, 3, 4})));
 		connection.mockExpectNoMoreOutput();
 
 	}
