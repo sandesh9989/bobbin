@@ -21,9 +21,7 @@ import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.bencode.BInteger;
 import org.itadaki.bobbin.bencode.BList;
 import org.itadaki.bobbin.bencode.BValue;
-import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
-import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 
 
@@ -53,29 +51,9 @@ import org.itadaki.bobbin.torrentdb.ViewSignature;
 public class PeerProtocolParser {
 
 	/**
-	 * The bytes of the mandatory stream header
-	 */
-	private static final byte[] streamHeaderBytes = { 19, 'B', 'i', 't', 'T', 'o', 'r', 'r', 'e', 'n', 't', ' ', 'p', 'r', 'o', 't', 'o', 'c', 'o', 'l' };
-
-	/**
 	 * The parser's current state
 	 */
 	private static enum ParserState {
-
-		/**
-		 * Parser is reading the 20 byte header + 8 byte reserved data
-		 */
-		HEADER, 
-
-		/**
-		 * Parser is reading the 20 byte info hash
-		 */
-		INFO_HASH,
-
-		/**
-		 * Parser is reading the 20 byte peer ID
-		 */
-		PEER_ID,
 
 		/**
 		 * Parser is reading the 4 byte message length header
@@ -102,17 +80,17 @@ public class PeerProtocolParser {
 	/**
 	 * The parser's current state
 	 */
-	private ParserState parserState = ParserState.HEADER;
+	private ParserState parserState = ParserState.MESSAGE_LENGTH;
 
 	/**
 	 * The message data currently being assembled from input
 	 */
-	private ByteBuffer messageData = ByteBuffer.allocate (streamHeaderBytes.length + 8);
+	private ByteBuffer messageData = ByteBuffer.allocate (4);
 
 	/**
 	 * The number of remaining bytes that are expected of the current message
 	 */
-	private int messageBytesExpected = streamHeaderBytes.length + 8;
+	private int messageBytesExpected = 4;
 
 	/**
 	 * {@code true} if the remote peer supports the Fast extension
@@ -146,7 +124,7 @@ public class PeerProtocolParser {
 		if (numBytes > this.messageData.capacity()) {
 			this.messageData = ByteBuffer.allocate (numBytes);
 		}
-		this.messageData.clear ();
+		this.messageData.clear();
 		this.messageData.limit (numBytes);
 		this.messageBytesExpected = numBytes;
 
@@ -392,47 +370,9 @@ public class PeerProtocolParser {
 
 			this.messageBytesExpected -= bytesRead;
 
-			// Check the header contents even before the expected number of bytes have been received - abort
-			// early if someone is speaking the wrong protocol to us
-			if (this.parserState == ParserState.HEADER) {
-				for (int i = 0; (i < streamHeaderBytes.length) && (i < this.messageData.position()); i++) {
-					if (this.messageData.get(i) != streamHeaderBytes[i]) {
-						this.parserState = ParserState.ERROR;
-						throw new IOException ("Invalid header");
-					}
-				}
-			}
-
 			if (this.messageBytesExpected == 0) {
 				this.messageData.rewind();
 				switch (this.parserState) {
-
-					case HEADER:
-						this.messageData.position (20);
-						byte[] extensionBytes = new byte[8];
-						this.messageData.get (extensionBytes);
-						this.fastExtensionEnabled &= ((extensionBytes[7] & 0x04) != 0);
-						this.extensionProtocolEnabled &= ((extensionBytes[5] & 0x10) != 0);
-						this.consumer.handshakeBasicExtensions (this.fastExtensionEnabled, this.extensionProtocolEnabled);
-						this.parserState = ParserState.INFO_HASH;
-						resetMessageBuffer (20);
-						continue;
-
-					case INFO_HASH:
-						byte[] infoHashBytes = new byte[20];
-						this.messageData.get (infoHashBytes);
-						this.consumer.handshakeInfoHash (new InfoHash (infoHashBytes));
-						this.parserState = ParserState.PEER_ID;
-						resetMessageBuffer (20);
-						continue;
-
-					case PEER_ID:
-						byte[] peerIDBytes = new byte[20];
-						this.messageData.get (peerIDBytes);
-						this.consumer.handshakePeerID (new PeerID (peerIDBytes));
-						this.parserState = ParserState.MESSAGE_LENGTH;
-						resetMessageBuffer (4);
-						continue;
 
 					case MESSAGE_LENGTH:
 						int length = readInt();
@@ -653,16 +593,14 @@ public class PeerProtocolParser {
 
 	/**
 	 * @param consumer The PeerProtocolConsumer to inform of received completed messages
-	 * @param fastExtensionOffered If {@code true}, the Fast extension has been offered to the
-	 *        remote peer
-	 * @param extensionProtocolOffered If {@code true}, the extension protocol has been offered to
-	 *        the remote peer
+	 * @param fastExtensionEnabled If {@code true}, the Fast extension has been negotiated
+	 * @param extensionProtocolEnabled If {@code true}, the extension protocol has negotiated
 	 */
-	public PeerProtocolParser (PeerProtocolConsumer consumer, boolean fastExtensionOffered, boolean extensionProtocolOffered) {
+	public PeerProtocolParser (PeerProtocolConsumer consumer, boolean fastExtensionEnabled, boolean extensionProtocolEnabled) {
 
 		this.consumer = consumer;
-		this.fastExtensionEnabled = fastExtensionOffered;
-		this.extensionProtocolEnabled = extensionProtocolOffered;
+		this.fastExtensionEnabled = fastExtensionEnabled;
+		this.extensionProtocolEnabled = extensionProtocolEnabled;
 
 	}
 

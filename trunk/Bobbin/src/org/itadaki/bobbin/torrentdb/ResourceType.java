@@ -1,4 +1,4 @@
-package org.itadaki.bobbin.peer.protocol;
+package org.itadaki.bobbin.torrentdb;
 
 import java.util.EnumSet;
 import java.util.HashMap;

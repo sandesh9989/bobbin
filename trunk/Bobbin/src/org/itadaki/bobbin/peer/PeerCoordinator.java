@@ -27,6 +27,8 @@ import org.itadaki.bobbin.connectionmanager.OutboundConnectionListener;
 import org.itadaki.bobbin.peer.chokingmanager.ChokingManager;
 import org.itadaki.bobbin.peer.chokingmanager.DefaultChokingManager;
 import org.itadaki.bobbin.peer.extensionmanager.ExtensionManager;
+import org.itadaki.bobbin.peer.protocol.PeerConnectionListener;
+import org.itadaki.bobbin.peer.protocol.PeerProtocolNegotiator;
 import org.itadaki.bobbin.peer.requestmanager.RandomRequestManager;
 import org.itadaki.bobbin.peer.requestmanager.RequestManager;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
@@ -46,7 +48,7 @@ import org.itadaki.bobbin.util.elastictree.HashChain;
  * Administrates the connected peer set of a torrent, coordinating choking, request allocation,
  * received piece assembly and protocol extensions for the connected peers
  */
-public class PeerCoordinator implements PeerSourceListener, PeerServices {
+public class PeerCoordinator implements PeerConnectionListener, PeerSourceListener, PeerServices {
 
 	/**
 	 * A period of two seconds measured in 500ms intervals. Used in network statistics gathering
@@ -107,9 +109,9 @@ public class PeerCoordinator implements PeerSourceListener, PeerServices {
 	private final Set<Connection> pendingConnections = new HashSet<Connection>();
 
 	/**
-	 * The set of outbound connected peers that have not yet sent their handshake
+	 * The set of outbound peer connections that have not yet completed their base protocol handshake
 	 */
-	private final Set<ManageablePeer> unconnectedPeers = new HashSet<ManageablePeer>();
+	private final Set<Connection> unconnectedPeers = new HashSet<Connection>();
 
 	/**
 	 * The set of all fully connected peers
@@ -164,7 +166,8 @@ public class PeerCoordinator implements PeerSourceListener, PeerServices {
 			// Connections may be closed by a state change between being accepted by the connection
 			// manager (outside the peer context lock) and their receipt here (inside the lock) 
 			if (connection.isOpen() && mayConnectToPeer()) {
-				PeerCoordinator.this.unconnectedPeers.add (new PeerHandler (PeerCoordinator.this, connection));
+				PeerCoordinator.this.unconnectedPeers.add (connection);
+				new PeerProtocolNegotiator (connection, PeerCoordinator.this, PeerCoordinator.this.pieceDatabase.getInfo().getHash(), PeerCoordinator.this.localPeerID);
 			} else {
 				try {
 					connection.close();
@@ -211,6 +214,65 @@ public class PeerCoordinator implements PeerSourceListener, PeerServices {
 			}
 		}
 	};
+
+
+	/* PeerConnectionListener interface */
+
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.peer.protocol.PeerConnectionListener#peerConnectionComplete(org.itadaki.bobbin.connectionmanager.Connection, org.itadaki.bobbin.peer.PeerID, boolean, boolean)
+	 */
+	public void peerConnectionComplete (Connection connection, PeerID remotePeerID, boolean fastExtensionEnabled, boolean extensionProtocolEnabled) {
+
+		this.unconnectedPeers.remove (connection);
+
+		if (!this.pieceDatabase.getInfo().isPlain() && !extensionProtocolEnabled) {
+
+			// If the torrent is a Merkle or Elastic torrent, the extension protocol is mandatory
+			try {
+				connection.close();
+			} catch (IOException e) {
+				// Can't do anything and don't much care
+			}
+
+		} else {
+
+			// Apply peer limit (outbound connections are limited at source, but inbound connections
+			// are not)
+			if (!this.mayConnectToPeer()) {
+				return;
+			}
+
+			// Refuse to connect to ourselves
+			if (this.localPeerID.equals (remotePeerID)) {
+				return;
+			}
+
+			// Refuse to connect to an already connected peer
+			if (this.connectedPeerIDs.contains (remotePeerID)) {
+				return;
+			}
+
+			// Register the peer
+			PeerHandler peer = new PeerHandler (this, connection, remotePeerID, fastExtensionEnabled, extensionProtocolEnabled);
+			this.connectedPeers.add (peer);
+			this.connectedPeerIDs.add (remotePeerID);
+			for (PeerCoordinatorListener listener : this.listeners) {
+				listener.peerRegistered (peer);
+			}
+
+		}
+
+	}
+
+
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.peer.protocol.PeerConnectionListener#peerConnectionFailed(org.itadaki.bobbin.connectionmanager.Connection)
+	 */
+	public void peerConnectionFailed (Connection connection) {
+
+		this.unconnectedPeers.remove (connection);
+
+	}
 
 
 	/* PeerSourceListener interface */
@@ -266,44 +328,6 @@ public class PeerCoordinator implements PeerSourceListener, PeerServices {
 	public PeerID getLocalPeerID() {
 
 		return this.localPeerID;
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#peerConnected(org.itadaki.bobbin.peer.ManageablePeer)
-	 */
-	public boolean peerConnected (ManageablePeer peer) {
-
-		PeerID remotePeerID = peer.getPeerState().getRemotePeerID();
-
-		// Apply peer limit (outbound connections are limited at source, but inbound connections
-		// are not)
-		if (!this.mayConnectToPeer()) {
-			return false;
-		}
-
-		// Refuse to connect to ourselves
-		if (this.localPeerID.equals (remotePeerID)) {
-			return false;
-		}
-
-		// Refuse to connect to an already connected peer
-		if (this.connectedPeerIDs.contains (remotePeerID)) {
-			return false;
-		}
-
-		// If it was an outgoing connection, remove it from the set of unconnected peers
-		this.unconnectedPeers.remove (peer);
-
-		// Register the peer
-		this.connectedPeers.add (peer);
-		this.connectedPeerIDs.add (remotePeerID);
-		for (PeerCoordinatorListener listener : this.listeners) {
-			listener.peerRegistered (peer);
-		}
-
-		return true;
 
 	}
 
@@ -387,7 +411,7 @@ public class PeerCoordinator implements PeerSourceListener, PeerServices {
 	 */
 	public List<BlockDescriptor> getRequests (ManageablePeer peer, int numRequests, boolean allowedFastOnly) {
 
-		return this.requestManager.allocateRequests (peer, numRequests, false);
+		return this.requestManager.allocateRequests (peer, numRequests, allowedFastOnly);
 
 	}
 
@@ -551,10 +575,14 @@ public class PeerCoordinator implements PeerSourceListener, PeerServices {
 		}
 
 		// Close all unconnected peers
-		for (Iterator<ManageablePeer> iterator = this.unconnectedPeers.iterator(); iterator.hasNext();) {
-			ManageablePeer peer = iterator.next();
+		for (Iterator<Connection> iterator = this.unconnectedPeers.iterator(); iterator.hasNext();) {
+			Connection connection = iterator.next();
 			iterator.remove();
-			peer.close();
+			try {
+				connection.close();
+			} catch (IOException e) {
+				// Shouldn't happen and don't care
+			}
 		}
 
 		// Close all connected peers

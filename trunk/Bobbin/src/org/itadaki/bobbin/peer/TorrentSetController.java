@@ -23,6 +23,9 @@ import org.itadaki.bobbin.bencode.InvalidEncodingException;
 import org.itadaki.bobbin.connectionmanager.Connection;
 import org.itadaki.bobbin.connectionmanager.ConnectionManager;
 import org.itadaki.bobbin.connectionmanager.InboundConnectionListener;
+import org.itadaki.bobbin.peer.protocol.PeerConnectionListener;
+import org.itadaki.bobbin.peer.protocol.PeerConnectionListenerProvider;
+import org.itadaki.bobbin.peer.protocol.PeerProtocolNegotiator;
 import org.itadaki.bobbin.torrentdb.FileMetadataProvider;
 import org.itadaki.bobbin.torrentdb.FileStorage;
 import org.itadaki.bobbin.torrentdb.IncompatibleLocationException;
@@ -125,7 +128,7 @@ public class TorrentSetController {
 			synchronized (TorrentSetController.this.stateMachine) {
 				switch (TorrentSetController.this.stateMachine.getState()) {
 					case RUNNING:
-						new PeerHandler (TorrentSetController.this.peerServicesProvider, connection);
+						new PeerProtocolNegotiator (connection, TorrentSetController.this.peerConnectionListenerProvider, TorrentSetController.this.localPeerID);
 						break;
 				}
 			}
@@ -137,17 +140,17 @@ public class TorrentSetController {
 	/**
 	 * A {@code PeerServicesProvider} to connect incoming peers with the correct {@code PeerCoordinator}
 	 */
-	private final PeerServicesProvider peerServicesProvider = new PeerServicesProvider() {
+	private final PeerConnectionListenerProvider peerConnectionListenerProvider = new PeerConnectionListenerProvider() {
 
 		/* (non-Javadoc)
-		 * @see org.itadaki.bobbin.peer.PeerServicesProvider#getPeerCoordinator(InfoHash)
+		 * @see org.itadaki.bobbin.peer.protocol.PeerConnectionListenerProvider#getPeerConnectionListener(org.itadaki.bobbin.torrentdb.InfoHash)
 		 */
-		public PeerServices getPeerServices (InfoHash infoHash) {
+		public PeerConnectionListener getPeerConnectionListener (InfoHash infoHash) {
 
 			synchronized (TorrentSetController.this.stateMachine) {
 				TorrentManager manager = TorrentSetController.this.torrentManagers.get (infoHash);
 				if (manager != null) {
-					return manager.getPeerCoordinator();
+					return manager.getPeerConnectionListener();
 				}
 				return null;
 			}

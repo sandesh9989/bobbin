@@ -267,6 +267,7 @@ public class TrackerClient implements TrackerClientStatus {
 				if (response.isStateComplete()) {
 					byte[] responseData = response.getResponseBody();
 					try {
+
 						responseDictionary = new BDecoder(responseData).decodeDictionary();
 
 						TrackerClient.this.lastUpdateTime = System.currentTimeMillis();

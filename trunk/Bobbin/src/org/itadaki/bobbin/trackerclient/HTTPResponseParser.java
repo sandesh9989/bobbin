@@ -131,9 +131,10 @@ public class HTTPResponseParser implements HTTPResponse {
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.trackerclient.HTTPResponse#getResponseMessage()
 	 */
-	public Object getResponseMessage() {
+	public String getResponseMessage() {
 
 		return this.responseMessage;
+
 	}
 
 
