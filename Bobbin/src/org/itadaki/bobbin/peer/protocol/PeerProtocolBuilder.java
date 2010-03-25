@@ -16,6 +16,7 @@ import org.itadaki.bobbin.bencode.BList;
 import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.InfoHash;
+import org.itadaki.bobbin.torrentdb.ResourceType;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.CharsetUtil;

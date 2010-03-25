@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.itadaki.bobbin.connectionmanager.ConnectionManager;
+import org.itadaki.bobbin.peer.protocol.PeerConnectionListener;
 import org.itadaki.bobbin.torrentdb.MetaInfo;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.PieceDatabaseListener;
@@ -620,9 +621,9 @@ public class TorrentManager {
 	/**
 	 * <p><b>Thread safety:</b> This method is thread safe
 	 * 
-	 * @return The torrent's peer coordinator
+	 * @return The torrent's peer connection listener
 	 */
-	PeerServices getPeerCoordinator() {
+	PeerConnectionListener getPeerConnectionListener() {
 
 		return this.peerCoordinator;
 

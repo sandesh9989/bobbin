@@ -19,13 +19,11 @@ import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerHandler;
 import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.peer.PeerServices;
-import org.itadaki.bobbin.peer.PeerServicesProvider;
 import org.itadaki.bobbin.peer.PeerStatistics;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConstants;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.Info;
-import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.MemoryStorage;
 import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
@@ -63,7 +61,7 @@ public class TestPeerHandler {
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// Then
 		assertFalse (handler.getPeerState().getWeAreInterested());
@@ -94,13 +92,11 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected(any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
 		// Remote peer sends us an unchoke
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, false);
 
@@ -124,9 +120,8 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected(any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
 		// Remote peer sends us an unchoke then a choke
@@ -155,13 +150,11 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected(any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
 		// Remote peer sends us an interested message
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.interestedMessage());
 		handler.connectionReady (mockConnection, true, false);
 
@@ -186,13 +179,11 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected(any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
 		// Remote peer sends us an interested message then a not interested message
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockInput (PeerProtocolBuilder.notInterestedMessage());
 		handler.connectionReady (mockConnection, true, false);
@@ -221,22 +212,19 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (Arrays.asList (new BlockDescriptor[] { request }));
 
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
 		// We send remote peer a request
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.requestMessage (request));
 		mockConnection.mockExpectNoMoreOutput();
@@ -273,20 +261,17 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 		BlockDescriptor request = new BlockDescriptor (0, 0, 16384);
 
 		// When
 		// Initial handshake
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.bitfieldMessage (pieceDatabase.getPresentPieces()));
 		mockConnection.mockExpectNoMoreOutput();
 
@@ -328,15 +313,13 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (Arrays.asList (new BlockDescriptor[] { request }));
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
 		// Remote peer sends us a block
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, false);
@@ -345,7 +328,7 @@ public class TestPeerHandler {
 
 		// Then
 		// Protocol counter measures total bytes including the block
-		assertEquals (16476, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.PROTOCOL_BYTES_RECEIVED).getTotal());
+		assertEquals (16408, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.PROTOCOL_BYTES_RECEIVED).getTotal());
 
 
 		pieceDatabase.terminate (true);
@@ -369,14 +352,12 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
 		// We send the remote peer a block
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, true);
@@ -386,7 +367,7 @@ public class TestPeerHandler {
 
 		// Then
 		// Protocol counter measures total bytes including the block
-		assertEquals (16476, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.PROTOCOL_BYTES_SENT).getTotal());
+		assertEquals (16408, handler.getReadableStatistics().getReadableCounter (PeerStatistics.Type.PROTOCOL_BYTES_SENT).getTotal());
 
 
 		pieceDatabase.terminate (true);
@@ -410,14 +391,12 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
 		// The remote peer requests a block but we don't send it
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, true);
@@ -450,14 +429,12 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
 		// The remote peer requests a block
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, true);
@@ -498,13 +475,11 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		handler.connectionReady (mockConnection, true, true);
 
@@ -540,17 +515,15 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { request }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
 		// We make a request but cancel it before it is sent
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, false);
@@ -558,7 +531,6 @@ public class TestPeerHandler {
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectNoMoreOutput();
 
 
@@ -584,23 +556,20 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { request }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
 		// We make a request and cancel it after it has been sent
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.requestMessage (request));
 		mockConnection.mockExpectNoMoreOutput();
@@ -636,19 +605,16 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectNoMoreOutput();
 
@@ -682,12 +648,10 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		handler.connectionReady (mockConnection, true, false);
 
 		// Then
@@ -716,127 +680,18 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		handler.connectionReady (mockConnection, true, false);
 
 		// Then
 		// Remote bitfield has sent value after bitfield message received
 		assertEquals (new BitField (1).not(), handler.getRemoteBitField());
-
-
-		pieceDatabase.terminate (true);
-
-	}
-
-
-	/**
-	 * Test handshakeInfoHash on an outbound connection where the remote peer responds with the
-	 * wrong hash
-	 * @throws Exception 
-	 */
-	@Test
-	public void testHandshakeInfoHashOutboundWrongHash() throws Exception {
-
-		// Given
-		PeerID localPeerID = new PeerID();
-		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
-		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
-		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
-		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
-
-		// When
-		handler.connectionReady (mockConnection, false, true);
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, new InfoHash (new byte[20]), new PeerID()));
-
-		// Then
-		verify(mockPeerServices, never()).peerDisconnected(any (ManageablePeer.class));
-
-		// When
-		handler.connectionReady (mockConnection, true, true);
-
-		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
-		mockConnection.mockExpectNoMoreOutput();
-		verify(mockPeerServices).peerDisconnected(any (ManageablePeer.class));
-
-
-		pieceDatabase.terminate (true);
-
-	}
-
-
-	/**
-	 * Tests behaviour in response to an unknown info hash passed to a PeerHandler constructed for
-	 * inbound use
-	 * @throws Exception
-	 */
-	@Test
-	public void testHandshakeInfoHashInboundUnknownHash() throws Exception {
-
-		// Given
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (null);
-		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
-
-		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, new InfoHash (new byte[20]), new PeerID()));
-
-		// Then
-		assertTrue (mockConnection.isOpen());
-
-		// When
-		handler.connectionReady (mockConnection, true, true);
-
-		// Then
-		mockConnection.mockExpectNoMoreOutput();
-		assertFalse (mockConnection.isOpen());
-
-	}
-
-
-	/**
-	 * Tests behaviour in response to a known info hash passed to a PeerHandler constructed for
-	 * inbound use
-	 * @throws Exception
-	 */
-	@Test
-	public void testHandshakeInfoHashInboundKnownHash() throws Exception {
-
-		// Given
-		final PeerID localPeerID = new PeerID();
-		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
-		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
-		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
-		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
-		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
-
-		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
-		handler.connectionReady (mockConnection, true, true);
-
-		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), localPeerID));
-		mockConnection.mockExpectNoMoreOutput();
-		assertTrue (mockConnection.isOpen());
 
 
 		pieceDatabase.terminate (true);
@@ -861,44 +716,11 @@ public class TestPeerHandler {
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
 
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, false, false);
 
 		// Then
 		assertEquals ("1.2.3.4", handler.getRemoteSocketAddress().getAddress().getHostAddress());
 		assertEquals (5678, handler.getRemoteSocketAddress().getPort());
-
-
-		pieceDatabase.terminate (true);
-
-	}
-
-
-	/**
-	 * Tests getRemotePeerID
-	 * @throws Exception
-	 */
-	@Test
-	public void testGetRemotePeerID() throws Exception {
-
-		// Given
-		PeerID localPeerID = new PeerID();
-		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
-		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
-		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
-		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
-		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
-
-		// When
-		PeerID remotePeerID = new PeerID();
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), remotePeerID));
-		handler.connectionReady (mockConnection, true, false);
-
-		// Then
-		assertEquals (remotePeerID, handler.getPeerState().getRemotePeerID());
 
 
 		pieceDatabase.terminate (true);
@@ -921,9 +743,8 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), false, false);
 
 		// When
 		PeerID remotePeerID = new PeerID();
@@ -954,9 +775,8 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), false, false);
 
 		// When
 		PeerID remotePeerID = new PeerID();
@@ -988,19 +808,16 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (1));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (2));
@@ -1060,18 +877,15 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (0));
 		mockConnection.mockExpectNoMoreOutput();
@@ -1098,18 +912,15 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (0));
 		mockConnection.mockExpectNoMoreOutput();
@@ -1136,18 +947,15 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.bitfieldMessage (pieceDatabase.getPresentPieces()));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (0));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (1));
@@ -1175,21 +983,16 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (0));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (1));
@@ -1222,20 +1025,15 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 		BlockDescriptor requestDescriptor = new BlockDescriptor (0, 0, 16384);
 
 		// WHen
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveNoneMessage());
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (1));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (2));
@@ -1281,20 +1079,15 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 		BlockDescriptor request = new BlockDescriptor (0, 0, 16384);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveNoneMessage());
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (0));
 		mockConnection.mockExpectNoMoreOutput();
@@ -1334,20 +1127,15 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 		BlockDescriptor request = new BlockDescriptor (14, 0, 16384);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveNoneMessage());
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (1));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (2));
@@ -1402,24 +1190,19 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 		BlockDescriptor requestDescriptor = new BlockDescriptor (0, 0, 16384);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveAllMessage());
 		handler.connectionReady (mockConnection, true, true);
 		mockConnection.mockInput (PeerProtocolBuilder.pieceMessage (requestDescriptor, ByteBuffer.allocate (16384)));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectNoMoreOutput();
@@ -1447,15 +1230,11 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 		BlockDescriptor requestDescriptor = new BlockDescriptor (0, 0, 16384);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveNoneMessage());
 		handler.connectionReady (mockConnection, true, false);
 		handler.setWeAreChoking (false);
@@ -1465,7 +1244,6 @@ public class TestPeerHandler {
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (0));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.unchokeMessage());
@@ -1494,21 +1272,16 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveAllMessage());
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectNoMoreOutput();
@@ -1536,20 +1309,15 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveNoneMessage());
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (0));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (1));
@@ -1582,25 +1350,20 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { requestDescriptor }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 
 		// When
 		// They allow us to make a request
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.requestMessage (requestDescriptor));
@@ -1648,25 +1411,20 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { requestDescriptor }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 
 		// When
 		// They allow us to make a request
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.requestMessage (requestDescriptor));
@@ -1706,25 +1464,20 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { requestDescriptor }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 
 		// When
 		// They allow us to make a request
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.requestMessage (requestDescriptor));
@@ -1774,25 +1527,20 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (true)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { requestDescriptor }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 
 		// When
 		// They send an Allowed Fast message, allowing us to make a request while choked
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockInput (PeerProtocolBuilder.allowedFastMessage (2));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.requestMessage (requestDescriptor));
@@ -1822,25 +1570,20 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (true))).thenReturn (new ArrayList<BlockDescriptor>());
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (Arrays.asList (new BlockDescriptor[] { requestDescriptor }));
-		PeerServicesProvider mockProvider = mock (PeerServicesProvider.class);
-		when(mockProvider.getPeerServices (any (InfoHash.class))).thenReturn (mockPeerServices);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockProvider, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, false);
 
 		// When
 		// They suggest a piece and unchoke
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockInput (PeerProtocolBuilder.suggestPieceMessage (2));
 		mockConnection.mockInput (PeerProtocolBuilder.unchokeMessage());
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.requestMessage (requestDescriptor));
@@ -1870,18 +1613,15 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), false, true);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, true, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectNoMoreOutput();
 		verify(mockPeerServices).offerExtensionsToPeer(handler);
 
@@ -1909,19 +1649,16 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), false, true);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, true, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		mockConnection.mockInput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectNoMoreOutput();
 		verify(mockPeerServices).offerExtensionsToPeer (handler);
 		verify(mockPeerServices).enableDisablePeerExtensions (
@@ -1962,20 +1699,17 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, true);
 		ElasticTree tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
 		mockConnection.mockInput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (0));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
@@ -2033,24 +1767,21 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (true))).thenReturn (new ArrayList<BlockDescriptor>());
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { requestDescriptor }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, true);
 		ElasticTree tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockInput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
@@ -2112,20 +1843,17 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), anyBoolean())).thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, true);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockInput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (new BitField(4).not()));
@@ -2173,7 +1901,6 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), anyBoolean())).thenReturn (new ArrayList<BlockDescriptor>());
 		// Extend the database. The info hash will not change
@@ -2181,16 +1908,14 @@ public class TestPeerHandler {
 		pieceDatabase.extendData (MockPieceDatabase.mockPrivateKey, ByteBuffer.wrap (Util.pseudoRandomBlock (4, pieceSize, pieceSize)));
 		// Remote peer connects on the original info hash
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, true);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockInput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.elasticSignatureMessage (pieceDatabase.getViewSignature (totalLength)));
@@ -2244,21 +1969,18 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
 		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), anyBoolean())).thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), true, true);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), new PeerID()));
 		mockConnection.mockInput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockInput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
 		mockConnection.mockInput (PeerProtocolBuilder.elasticBitfieldMessage (new BitField (2)));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, pieceDatabase.getInfo().getHash(), localPeerID));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (new BitField(2).not()));
@@ -2319,12 +2041,10 @@ public class TestPeerHandler {
 		when(mockPeerServices.getLocalPeerID()).thenReturn (localPeerID);
 		when(mockPeerServices.getPieceDatabase()).thenReturn (pieceDatabase);
 		when(mockPeerServices.getStatistics()).thenReturn (new PeerStatistics());
-		when(mockPeerServices.peerConnected (any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection);
+		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), false, false);
 
 		// When
-		mockConnection.mockInput (PeerProtocolBuilder.handshake (false, false, pieceDatabase.getInfo().getHash(), new PeerID()));
 		handler.connectionReady (mockConnection, true, false);
 		handler.close();
 

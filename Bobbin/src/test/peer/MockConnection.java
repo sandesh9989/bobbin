@@ -11,6 +11,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.util.LinkedList;
 import java.util.Set;
@@ -18,11 +19,9 @@ import java.util.Set;
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.connectionmanager.Connection;
 import org.itadaki.bobbin.connectionmanager.ConnectionReadyListener;
-import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
-import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.CharsetUtil;
 
@@ -98,12 +97,21 @@ public class MockConnection extends Connection {
 	 */
 	private InetSocketAddress remoteSocketAddress = null;
 
+	/**
+	 * The listener
+	 */
+	private ConnectionReadyListener listener;
+
 
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.connectionmanager.Connection#read(java.nio.ByteBuffer)
 	 */
 	@Override
 	public int read (ByteBuffer buffer) throws IOException {
+
+		if (this.closed) {
+			throw new ClosedChannelException();
+		}
 
 		int bytesRead = 0;
 		while ((buffer.remaining() > 0) && (!this.inputBuffers.isEmpty())) {
@@ -152,6 +160,10 @@ public class MockConnection extends Connection {
 	@Override
 	public int write (ByteBuffer buffer) throws IOException {
 
+		if (this.closed) {
+			throw new ClosedChannelException();
+		}
+
 		int writeBytesAllowed = Math.min (this.permittedWriteBytes, buffer.remaining());
 
 		ByteBuffer writeBuffer = ByteBuffer.allocate (writeBytesAllowed);
@@ -187,6 +199,10 @@ public class MockConnection extends Connection {
 	 */
 	@Override
 	public long write (ByteBuffer[] buffers) throws IOException {
+
+		if (this.closed) {
+			throw new ClosedChannelException();
+		}
 
 		int writeBytesWanted = 0;
 		for (ByteBuffer buffer : buffers) {
@@ -272,7 +288,7 @@ public class MockConnection extends Connection {
 	@Override
 	public void setListener (ConnectionReadyListener listener) {
 
-		// Do nothing
+		this.listener = listener;
 
 	}
 
@@ -304,6 +320,19 @@ public class MockConnection extends Connection {
 	public void mockSetPermittedWriteBytes (int permittedWriteBytes) {
 
 		this.permittedWriteBytes = permittedWriteBytes;
+
+	}
+
+
+	/**
+	 * Indicates to the listener that the connection is readable and/or writeable
+	 *
+	 * @param readable {@code true} to indicate the connection is readable
+	 * @param writeable {@code true} to indicate the connection is writeable
+	 */
+	public void mockTriggerIO (boolean readable, boolean writeable) {
+
+		this.listener.connectionReady (this, readable, writeable);
 
 	}
 
@@ -418,19 +447,6 @@ public class MockConnection extends Connection {
 
 			public void haveAllMessage() throws IOException {
 				System.out.printf ("%2d have all\n", this.sequence++);
-			}
-
-			public void handshakePeerID (PeerID peerID) throws IOException {
-				System.out.printf ("%2d handshake - peer id (%s)\n", this.sequence++, CharsetUtil.hexencode (peerID.getBytes()));
-			}
-
-			public void handshakeInfoHash (InfoHash infoHash) throws IOException {
-				System.out.printf ("%2d handshake - info hash (%s)\n", this.sequence++, CharsetUtil.hexencode (infoHash.getBytes()));
-			}
-
-			public void handshakeBasicExtensions (boolean fastExtensionEnabled, boolean extensionProtocolEnabled) throws IOException {
-				System.out.printf ("%2d handshake - basic extensions (Fast: %b Extension: %b)\n", this.sequence++, fastExtensionEnabled,
-						extensionProtocolEnabled);
 			}
 
 			public void chokeMessage (boolean choked) throws IOException {

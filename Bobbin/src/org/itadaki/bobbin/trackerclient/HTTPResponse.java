@@ -37,7 +37,7 @@ public interface HTTPResponse {
 	 *
 	 * @return The HTTP response message
 	 */
-	public abstract Object getResponseMessage();
+	public abstract String getResponseMessage();
 
 	/**
 	 * Returns the HTTP response body

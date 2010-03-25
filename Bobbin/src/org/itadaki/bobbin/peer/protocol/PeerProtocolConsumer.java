@@ -8,9 +8,7 @@ import java.io.IOException;
 import java.util.Set;
 
 import org.itadaki.bobbin.bencode.BDictionary;
-import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
-import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 
 
@@ -18,31 +16,6 @@ import org.itadaki.bobbin.torrentdb.ViewSignature;
  * An interface for a consumer of BitTorrent peer protocol messages
  */
 public interface PeerProtocolConsumer {
-
-	/**
-	 * Indicates that the basic extension part of the handshake has been received
-	 *
-	 * @param fastExtensionEnabled If {@code true}, the remote peer supports the Fast extension
-	 * @param extensionProtocolEnabled If {@code true}, the remote peer supports the extension protocol
-	 * @throws IOException On any validation error
-	 */
-	public void handshakeBasicExtensions (boolean fastExtensionEnabled, boolean extensionProtocolEnabled) throws IOException;
-
-	/**
-	 * Indicates that the info hash part of the handshake has been received
-	 *
-	 * @param infoHash The 20 byte info hash received
-	 * @throws IOException On any validation error
-	 */
-	public void handshakeInfoHash (InfoHash infoHash) throws IOException;
-
-	/**
-	 * Indicates that the peer ID part of the handshake has been received
-	 *
-	 * @param peerID The peer ID received
-	 * @throws IOException On any validation error
-	 */
-	public void handshakePeerID (PeerID peerID) throws IOException;
 
 	/**
 	 * Indicates that a "keep-alive" message has been received (a blank message)

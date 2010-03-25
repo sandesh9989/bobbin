@@ -29,17 +29,6 @@ public interface PeerServices {
 	public PeerID getLocalPeerID();
 
 	/**
-	 * Registers a new peer that has completed its handshake. If a peer with the same ID is already
-	 * connected, the peer will not be registered.
-	 *
-	 *<p><b>Thread safety:</b> This method must be called with the peer context lock held
-	 *
-	 * @param peer The peer to register
-	 * @return True if the peer was registered, false if it was not registered
-	 */
-	public boolean peerConnected (ManageablePeer peer);
-
-	/**
 	 * Deregisters a peer that has disconnected. The peer's available pieces will be subtracted
 	 * from the available piece map; if the peer was unchoked then the choking algorithm will be
 	 * invoked.

@@ -18,12 +18,10 @@ import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.connectionmanager.Connection;
 import org.itadaki.bobbin.connectionmanager.ConnectionManager;
 import org.itadaki.bobbin.connectionmanager.ConnectionReadyListener;
-import org.itadaki.bobbin.peer.protocol.DefaultPeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConstants;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
-import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.StorageDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
@@ -63,7 +61,7 @@ import org.itadaki.bobbin.util.elastictree.HashChain;
  * requests to the remote peer, the handling of received piece block data, and the invocation of the
  * choking algorithm when required.
  */
-public class PeerHandler extends DefaultPeerProtocolConsumer implements ManageablePeer, ConnectionReadyListener {
+public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, ConnectionReadyListener {
 
 	/**
 	 * The connection to the remote peer
@@ -71,20 +69,9 @@ public class PeerHandler extends DefaultPeerProtocolConsumer implements Manageab
 	private final Connection connection;
 
 	/**
-	 * The PeerServicesProvider that will be asked to provide a PeerServices in the case of an
-	 * incoming connection, once the info hash the remote peer wants is known
-	 */
-	private PeerServicesProvider peerServicesProvider;
-
-	/**
 	 * The PeerServices for the torrent that we are talking to the remote peer about
 	 */
 	private PeerServices peerServices;
-
-	/**
-	 * If {@code true}, this peer is registered through a PeerServices
-	 */
-	private boolean registeredWithPeerServices = false;
 
 	/**
 	 * The parser used to process incoming data
@@ -307,105 +294,6 @@ public class PeerHandler extends DefaultPeerProtocolConsumer implements Manageab
 
 
 	/* PeerProtocolConsumer interface */
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.protocol.DefaultPeerProtocolConsumer#handshakeBasicExtensions(boolean, boolean)
-	 */
-	@Override
-	public void handshakeBasicExtensions (boolean fastExtensionEnabled, boolean extensionProtocolEnabled) {
-
-		this.state.fastExtensionEnabled &= fastExtensionEnabled;
-		this.state.extensionProtocolEnabled &= extensionProtocolEnabled;
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#handshakeInfoHash(byte[])
-	 */
-	@Override
-	public void handshakeInfoHash (InfoHash infoHash) throws IOException {
-
-		if (this.pieceDatabase != null) {
-			if (!this.pieceDatabase.getInfo().getHash().equals (infoHash)) {
-				throw new IOException ("Invalid handshake - wrong info hash");
-			}
-		}
-
-		// On an inbound connection, we don't initially know which PeerServices we should connect
-		// to. If we can find it now, complete the PeerHandler's setup
-		if (this.peerServices == null) {
-
-			this.peerServices = this.peerServicesProvider.getPeerServices (infoHash);
-
-			if (this.peerServices == null) {
-				throw new IOException ("Invalid handshake - unknown info hash");
-			}
-
-			// We didn't have a PeerCoordinator on the way in, so it hasn't been locked yet
-			this.peerServices.lock();
-
-			// Complete setup of the PeerHandler
-			completeSetupAndHandshake();
-
-		}
-
-		if (this.pieceDatabase.getInfo().isElastic()) {
-			if (!(this.state.fastExtensionEnabled && this.state.extensionProtocolEnabled)) {
-				throw new IOException ("Invalid handshake - no extension protocol or Fast extension on Elastic torrent");
-			}
-			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC)), null, null);
-			if (this.pieceDatabase.getStorageDescriptor().getLength() > this.pieceDatabase.getInfo().getStorageDescriptor().getLength()) {
-				this.outboundQueue.sendElasticSignatureMessage (this.pieceDatabase.getViewSignature (this.pieceDatabase.getStorageDescriptor().getLength()));
-			}
-			this.outboundQueue.sendElasticBitfieldMessage (this.pieceDatabase.getPresentPieces());
-		} else if (this.pieceDatabase.getInfo().isMerkle()) {
-			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_MERKLE)), null, null);
-		};
-
-		if (this.state.extensionProtocolEnabled) {
-			this.peerServices.offerExtensionsToPeer (this);
-		}
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#handshakePeerID(PeerID)
-	 */
-	@Override
-	public void handshakePeerID (PeerID peerID) throws IOException {
-
-		this.state.remotePeerID = peerID;
-
-		if (!this.peerServices.peerConnected (this)) {
-			throw new IOException ("Peer registration rejected");
-		}
-
-		this.registeredWithPeerServices = true;
-		BitField bitField = this.pieceDatabase.getPresentPieces();
-
-		if (this.pieceDatabase.getInfo().isElastic()) {
-			this.outboundQueue.sendHaveNoneMessage();
-		} else {
-			if (this.state.fastExtensionEnabled) {
-				int pieceCount = bitField.cardinality();
-				if (pieceCount == 0) {
-					this.outboundQueue.sendHaveNoneMessage();
-				} else if (pieceCount == this.pieceDatabase.getStorageDescriptor().getNumberOfPieces()) {
-					this.outboundQueue.sendHaveAllMessage();
-				} else {
-					this.outboundQueue.sendBitfieldMessage (bitField);
-				}
-			} else {
-				if (bitField.cardinality() > 0) {
-					this.outboundQueue.sendBitfieldMessage (bitField);
-				}
-			}
-		}
-
-	}
-
 
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#keepAliveMessage()
@@ -888,10 +776,10 @@ public class PeerHandler extends DefaultPeerProtocolConsumer implements Manageab
 				}
 			}
 
-			if (this.registeredWithPeerServices && this.state.weAreInterested) {
+			if (this.state.weAreInterested) {
 				fillRequestQueue();
 			}
-	
+
 			if (writeable) {
 				int bytesWritten = this.outboundQueue.sendData();
 				this.peerStatistics.protocolBytesSent.add (bytesWritten);
@@ -1014,60 +902,64 @@ public class PeerHandler extends DefaultPeerProtocolConsumer implements Manageab
 
 
 	/**
-	 * Completes the peer setup against the PeerServices, and sends a handshake to the remote peer.
-	 * For an outbound connection this is performed early, in the constructor; for an inbound
-	 * connection, this is performed late, after we have received the remote peer's handshake
-	 * header and info hash.
+	 * TODO
+	 * @param peerServices
+	 * @param connection
+	 * @param remotePeerID TODO
+	 * @param fastExtensionEnabled
+	 * @param extensionProtocolEnabled
 	 */
-	private void completeSetupAndHandshake() {
+	public PeerHandler (PeerServices peerServices, Connection connection, PeerID remotePeerID, boolean fastExtensionEnabled, boolean extensionProtocolEnabled) {
+
+		this.peerServices = peerServices;
+		this.connection = connection;
+		this.state.remotePeerID = remotePeerID;
+		this.state.fastExtensionEnabled = fastExtensionEnabled;
+		this.state.extensionProtocolEnabled = extensionProtocolEnabled;
+		this.protocolParser = new PeerProtocolParser (this, fastExtensionEnabled, extensionProtocolEnabled);
+		this.connection.setListener (this);
 
 		this.pieceDatabase = this.peerServices.getPieceDatabase();
-
 		StorageDescriptor initialDescriptor = this.pieceDatabase.getInfo().getStorageDescriptor();
 		this.state.remoteBitField = new BitField (initialDescriptor.getNumberOfPieces());
 		this.state.remoteView = initialDescriptor;
 		this.outboundQueue = new PeerOutboundQueue (this.connection, this.pieceDatabase, this.peerStatistics.blockBytesSent);
 		this.peerStatistics.setParent (this.peerServices.getStatistics());
 
-		this.outboundQueue.sendHandshake (this.state.fastExtensionEnabled, this.state.extensionProtocolEnabled, this.pieceDatabase.getInfo().getHash(),
-				this.peerServices.getLocalPeerID());
+		// Send bitfield
+		BitField bitField = this.pieceDatabase.getPresentPieces();
+		if (this.pieceDatabase.getInfo().isElastic()) {
+			this.outboundQueue.sendHaveNoneMessage();
+		} else {
+			if (this.state.fastExtensionEnabled) {
+				int pieceCount = bitField.cardinality();
+				if (pieceCount == 0) {
+					this.outboundQueue.sendHaveNoneMessage();
+				} else if (pieceCount == this.pieceDatabase.getStorageDescriptor().getNumberOfPieces()) {
+					this.outboundQueue.sendHaveAllMessage();
+				} else {
+					this.outboundQueue.sendBitfieldMessage (bitField);
+				}
+			} else {
+				if (bitField.cardinality() > 0) {
+					this.outboundQueue.sendBitfieldMessage (bitField);
+				}
+			}
+		}
 
-	}
+		if (this.pieceDatabase.getInfo().isElastic()) {
+			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC)), null, null);
+			if (this.pieceDatabase.getStorageDescriptor().getLength() > this.pieceDatabase.getInfo().getStorageDescriptor().getLength()) {
+				this.outboundQueue.sendElasticSignatureMessage (this.pieceDatabase.getViewSignature (this.pieceDatabase.getStorageDescriptor().getLength()));
+			}
+			this.outboundQueue.sendElasticBitfieldMessage (this.pieceDatabase.getPresentPieces());
+		} else if (this.pieceDatabase.getInfo().isMerkle()) {
+			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_MERKLE)), null, null);
+		};
 
-
-	/**
-	 * Constructor for an inbound connection. The setup of a PeerHandler created in this way will be
-	 * completed in {@link #handshakeInfoHash(InfoHash)} when we know which torrent we are supposed to
-	 * be talking to the remote peer about
-	 *  
-	 * @param peerServicesProvider The {@link PeerServicesProvider} that will be asked to provide a
-	 *        suitable PeerServices later
-	 * @param connection The connection to perform network I/O on
-	 */
-	public PeerHandler (PeerServicesProvider peerServicesProvider, Connection connection) {
-
-		this.peerServicesProvider = peerServicesProvider;
-		this.connection = connection;
-		this.protocolParser = new PeerProtocolParser (this, this.state.fastExtensionEnabled, this.state.extensionProtocolEnabled);
-		this.connection.setListener (this);
-
-	}
-
-
-	/**
-	 * Constructor for an outbound connection
-	 * 
-	 * @param peerServices The torrent's PeerServices
-	 * @param connection The connection to perform network I/O on
-	 */
-	public PeerHandler (PeerServices peerServices, Connection connection) {
-
-		this.peerServices = peerServices;
-		this.connection = connection;
-		this.protocolParser = new PeerProtocolParser (this, this.state.fastExtensionEnabled, this.state.extensionProtocolEnabled);
-		this.connection.setListener (this);
-
-		completeSetupAndHandshake();
+		if (this.state.extensionProtocolEnabled) {
+			this.peerServices.offerExtensionsToPeer (this);
+		}
 
 	}
 

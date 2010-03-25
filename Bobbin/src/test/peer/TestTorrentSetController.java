@@ -5,13 +5,13 @@
 package test.peer;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -26,16 +26,11 @@ import org.itadaki.bobbin.peer.TorrentManagerListener;
 import org.itadaki.bobbin.peer.TorrentSetController;
 import org.itadaki.bobbin.peer.TorrentSetControllerListener;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
-import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
-import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.MetaInfo;
 import org.itadaki.bobbin.torrentdb.Metadata;
 import org.itadaki.bobbin.torrentdb.MetadataProvider;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 import test.Util;
 
@@ -188,22 +183,11 @@ public class TestTorrentSetController {
 		// Handshake through the port and wait to hear that the coordinator has replied
 		final SocketChannel socketChannel = SocketChannel.open (new InetSocketAddress (InetAddress.getLocalHost (), localPort));
 		socketChannel.write (PeerProtocolBuilder.handshake (false, false, metaInfo.getInfo().getHash(), new PeerID()));
-		socketChannel.configureBlocking (false);
-		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-		final boolean[] peerIDReceived = new boolean[1];
-		doAnswer (new Answer<Object>() {
-			public Object answer (InvocationOnMock invocation) throws Throwable {
-				peerIDReceived[0] = true;
-				return null;
-			}
-		}).when (mockConsumer).handshakePeerID (any (PeerID.class));
 
-		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
-		while (!peerIDReceived[0]) {
-			parser.parseBytes (socketChannel);
-		}
+		while (socketChannel.read (ByteBuffer.allocate(1)) == 0);
 
-		Thread.sleep (500);
+		Thread.sleep (250);
+
 		assertEquals (1, manager.getPeers().size());
 
 		socketChannel.close();
@@ -318,50 +302,6 @@ public class TestTorrentSetController {
 
 		controller.terminate (true);
 		assertFalse (terminatedCalled[0]);
-
-	}
-
-
-	/**
-	 * Tests getLocalPeerID
-	 * @throws Exception
-	 */
-	@Test
-	public void testGetLocalPeerID() throws Exception {
-
-		TorrentSetController controller = new TorrentSetController();
-		int localPort = controller.getLocalPort();
-
-		MetaInfo metaInfo = createTestMetaInfo();
-		TorrentManager manager = controller.addTorrentManager (metaInfo, Util.createTemporaryDirectory());
-		manager.start (true);
-
-		assertEquals (0, manager.getPeers().size());
-
-		// Handshake through the port and wait to hear that the coordinator has replied
-		final SocketChannel socketChannel = SocketChannel.open (new InetSocketAddress (InetAddress.getLocalHost(), localPort));
-		socketChannel.write (PeerProtocolBuilder.handshake (false, false, metaInfo.getInfo().getHash(), new PeerID()));
-		socketChannel.configureBlocking (false);
-		final boolean[] peerIDReceived = new boolean[1];
-		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-		doAnswer (new Answer<Object>() {
-			public Object answer (InvocationOnMock invocation) throws Throwable {
-				peerIDReceived[0] = true;
-				return null;
-			}
-		}).when (mockConsumer).handshakePeerID (any (PeerID.class));
-
-		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
-		while (!peerIDReceived[0]) {
-			parser.parseBytes (socketChannel);
-		}
-
-		ArgumentCaptor<PeerID> captor = ArgumentCaptor.forClass (PeerID.class);
-		verify (mockConsumer).handshakePeerID (captor.capture());
-		assertEquals (controller.getLocalPeerID(), captor.getValue());
-
-		socketChannel.close();
-		controller.terminate (true);
 
 	}
 

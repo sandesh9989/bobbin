@@ -4,8 +4,6 @@
  */
 package test.peer;
 
-
-
 import static org.junit.Assert.*;
 
 import java.io.IOException;
@@ -15,17 +13,14 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.peer.PeerOutboundQueue;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConstants;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
-import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
-import org.itadaki.bobbin.util.CharsetUtil;
 import org.itadaki.bobbin.util.counter.StatisticCounter;
 import org.itadaki.bobbin.util.elastictree.ElasticTree;
 import org.junit.Test;
@@ -40,79 +35,14 @@ import test.torrentdb.MockPieceDatabase;
 public class TestPeerOutboundQueue {
 
 	/**
-	 * Tests that a handshake is written through the PeerOutboundQueue's Connection
-	 * @throws IOException
-	 */
-	@Test
-	public void testHandshake() throws IOException {
-
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
-		MockConnection connection = new MockConnection();
-
-		PieceDatabase pieceDatabase = null;
-		StatisticCounter sentBlockCounter = new StatisticCounter();
-		PeerOutboundQueue peerOutboundQueue = new PeerOutboundQueue (connection, pieceDatabase, sentBlockCounter);
-
-		assertFalse (connection.mockIsWriteEnabled());
-
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
-
-		connection.mockExpectNoMoreOutput();
-		assertTrue (connection.mockIsWriteEnabled());
-
-		peerOutboundQueue.sendData();
-
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
-		connection.mockExpectNoMoreOutput();
-
-	}
-
-
-	/**
-	 * Tests that a handshake is written through the PeerOutboundQueue's Connection in 1 byte chunks
-	 * @throws IOException
-	 */
-	@Test
-	public void testHandshakeSplit() throws IOException {
-
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
-		MockConnection connection = new MockConnection();
-
-		PieceDatabase pieceDatabase = null;
-		StatisticCounter sentBlockCounter = new StatisticCounter();
-		PeerOutboundQueue peerOutboundQueue = new PeerOutboundQueue (connection, pieceDatabase, sentBlockCounter);
-
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
-
-		for (int i = 0; i < 68; i++) {
-			connection.mockSetPermittedWriteBytes (1);
-			assertEquals (1, peerOutboundQueue.sendData());
-		}
-
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
-		connection.mockExpectNoMoreOutput();
-
-	}
-
-
-	/**
 	 * Tests that a bitfield message is written through the PeerOutboundQueue's Connection
 	 * @throws IOException
 	 */
 	@Test
 	public void testBitfield() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BitField bitField = new BitField (10);
 		bitField.set (9);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -122,7 +52,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendBitfieldMessage (bitField);
 
 		connection.mockExpectNoMoreOutput();
@@ -130,7 +59,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.bitfieldMessage (bitField));
 		connection.mockExpectNoMoreOutput();
 
@@ -145,11 +73,8 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testBitfieldSplit() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BitField bitField = new BitField (10);
 		bitField.set (9);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -159,15 +84,13 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendBitfieldMessage (bitField);
 
-		for (int i = 0; i < 75; i++) {
+		for (int i = 0; i < 7; i++) {
 			connection.mockSetPermittedWriteBytes (1);
 			assertEquals (1, peerOutboundQueue.sendData());
 		}
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.bitfieldMessage (bitField));
 		connection.mockExpectNoMoreOutput();
 
@@ -181,10 +104,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testChoke() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
 		MockConnection connection = new MockConnection();
 
 		PieceDatabase pieceDatabase = null;
@@ -193,7 +112,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendChokeMessage (true);
 
 		connection.mockExpectNoMoreOutput();
@@ -201,7 +119,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.chokeMessage());
 		connection.mockExpectNoMoreOutput();
 
@@ -216,10 +133,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testChokeSplit() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
 		MockConnection connection = new MockConnection();
 
 		PieceDatabase pieceDatabase = null;
@@ -228,15 +141,13 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendChokeMessage (true);
 
-		for (int i = 0; i < 73; i++) {
+		for (int i = 0; i < 5; i++) {
 			connection.mockSetPermittedWriteBytes (1);
 			assertEquals (1, peerOutboundQueue.sendData());
 		}
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.chokeMessage());
 		connection.mockExpectNoMoreOutput();
 
@@ -250,10 +161,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testInterested() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
 		MockConnection connection = new MockConnection();
 
 		PieceDatabase pieceDatabase = null;
@@ -262,7 +169,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendInterestedMessage (true);
 
 		connection.mockExpectNoMoreOutput();
@@ -270,7 +176,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		connection.mockExpectNoMoreOutput();
 
@@ -285,10 +190,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testInterestedSplit() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
 		MockConnection connection = new MockConnection();
 
 		PieceDatabase pieceDatabase = null;
@@ -297,18 +198,16 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendInterestedMessage (true);
 
 		connection.mockExpectNoMoreOutput();
 		assertTrue (connection.mockIsWriteEnabled());
 
-		for (int i = 0; i < 73; i++) {
+		for (int i = 0; i < 5; i++) {
 			connection.mockSetPermittedWriteBytes (1);
 			assertEquals (1, peerOutboundQueue.sendData());
 		}
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		connection.mockExpectNoMoreOutput();
 
@@ -322,14 +221,11 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testPiece() throws Exception {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("11", 65536);
 		pieceDatabase.start (true);
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
 		byte[] expectedBlockData = new byte[16384];
 		System.arraycopy (Util.pseudoRandomBlock (1, 65536, 65536), 32768, expectedBlockData, 0, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -338,7 +234,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendPieceMessage (descriptor);
 
 		connection.mockExpectNoMoreOutput();
@@ -346,7 +241,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.pieceMessage (descriptor, ByteBuffer.wrap (expectedBlockData)));
 		connection.mockExpectNoMoreOutput();
 
@@ -361,29 +255,24 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testPieceSplit() throws Exception {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("11", 65536);
 		pieceDatabase.start (true);
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
 		byte[] expectedBlockData = new byte[16384];
 		System.arraycopy (Util.pseudoRandomBlock (1, 65536, 65536), 32768, expectedBlockData, 0, 16384);
 
-
 		MockConnection connection = new MockConnection();
 
 		StatisticCounter sentBlockCounter = new StatisticCounter();
 		PeerOutboundQueue peerOutboundQueue = new PeerOutboundQueue (connection, pieceDatabase, sentBlockCounter);
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendPieceMessage (descriptor);
 
-		for (int i = 0; i < 68 + 16397; i++) {
+		for (int i = 0; i < 16397; i++) {
 			connection.mockSetPermittedWriteBytes (1);
 			assertEquals (1, peerOutboundQueue.sendData());
 		}
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.pieceMessage (descriptor, ByteBuffer.wrap (expectedBlockData)));
 		connection.mockExpectNoMoreOutput();
 
@@ -397,10 +286,7 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testRequest() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -411,7 +297,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendRequestMessage (descriptor);
 
 		connection.mockExpectNoMoreOutput();
@@ -419,7 +304,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.requestMessage (descriptor));
 		connection.mockExpectNoMoreOutput();
 
@@ -434,10 +318,7 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testRequestSplit() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -446,15 +327,13 @@ public class TestPeerOutboundQueue {
 		PeerOutboundQueue peerOutboundQueue = new PeerOutboundQueue (connection, pieceDatabase, sentBlockCounter);
 		peerOutboundQueue.setRequestsPlugged (false);
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendRequestMessage (descriptor);
 
-		for (int i = 0; i < 68 + 17; i++) {
+		for (int i = 0; i < 17; i++) {
 			connection.mockSetPermittedWriteBytes (1);
 			assertEquals (1, peerOutboundQueue.sendData());
 		}
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.requestMessage (descriptor));
 		connection.mockExpectNoMoreOutput();
 
@@ -468,10 +347,7 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testCancel() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -482,7 +358,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendRequestMessage (descriptor);
 
 		connection.mockExpectNoMoreOutput();
@@ -494,7 +369,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.requestMessage (descriptor));
 		connection.mockExpectOutput (PeerProtocolBuilder.cancelMessage (descriptor));
 		connection.mockExpectNoMoreOutput();
@@ -510,10 +384,7 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testCancelSplit() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -522,7 +393,6 @@ public class TestPeerOutboundQueue {
 		PeerOutboundQueue peerOutboundQueue = new PeerOutboundQueue (connection, pieceDatabase, sentBlockCounter);
 		peerOutboundQueue.setRequestsPlugged (false);
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendRequestMessage (descriptor);
 
 		connection.mockExpectNoMoreOutput();
@@ -537,7 +407,6 @@ public class TestPeerOutboundQueue {
 			assertEquals (1, peerOutboundQueue.sendData());
 		}
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.requestMessage (descriptor));
 		connection.mockExpectOutput (PeerProtocolBuilder.cancelMessage (descriptor));
 		connection.mockExpectNoMoreOutput();
@@ -552,10 +421,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testHave() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
 		MockConnection connection = new MockConnection();
 
 		PieceDatabase pieceDatabase = null;
@@ -564,7 +429,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendHaveMessage (1234);
 
 		connection.mockExpectNoMoreOutput();
@@ -572,7 +436,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.haveMessage (1234));
 		connection.mockExpectNoMoreOutput();
 
@@ -586,25 +449,19 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testHaveSplit() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
 		MockConnection connection = new MockConnection();
 
 		PieceDatabase pieceDatabase = null;
 		StatisticCounter sentBlockCounter = new StatisticCounter();
 		PeerOutboundQueue peerOutboundQueue = new PeerOutboundQueue (connection, pieceDatabase, sentBlockCounter);
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendHaveMessage (1234);
 
-		for (int i = 0; i < 68 + 9; i++) {
+		for (int i = 0; i < 9; i++) {
 			connection.mockSetPermittedWriteBytes (1);
 			assertEquals (1, peerOutboundQueue.sendData());
 		}
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.haveMessage (1234));
 		connection.mockExpectNoMoreOutput();
 
@@ -618,10 +475,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testHaveAll() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
 		MockConnection connection = new MockConnection();
 
 		PieceDatabase pieceDatabase = null;
@@ -630,7 +483,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (true, false, infoHash, peerID);
 		peerOutboundQueue.sendHaveAllMessage();
 
 		connection.mockExpectNoMoreOutput();
@@ -638,7 +490,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.haveAllMessage());
 		connection.mockExpectNoMoreOutput();
 
@@ -652,10 +503,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testHaveNone() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
 		MockConnection connection = new MockConnection();
 
 		PieceDatabase pieceDatabase = null;
@@ -664,7 +511,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (true, false, infoHash, peerID);
 		peerOutboundQueue.sendHaveNoneMessage();
 
 		connection.mockExpectNoMoreOutput();
@@ -672,7 +518,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		connection.mockExpectNoMoreOutput();
 
@@ -686,10 +531,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testRejectRequest() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
 		MockConnection connection = new MockConnection();
 
 		PieceDatabase pieceDatabase = null;
@@ -699,7 +540,6 @@ public class TestPeerOutboundQueue {
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (true, false, infoHash, peerID);
 		peerOutboundQueue.sendHaveNoneMessage();
 		peerOutboundQueue.sendRejectRequestMessage (descriptor);
 
@@ -708,7 +548,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		connection.mockExpectOutput (PeerProtocolBuilder.rejectRequestMessage (descriptor));
 		connection.mockExpectNoMoreOutput();
@@ -723,13 +562,10 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testChokeDiscardsPiece() throws Exception {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("11", 65536);
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
 		byte[] expectedBlockData = new byte[16384];
 		System.arraycopy (Util.pseudoRandomBlock (1, 65536, 65536), 32768, expectedBlockData, 0, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -738,7 +574,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendPieceMessage (descriptor);
 		peerOutboundQueue.sendChokeMessage (true);
 
@@ -747,7 +582,6 @@ public class TestPeerOutboundQueue {
 		// Will explode if pieceMessage() is called
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.chokeMessage());
 		connection.mockExpectNoMoreOutput();
 
@@ -761,10 +595,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testNotInterestedCancelsInterested() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
 		MockConnection connection = new MockConnection();
 
 		PieceDatabase pieceDatabase = null;
@@ -773,7 +603,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendInterestedMessage (true);
 		peerOutboundQueue.sendInterestedMessage (false);
 
@@ -782,7 +611,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectNoMoreOutput();
 
 	}
@@ -795,10 +623,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testInterestedCancelsNotInterested() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
 		MockConnection connection = new MockConnection();
 
 		PieceDatabase pieceDatabase = null;
@@ -807,7 +631,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendInterestedMessage (false);
 		peerOutboundQueue.sendInterestedMessage (true);
 
@@ -816,7 +639,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectNoMoreOutput();
 
 	}
@@ -829,12 +651,9 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testPieceQueueLimit() throws Exception {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("11", 65536);
 		pieceDatabase.start (true);
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -843,7 +662,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		for (int i = 0; i < PeerProtocolConstants.MAXIMUM_INBOUND_REQUESTS + 1; i++) {
 			peerOutboundQueue.sendPieceMessage (descriptor);
 		}
@@ -853,7 +671,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		for (int i = 0; i < PeerProtocolConstants.MAXIMUM_INBOUND_REQUESTS; i++) {
 			connection.mockExpectOutput (PeerProtocolBuilder.pieceMessage (
 					descriptor,
@@ -872,10 +689,7 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testRequestTracked() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -887,13 +701,11 @@ public class TestPeerOutboundQueue {
 		connection.mockExpectNoMoreOutput();
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (true, false, infoHash, peerID);
 		peerOutboundQueue.sendHaveNoneMessage();
 		peerOutboundQueue.sendRequestMessage (descriptor);
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		connection.mockExpectOutput (PeerProtocolBuilder.requestMessage (descriptor));
 		connection.mockExpectNoMoreOutput();
@@ -910,10 +722,7 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testCancelCancelsRequest() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -924,7 +733,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendRequestMessage (descriptor);
 		peerOutboundQueue.sendCancelMessage (descriptor, false);
 
@@ -933,7 +741,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectNoMoreOutput();
 
 	}
@@ -946,10 +753,7 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testCancelTracked() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -960,7 +764,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (true, false, infoHash, peerID);
 		peerOutboundQueue.sendHaveNoneMessage();
 		peerOutboundQueue.sendRequestMessage (descriptor);
 
@@ -970,7 +773,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		connection.mockExpectOutput (PeerProtocolBuilder.requestMessage (descriptor));
 		connection.mockExpectOutput (PeerProtocolBuilder.cancelMessage (descriptor));
@@ -988,10 +790,7 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testCancelBlockReceived() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -1002,7 +801,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (true, false, infoHash, peerID);
 		peerOutboundQueue.sendHaveNoneMessage();
 		peerOutboundQueue.sendRequestMessage (descriptor);
 
@@ -1012,7 +810,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		connection.mockExpectOutput (PeerProtocolBuilder.requestMessage (descriptor));
 		connection.mockExpectOutput (PeerProtocolBuilder.cancelMessage (descriptor));
@@ -1031,10 +828,7 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testRequeueAllRequestMessages() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -1043,12 +837,10 @@ public class TestPeerOutboundQueue {
 		PeerOutboundQueue peerOutboundQueue = new PeerOutboundQueue (connection, pieceDatabase, sentBlockCounter);
 		peerOutboundQueue.setRequestsPlugged (false);
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendRequestMessage (descriptor);
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.requestMessage (descriptor));
 		connection.mockExpectNoMoreOutput();
 
@@ -1069,11 +861,8 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testDiscardPieceMessage() throws Exception {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("11", 65536);
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -1082,7 +871,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendPieceMessage (descriptor);
 		peerOutboundQueue.discardPieceMessage (descriptor);
 
@@ -1091,7 +879,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectNoMoreOutput();
 
 	}
@@ -1105,10 +892,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testhasOutstandingRequestsNone() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-
-
 		MockConnection connection = new MockConnection();
 
 		PieceDatabase pieceDatabase = null;
@@ -1116,11 +899,9 @@ public class TestPeerOutboundQueue {
 		PeerOutboundQueue peerOutboundQueue = new PeerOutboundQueue (connection, pieceDatabase, sentBlockCounter);
 		peerOutboundQueue.setRequestsPlugged (false);
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectNoMoreOutput();
 		assertFalse (peerOutboundQueue.hasOutstandingRequests());
 
@@ -1135,10 +916,7 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testhasOutstandingRequestsQueued() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -1147,13 +925,11 @@ public class TestPeerOutboundQueue {
 		PeerOutboundQueue peerOutboundQueue = new PeerOutboundQueue (connection, pieceDatabase, sentBlockCounter);
 		peerOutboundQueue.setRequestsPlugged (false);
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 
 		peerOutboundQueue.sendData();
 
 		peerOutboundQueue.sendRequestMessage (descriptor);
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectNoMoreOutput();
 		assertTrue (peerOutboundQueue.hasOutstandingRequests());
 
@@ -1168,10 +944,7 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testhasOutstandingRequestsSent() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -1180,12 +953,10 @@ public class TestPeerOutboundQueue {
 		PeerOutboundQueue peerOutboundQueue = new PeerOutboundQueue (connection, pieceDatabase, sentBlockCounter);
 		peerOutboundQueue.setRequestsPlugged (false);
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 		peerOutboundQueue.sendRequestMessage (descriptor);
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.requestMessage (descriptor));
 		connection.mockExpectNoMoreOutput();
 		assertTrue (peerOutboundQueue.hasOutstandingRequests());
@@ -1200,19 +971,15 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testUnsentPieceCount() throws Exception {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("11", 65536);
 		pieceDatabase.start (true);
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
 		StatisticCounter sentBlockCounter = new StatisticCounter();
 		PeerOutboundQueue peerOutboundQueue = new PeerOutboundQueue (connection, pieceDatabase, sentBlockCounter);
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 
 		assertEquals (0, peerOutboundQueue.getUnsentPieceCount());
 
@@ -1223,7 +990,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.pieceMessage (
 				descriptor,
 				pieceDatabase.readPiece (descriptor.getPieceNumber()).getBlock (descriptor)
@@ -1241,10 +1007,7 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testRequestsNeeded() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -1255,7 +1018,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 
 		assertEquals (PeerProtocolConstants.MAXIMUM_OUTBOUND_REQUESTS, peerOutboundQueue.getRequestsNeeded());
 
@@ -1266,7 +1028,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.requestMessage (descriptor));
 		connection.mockExpectNoMoreOutput();
 		assertEquals (PeerProtocolConstants.MAXIMUM_OUTBOUND_REQUESTS - 1, peerOutboundQueue.getRequestsNeeded());
@@ -1281,10 +1042,7 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testRequestReceived() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor descriptor = new BlockDescriptor (1, 32768, 16384);
-
 
 		MockConnection connection = new MockConnection();
 
@@ -1295,7 +1053,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (false, false, infoHash, peerID);
 
 		assertEquals (PeerProtocolConstants.MAXIMUM_OUTBOUND_REQUESTS, peerOutboundQueue.getRequestsNeeded());
 
@@ -1306,7 +1063,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (false, false, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.requestMessage (descriptor));
 		connection.mockExpectNoMoreOutput();
 		assertEquals (PeerProtocolConstants.MAXIMUM_OUTBOUND_REQUESTS - 1, peerOutboundQueue.getRequestsNeeded());
@@ -1325,8 +1081,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testExtensionHandshakeAdd() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		Set<String> extensionsAdded = new TreeSet<String>();
 		extensionsAdded.add ("bl_ah");
 
@@ -1338,7 +1092,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (true, true, infoHash, peerID);
 		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
 
 		connection.mockExpectNoMoreOutput();
@@ -1346,7 +1099,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, infoHash, peerID));
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
 		expectedExtensions.put ("bl_ah", (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM);
 		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, null));
@@ -1362,8 +1114,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testExtensionHandshakeRemove() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		Set<String> extensionsAdded = new TreeSet<String>();
 		extensionsAdded.add ("bl_ah");
 
@@ -1375,7 +1125,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (true, true, infoHash, peerID);
 		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
 		peerOutboundQueue.sendExtensionHandshake (null, extensionsAdded, null);
 
@@ -1384,7 +1133,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, infoHash, peerID));
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
 		expectedExtensions.put ("bl_ah", (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM);
 		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, null));
@@ -1403,8 +1151,6 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testExtensionMessage() throws IOException {
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		Set<String> extensionsAdded = new TreeSet<String>();
 		extensionsAdded.add ("bl_ah");
 
@@ -1416,7 +1162,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (true, true, infoHash, peerID);
 		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
 		peerOutboundQueue.sendExtensionMessage ("bl_ah", ByteBuffer.wrap (new byte[] { 1, 2, 3, 4 }));
 
@@ -1425,7 +1170,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, infoHash, peerID));
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
 		expectedExtensions.put ("bl_ah", (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM);
 		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, null));
@@ -1446,8 +1190,6 @@ public class TestPeerOutboundQueue {
 		int totalLength = 1024;
 		BlockDescriptor blockDescriptor = new BlockDescriptor (0, 0, 1024);
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		Set<String> extensionsAdded = new TreeSet<String>();
 		extensionsAdded.add (PeerProtocolConstants.EXTENSION_MERKLE);
 
@@ -1462,7 +1204,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (true, true, infoHash, peerID);
 		peerOutboundQueue.sendHaveNoneMessage();
 		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
 		peerOutboundQueue.sendPieceMessage (blockDescriptor);
@@ -1472,7 +1213,6 @@ public class TestPeerOutboundQueue {
 
 		peerOutboundQueue.sendData();
 
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
 		expectedExtensions.put (PeerProtocolConstants.EXTENSION_MERKLE, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE);
@@ -1496,8 +1236,6 @@ public class TestPeerOutboundQueue {
 		int totalLength = 1024;
 		long viewLength = 1024;
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		Set<String> extensionsAdded = new TreeSet<String>();
 		extensionsAdded.add (PeerProtocolConstants.EXTENSION_ELASTIC);
 
@@ -1514,7 +1252,6 @@ public class TestPeerOutboundQueue {
 
 		ViewSignature viewSignature = new ViewSignature (viewLength, ByteBuffer.wrap (tree.getView (viewLength).getRootHash()), ByteBuffer.allocate (40));
 
-		peerOutboundQueue.sendHandshake (true, true, infoHash, peerID);
 		peerOutboundQueue.sendHaveNoneMessage();
 		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
 		peerOutboundQueue.sendElasticSignatureMessage (viewSignature);
@@ -1523,7 +1260,6 @@ public class TestPeerOutboundQueue {
 		assertTrue (connection.mockIsWriteEnabled());
 
 		peerOutboundQueue.sendData();
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
 		expectedExtensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
@@ -1548,8 +1284,6 @@ public class TestPeerOutboundQueue {
 		BlockDescriptor blockDescriptor = new BlockDescriptor (0, 0, 1024);
 		long viewLength = 1024;
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		Set<String> extensionsAdded = new TreeSet<String>();
 		extensionsAdded.add (PeerProtocolConstants.EXTENSION_ELASTIC);
 
@@ -1564,7 +1298,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (true, true, infoHash, peerID);
 		peerOutboundQueue.sendHaveNoneMessage();
 		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
 		peerOutboundQueue.sendPieceMessage (blockDescriptor);
@@ -1573,7 +1306,6 @@ public class TestPeerOutboundQueue {
 		assertTrue (connection.mockIsWriteEnabled());
 
 		peerOutboundQueue.sendData();
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
 		expectedExtensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
@@ -1598,8 +1330,6 @@ public class TestPeerOutboundQueue {
 		BitField bitfield = new BitField (new byte[] { (byte)0xff, 0x00, (byte)0xee, (byte)0xf0 }, 28);
 
 
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		Set<String> extensionsAdded = new TreeSet<String>();
 		extensionsAdded.add (PeerProtocolConstants.EXTENSION_ELASTIC);
 
@@ -1614,7 +1344,6 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendHandshake (true, true, infoHash, peerID);
 		peerOutboundQueue.sendHaveNoneMessage();
 		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
 		peerOutboundQueue.sendElasticBitfieldMessage (bitfield);
@@ -1623,7 +1352,6 @@ public class TestPeerOutboundQueue {
 		assertTrue (connection.mockIsWriteEnabled());
 
 		peerOutboundQueue.sendData();
-		connection.mockExpectOutput (PeerProtocolBuilder.handshake (true, true, infoHash, peerID));
 		connection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
 		expectedExtensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);

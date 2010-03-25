@@ -25,6 +25,7 @@ import test.peer.TestTorrentSetController;
 import test.peer.chokingmanager.TestDefaultChokingManager;
 import test.peer.extensionmanager.TestExtensionManager;
 import test.peer.protocol.TestPeerProtocolBuilder;
+import test.peer.protocol.TestPeerProtocolNegotiator;
 import test.peer.protocol.TestPeerProtocolParser;
 import test.peer.requestmanager.TestRandomRequestManager;
 import test.statemachine.TestStateMachine;
@@ -104,8 +105,8 @@ import test.util.elastictree.TestElasticTree;
 	TestExtensionManager.class,
 	TestElasticTree.class,
 	TestDSAUtil.class,
-	TestStorageDescriptor.class
-
+	TestStorageDescriptor.class,
+	TestPeerProtocolNegotiator.class
 })
 public class AllTests {
 	// This space left blank

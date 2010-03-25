@@ -40,110 +40,6 @@ import test.Util;
  */
 public class TestPeerProtocolParser {
 
-	// Tests for handshake parsing
-
-	/**
-	 * Tests that PeerProtocolConsumer.handshakeBasicExtensions() is called given just enough bytes
-	 * @throws IOException
-	 */
-	@Test
-	public void testBasicExtensionsBlank() throws IOException {
-
-		// Given
-		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
-		byte[] handshakeBytes = PeerProtocolBuilder.handshake (false, false, new InfoHash (new byte[20]), new PeerID()).array();
-		byte[] shortHandshakeBytes = new byte [handshakeBytes.length - 40];
-		System.arraycopy (handshakeBytes, 0, shortHandshakeBytes, 0, shortHandshakeBytes.length);
-
-		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (shortHandshakeBytes));
-
-		// Then
-		verify (mockConsumer).handshakeBasicExtensions (false, false);
-
-	}
-
-
-	/**
-	 * Tests that PeerProtocolConsumer.handshakeBasicExtensions() is called with the fast extension
-	 * enabled
-	 * @throws IOException
-	 */
-	@Test
-	public void testBasicExtensionsFast() throws IOException {
-
-		// Given
-		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, false);
-		byte[] handshakeBytes = PeerProtocolBuilder.handshake (true, false, new InfoHash (new byte[20]), new PeerID()).array();
-		byte[] shortHandshakeBytes = new byte [handshakeBytes.length - 40];
-		System.arraycopy (handshakeBytes, 0, shortHandshakeBytes, 0, shortHandshakeBytes.length);
-
-		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (shortHandshakeBytes));
-
-		// Then
-		verify (mockConsumer).handshakeBasicExtensions (true, false);
-
-	}
-
-
-	/**
-	 * Tests that PeerProtocolConsumer.handshakeInfoHash() is called given just enough bytes
-	 * @throws IOException
-	 */
-	@Test
-	public void testInfoHash() throws IOException {
-
-		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
-		byte[] handshakeBytes = PeerProtocolBuilder.handshake (false, false, infoHash, new PeerID()).array();
-		byte[] shortHandshakeBytes = new byte [handshakeBytes.length - 20];
-		System.arraycopy (handshakeBytes, 0, shortHandshakeBytes, 0, shortHandshakeBytes.length);
-
-		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (shortHandshakeBytes));
-
-		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		verifyNoMoreInteractions (mockConsumer);
-
-	}
-
-
-	/**
-	 * Tests that PeerProtocolConsumer.handshakePeerID() is called in sequence
-	 * @throws IOException
-	 */
-	@Test
-	public void testPeerID() throws IOException {
-
-		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
-		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
-
-		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
-
-		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		verifyNoMoreInteractions (mockConsumer);
-
-	}
-
-
-	// Protocol messages
-
 	/**
 	 * Tests that PeerProtocolConsumer.keepAliveMessage() is called in sequence
 	 * @throws IOException
@@ -152,20 +48,13 @@ public class TestPeerProtocolParser {
 	public void testKeepAlive() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.keepaliveMessage()));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).keepAliveMessage();
+		verify(mockConsumer).keepAliveMessage();
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -179,21 +68,14 @@ public class TestPeerProtocolParser {
 	public void testChoke() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.chokeMessage()));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).chokeMessage (true);
+		verify(mockConsumer).chokeMessage (true);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -207,21 +89,14 @@ public class TestPeerProtocolParser {
 	public void testUnchoke() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.unchokeMessage()));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).chokeMessage (false);
+		verify(mockConsumer).chokeMessage (false);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -233,22 +108,16 @@ public class TestPeerProtocolParser {
 	 */
 	@Test
 	public void testInterested() throws IOException {
+
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.interestedMessage()));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).interestedMessage (true);
+		verify(mockConsumer).interestedMessage (true);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -262,21 +131,14 @@ public class TestPeerProtocolParser {
 	public void testNotInterested() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.notInterestedMessage()));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).interestedMessage (false);
+		verify(mockConsumer).interestedMessage (false);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -290,22 +152,15 @@ public class TestPeerProtocolParser {
 	public void testHave() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		int pieceIndex = 1234;
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveMessage(pieceIndex)));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).haveMessage (pieceIndex);
+		verify(mockConsumer).haveMessage (pieceIndex);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -319,8 +174,6 @@ public class TestPeerProtocolParser {
 	public void testBitfield() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BitField bitField = new BitField (40);
 		bitField.set (0);
 		bitField.set (9);
@@ -333,15 +186,10 @@ public class TestPeerProtocolParser {
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.bitfieldMessage(bitField)));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).bitfieldMessage (bitfieldBytes);
+		verify(mockConsumer).bitfieldMessage (bitfieldBytes);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -355,22 +203,15 @@ public class TestPeerProtocolParser {
 	public void testRequest() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor requestDescriptor = new BlockDescriptor (1234, 5678, 9012);
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.requestMessage(requestDescriptor)));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).requestMessage (requestDescriptor);
+		verify(mockConsumer).requestMessage (requestDescriptor);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -384,23 +225,16 @@ public class TestPeerProtocolParser {
 	public void testPiece() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		byte[] data = new byte[] { 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1 };
 		BlockDescriptor requestDescriptor = new BlockDescriptor (1234, 5678, data.length);
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.pieceMessage (requestDescriptor, ByteBuffer.wrap (data))));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).pieceMessage (requestDescriptor, data);
+		verify(mockConsumer).pieceMessage (requestDescriptor, data);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -414,22 +248,15 @@ public class TestPeerProtocolParser {
 	public void testCancel() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor requestDescriptor = new BlockDescriptor (1234, 5678, 9012);
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.cancelMessage (requestDescriptor)));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).cancelMessage (requestDescriptor);
+		verify(mockConsumer).cancelMessage (requestDescriptor);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -443,22 +270,15 @@ public class TestPeerProtocolParser {
 	public void testSuggestPiece() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		int pieceIndex = 1234;
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.suggestPieceMessage (pieceIndex)));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (true, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).suggestPieceMessage (pieceIndex);
+		verify(mockConsumer).suggestPieceMessage (pieceIndex);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -472,21 +292,14 @@ public class TestPeerProtocolParser {
 	public void testHaveAll() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveAllMessage()));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (true, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).haveAllMessage();
+		verify(mockConsumer).haveAllMessage();
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -500,21 +313,14 @@ public class TestPeerProtocolParser {
 	public void testHaveNone() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveNoneMessage()));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (true, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).haveNoneMessage();
+		verify(mockConsumer).haveNoneMessage();
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -528,22 +334,15 @@ public class TestPeerProtocolParser {
 	public void testRejectRequest() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor requestDescriptor = new BlockDescriptor (1234, 5678, 9012);
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.rejectRequestMessage (requestDescriptor)));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (true, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).rejectRequestMessage (requestDescriptor);
+		verify(mockConsumer).rejectRequestMessage (requestDescriptor);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -557,22 +356,15 @@ public class TestPeerProtocolParser {
 	public void testAllowedFast() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		int pieceIndex = 1234;
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.allowedFastMessage (pieceIndex)));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (true, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).allowedFastMessage (pieceIndex);
+		verify(mockConsumer).allowedFastMessage (pieceIndex);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -586,8 +378,6 @@ public class TestPeerProtocolParser {
 	public void testExtensionHandshakeAdd() throws Exception {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		Map<String,Integer> extensions = new TreeMap<String,Integer>();
 		extensions.put ("bl_ah", 1);
 		BDictionary extra = new BDictionary();
@@ -597,15 +387,10 @@ public class TestPeerProtocolParser {
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, true, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (true, true);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String> (Arrays.asList ("bl_ah")), new HashSet<String>(), extra);
+		verify(mockConsumer).extensionHandshakeMessage (new HashSet<String> (Arrays.asList ("bl_ah")), new HashSet<String>(), extra);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -619,8 +404,6 @@ public class TestPeerProtocolParser {
 	public void testExtensionHandshakeRemove() throws Exception {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		Map<String,Integer> extensions = new TreeMap<String,Integer>();
 		extensions.put ("bl_ah", 1);
 		BDictionary extra = new BDictionary();
@@ -628,16 +411,12 @@ public class TestPeerProtocolParser {
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, true, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
 		extensions.put ("bl_ah", 0);
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
 
 		// Then
 		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (true, true);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
 		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String> (Arrays.asList ("bl_ah")), new HashSet<String>(), extra);
 		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String>(), new HashSet<String> (Arrays.asList ("bl_ah")), extra);
 		verifyNoMoreInteractions (mockConsumer);
@@ -653,8 +432,6 @@ public class TestPeerProtocolParser {
 	public void testExtensionHandshakeRemoveNonexistent() throws Exception {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		Map<String,Integer> extensions = new TreeMap<String,Integer>();
 		extensions.put ("bl_ah", 1);
 		BDictionary extra = new BDictionary();
@@ -662,16 +439,12 @@ public class TestPeerProtocolParser {
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, true, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
 		extensions.put ("wi_bble", 0);
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
 
 		// Then
 		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (true, true);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
 		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String> (Arrays.asList ("bl_ah")), new HashSet<String>(), extra);
 		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String>(), new HashSet<String>(), extra);
 		verifyNoMoreInteractions (mockConsumer);
@@ -690,8 +463,6 @@ public class TestPeerProtocolParser {
 	public void testExtensionMessage() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		Map<String,Integer> extensions = new TreeMap<String,Integer>();
 		extensions.put ("bl_ah", 42);
 		BDictionary extra = new BDictionary();
@@ -701,15 +472,11 @@ public class TestPeerProtocolParser {
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, true, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionMessage (42, ByteBuffer.wrap (new byte[] { 1, 2, 3, 4 }))));
 
 		// Then
 		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (true, true);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
 		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String> (Arrays.asList ("bl_ah")), new HashSet<String>(), extra);
 		sequence.verify(mockConsumer).extensionMessage ("bl_ah", new byte[] { 1, 2, 3, 4 });
 		verifyNoMoreInteractions (mockConsumer);
@@ -725,8 +492,6 @@ public class TestPeerProtocolParser {
 	public void testMerklePieceMessage() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BlockDescriptor expectedDescriptor = new BlockDescriptor (1, 0, 4);
 		ByteBuffer expectedHashChain = ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 });
 		ByteBuffer expectedBlock = ByteBuffer.wrap (new byte[] { 50, 51, 52, 53 });
@@ -736,7 +501,6 @@ public class TestPeerProtocolParser {
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, true, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.merklePieceMessage (
 				expectedDescriptor,
@@ -746,9 +510,6 @@ public class TestPeerProtocolParser {
 
 		// Then
 		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (true, true);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
 		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_MERKLE)), new HashSet<String>(), new BDictionary());
 		sequence.verify(mockConsumer).merklePieceMessage (expectedDescriptor, expectedHashChain.array(), expectedBlock.array());
 		verifyNoMoreInteractions (mockConsumer);
@@ -764,8 +525,6 @@ public class TestPeerProtocolParser {
 	public void testElasticSignatureMessage() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		long expectedViewLength = 0x7FFFFEFDFCFBFAF9L;
 		ByteBuffer expectedViewRootHash = ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 });
 		ByteBuffer expectedSignature = ByteBuffer.wrap (new byte[] {
@@ -779,7 +538,6 @@ public class TestPeerProtocolParser {
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, true, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
 		ByteBuffer[] elasticSignatureBuffers = PeerProtocolBuilder.elasticSignatureMessage (new ViewSignature (
 				expectedViewLength,
@@ -790,9 +548,6 @@ public class TestPeerProtocolParser {
 
 		// Then
 		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (true, true);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
 		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC)), new HashSet<String>(), new BDictionary());
 		sequence.verify(mockConsumer).elasticSignatureMessage (expectedViewSignature);
 		verifyNoMoreInteractions (mockConsumer);
@@ -808,8 +563,6 @@ public class TestPeerProtocolParser {
 	public void testElasticPieceMessage() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		long expectedViewLength = 0x7FFFFEFDFCFBFAF9L;
 		BlockDescriptor expectedDescriptor = new BlockDescriptor (1, 0, 4);
 		ByteBuffer expectedHashChain = ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 });
@@ -820,7 +573,6 @@ public class TestPeerProtocolParser {
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, true, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.elasticPieceMessage (
 				expectedDescriptor,
@@ -831,9 +583,6 @@ public class TestPeerProtocolParser {
 
 		// Then
 		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (true, true);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
 		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC)), new HashSet<String>(), new BDictionary());
 		sequence.verify(mockConsumer).elasticPieceMessage (expectedDescriptor, expectedViewLength, expectedHashChain.array(), expectedBlock.array());
 		verifyNoMoreInteractions (mockConsumer);
@@ -849,8 +598,6 @@ public class TestPeerProtocolParser {
 	public void testElasticBitfieldMessage() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		byte[] expectedBitfieldBytes = new byte[] { (byte)0xff, 0x00, (byte)0xee, (byte)0xf0 };
 		Map<String,Integer> extensions = new TreeMap<String,Integer>();
 		extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, 2);
@@ -858,15 +605,11 @@ public class TestPeerProtocolParser {
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, true, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.elasticBitfieldMessage (new BitField (expectedBitfieldBytes, 28))));
 
 		// Then
 		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (true, true);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
 		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC)), new HashSet<String>(), new BDictionary());
 		sequence.verify(mockConsumer).elasticBitfieldMessage (expectedBitfieldBytes);
 		verifyNoMoreInteractions (mockConsumer);
@@ -882,53 +625,20 @@ public class TestPeerProtocolParser {
 	public void testUnknown() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 5, 99, 1, 2, 3, 4 }));
 
 		// Then
-		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
-		sequence.verify(mockConsumer).unknownMessage (99, new byte[] { 1, 2, 3, 4 });
+		verify(mockConsumer).unknownMessage (99, new byte[] { 1, 2, 3, 4 });
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
 
 
 	// Protocol errors
-
-	/**
-	 * Tests that an exception is thrown on a bad header
-	 * @throws IOException
-	 */
-	@Test
-	public void testErrorBadHeader() throws IOException {
-
-		// Given
-		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class);
-		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
-
-		// When
-		boolean exceptionThrown = false;
-		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.chokeMessage()));
-		} catch (IOException e) {
-			exceptionThrown = true;
-			assertEquals ("Invalid header", e.getMessage());
-		}
-
-		// Then
-		assertTrue (exceptionThrown);
-
-	}
-
 
 	/**
 	 * Tests that an exception is thrown for a choke message of the wrong length
@@ -938,15 +648,12 @@ public class TestPeerProtocolParser {
 	public void testErrorChokeWrongLength() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
 		boolean exceptionThrown = false;
 		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 2, PeerProtocolConstants.MESSAGE_TYPE_CHOKE, 0 }));
 		} catch (IOException e) {
 			exceptionThrown = true;
@@ -967,15 +674,12 @@ public class TestPeerProtocolParser {
 	public void testErrorUnchokeWrongLength() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
 		boolean exceptionThrown = false;
 		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 2, PeerProtocolConstants.MESSAGE_TYPE_UNCHOKE, 0 }));
 		} catch (IOException e) {
 			exceptionThrown = true;
@@ -996,15 +700,12 @@ public class TestPeerProtocolParser {
 	public void testErrorInterestedWrongLength() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
 		boolean exceptionThrown = false;
 		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 2, PeerProtocolConstants.MESSAGE_TYPE_INTERESTED, 0 }));
 		} catch (IOException e) {
 			exceptionThrown = true;
@@ -1025,15 +726,12 @@ public class TestPeerProtocolParser {
 	public void testErrorNotInterestedWrongLength() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
 		boolean exceptionThrown = false;
 		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 2, PeerProtocolConstants.MESSAGE_TYPE_NOT_INTERESTED, 0 }));
 		} catch (IOException e) {
 			exceptionThrown = true;
@@ -1054,15 +752,12 @@ public class TestPeerProtocolParser {
 	public void testErrorHaveTooShort() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
 		boolean exceptionThrown = false;
 		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 1, PeerProtocolConstants.MESSAGE_TYPE_HAVE }));
 		} catch (IOException e) {
 			exceptionThrown = true;
@@ -1083,15 +778,12 @@ public class TestPeerProtocolParser {
 	public void testErrorHaveTooLong() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
 		boolean exceptionThrown = false;
 		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 6, PeerProtocolConstants.MESSAGE_TYPE_HAVE, 0, 0, 0, 0, 0 }));
 		} catch (IOException e) {
 			exceptionThrown = true;
@@ -1112,14 +804,11 @@ public class TestPeerProtocolParser {
 	public void testErrorBitfieldOutOfSequence() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BitField bitField = new BitField (40);
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.bitfieldMessage (bitField)));
 		boolean exceptionThrown = false;
 		try {
@@ -1143,15 +832,12 @@ public class TestPeerProtocolParser {
 	public void testErrorRequestTooShort() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
 		boolean exceptionThrown = false;
 		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 1, PeerProtocolConstants.MESSAGE_TYPE_REQUEST }));
 		} catch (IOException e) {
 			exceptionThrown = true;
@@ -1172,15 +858,12 @@ public class TestPeerProtocolParser {
 	public void testErrorRequestTooLong() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
 		boolean exceptionThrown = false;
 		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (
 					new byte[] { 0, 0, 0, 14, PeerProtocolConstants.MESSAGE_TYPE_REQUEST, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 			));
@@ -1203,15 +886,12 @@ public class TestPeerProtocolParser {
 	public void testErrorPieceTooShort() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
 		boolean exceptionThrown = false;
 		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 8, PeerProtocolConstants.MESSAGE_TYPE_PIECE, 0, 0, 0, 0, 0, 0, 0 }));
 		} catch (IOException e) {
 			exceptionThrown = true;
@@ -1232,15 +912,12 @@ public class TestPeerProtocolParser {
 	public void testErrorCancelTooShort() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
 		boolean exceptionThrown = false;
 		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 1, PeerProtocolConstants.MESSAGE_TYPE_CANCEL }));
 		} catch (IOException e) {
 			exceptionThrown = true;
@@ -1261,15 +938,12 @@ public class TestPeerProtocolParser {
 	public void testErrorCancelTooLong() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
 		boolean exceptionThrown = false;
 		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (
 					new byte[] { 0, 0, 0, 14, PeerProtocolConstants.MESSAGE_TYPE_CANCEL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 			));
@@ -1298,12 +972,12 @@ public class TestPeerProtocolParser {
 		// When
 		boolean exceptionThrown = false;
 		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.chokeMessage()));
+			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.allowedFastMessage (1234)));
 		} catch (IOException e) {
 			exceptionThrown = true;
-			assertEquals ("Invalid header", e.getMessage());
+			assertEquals ("Invalid message size or Fast extension disabled", e.getMessage());
 		}
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.chokeMessage()));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.allowedFastMessage (1234)));
 
 		// Then
 		assertTrue (exceptionThrown);
@@ -1319,15 +993,11 @@ public class TestPeerProtocolParser {
 	public void testErrorBehaviour2() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BitField bitField = new BitField (40);
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.keepaliveMessage()));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.bitfieldMessage (bitField)));
 		boolean exceptionThrown = false;
 		try {
@@ -1352,8 +1022,6 @@ public class TestPeerProtocolParser {
 	public void testErrorMessageExactlyMaximumLength() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		byte[] messageData = new byte[4 + 9 + 131072];
 		messageData[1] = 2;
 		messageData[3] = 9;
@@ -1362,7 +1030,6 @@ public class TestPeerProtocolParser {
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (messageData));
 
 		// Then
@@ -1379,8 +1046,6 @@ public class TestPeerProtocolParser {
 	public void testErrorMessageTooLong() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		byte[] erroneousData = new byte[4 + 9 + 131072 + 1];
 		erroneousData[1] = 2;
 		erroneousData[3] = 10;
@@ -1391,7 +1056,6 @@ public class TestPeerProtocolParser {
 		// When
 		boolean exceptionThrown = false;
 		try {
-			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (erroneousData));
 		} catch (IOException e) {
 			exceptionThrown = true;
@@ -1413,13 +1077,10 @@ public class TestPeerProtocolParser {
 	public void testErrorNonFastSuggestPiece() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		boolean exceptionThrown = false;
 		try {
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.suggestPieceMessage (0)));
@@ -1443,13 +1104,10 @@ public class TestPeerProtocolParser {
 	public void testErrorNonFastHaveAll() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		boolean exceptionThrown = false;
 		try {
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveAllMessage()));
@@ -1473,13 +1131,10 @@ public class TestPeerProtocolParser {
 	public void testErrorNonFastHaveNone() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		boolean exceptionThrown = false;
 		try {
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveNoneMessage()));
@@ -1503,13 +1158,10 @@ public class TestPeerProtocolParser {
 	public void testErrorNonFastRejectRequest() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		boolean exceptionThrown = false;
 		try {
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.rejectRequestMessage (new BlockDescriptor (0,1,2))));
@@ -1533,13 +1185,10 @@ public class TestPeerProtocolParser {
 	public void testErrorNonFastAllowedFast() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, false, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (false, false, infoHash, peerID)));
 		boolean exceptionThrown = false;
 		try {
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.allowedFastMessage (0)));
@@ -1562,13 +1211,10 @@ public class TestPeerProtocolParser {
 	public void testErrorFastHaveAllOutOfSequence() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveAllMessage()));
 		boolean exceptionThrown = false;
 		try {
@@ -1592,13 +1238,10 @@ public class TestPeerProtocolParser {
 	public void testErrorFastHaveNoneOutOfSequence() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class);
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveAllMessage()));
 		boolean exceptionThrown = false;
 		try {
@@ -1623,14 +1266,10 @@ public class TestPeerProtocolParser {
 	public void testErrorFastSuggestPieceTooShort() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveAllMessage()));
 		boolean exceptionThrown = false;
 		try {
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 1, PeerProtocolConstants.MESSAGE_TYPE_SUGGEST_PIECE }));
@@ -1654,14 +1293,10 @@ public class TestPeerProtocolParser {
 	public void testErrorFastSuggestPieceTooLong() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveAllMessage()));
 		boolean exceptionThrown = false;
 		try {
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 6, PeerProtocolConstants.MESSAGE_TYPE_SUGGEST_PIECE, 0, 0, 0, 0, 0 }));
@@ -1685,14 +1320,10 @@ public class TestPeerProtocolParser {
 	public void testErrorFastHaveAllTooLong() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveAllMessage()));
 		boolean exceptionThrown = false;
 		try {
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 2, PeerProtocolConstants.MESSAGE_TYPE_HAVE_ALL, 0 }));
@@ -1716,14 +1347,10 @@ public class TestPeerProtocolParser {
 	public void testErrorFastHaveNoneTooLong() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveAllMessage()));
 		boolean exceptionThrown = false;
 		try {
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 2, PeerProtocolConstants.MESSAGE_TYPE_HAVE_NONE, 0 }));
@@ -1747,14 +1374,10 @@ public class TestPeerProtocolParser {
 	public void testErrorFastRejectRequestTooShort() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveAllMessage()));
 		boolean exceptionThrown = false;
 		try {
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 1, PeerProtocolConstants.MESSAGE_TYPE_REJECT_REQUEST }));
@@ -1778,14 +1401,10 @@ public class TestPeerProtocolParser {
 	public void testErrorFastRejectRequestTooLong() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveAllMessage()));
 		boolean exceptionThrown = false;
 		try {
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 14, PeerProtocolConstants.MESSAGE_TYPE_REJECT_REQUEST, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }));
@@ -1809,14 +1428,10 @@ public class TestPeerProtocolParser {
 	public void testErrorFastAllowedFastTooShort() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveAllMessage()));
 		boolean exceptionThrown = false;
 		try {
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 1, PeerProtocolConstants.MESSAGE_TYPE_ALLOWED_FAST }));
@@ -1840,14 +1455,10 @@ public class TestPeerProtocolParser {
 	public void testErrorFastAllowedFastTooLong() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, false, infoHash, peerID)));
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveAllMessage()));
 		boolean exceptionThrown = false;
 		try {
 			parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 6, PeerProtocolConstants.MESSAGE_TYPE_ALLOWED_FAST, 0, 0, 0, 0, 0 }));
@@ -1871,16 +1482,12 @@ public class TestPeerProtocolParser {
 	public void testErrorExtensionDisabled() throws Exception {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		Map<String,Integer> extensions = new TreeMap<String,Integer>();
 		extensions.put ("bl_ah", 1);
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, true, false);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, true, infoHash, peerID)));
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveNoneMessage()));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null)));
 
 		// Then
@@ -1897,14 +1504,10 @@ public class TestPeerProtocolParser {
 	public void testErrorExtensionHandshakeInvalid() throws Exception {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, true, true);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, true, infoHash, peerID)));
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveNoneMessage()));
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (new byte[] { 0, 0, 0, 3 , 20, 0, 1 }));
 
 		// Then
@@ -1921,16 +1524,12 @@ public class TestPeerProtocolParser {
 	public void testErrorExtensionHandshakeTooLong() throws Exception {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		Map<String,Integer> extensions = new TreeMap<String,Integer>();
 		extensions.put ("bl_ah", 1);
 		PeerProtocolConsumer consumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (consumer, true, true);
 
 		// When
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.handshake (true, true, infoHash, peerID)));
-		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.haveNoneMessage()));
 		ByteBuffer[] extensionHandshakeBuffers = PeerProtocolBuilder.extensionHandshakeMessage (extensions, null);
 		extensionHandshakeBuffers[0].array()[3]++;
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (extensionHandshakeBuffers));
@@ -2226,23 +1825,19 @@ public class TestPeerProtocolParser {
 	public void testSingleBytes() throws IOException {
 
 		// Given
-		InfoHash infoHash = new InfoHash ("qwertyuiop1234567890".getBytes (CharsetUtil.ASCII));
-		PeerID peerID = new PeerID ("0987654321asdfghjkl;".getBytes (CharsetUtil.ASCII));
 		BitField bitField = new BitField (40);
 		bitField.set (0);
 		bitField.set (9);
 		bitField.set (18);
 		bitField.set (27);
 		bitField.set (36);
-		byte[] handshakeBytes = PeerProtocolBuilder.handshake (false, false, infoHash, peerID).array();
 		byte[] bitFieldBytes = PeerProtocolBuilder.bitfieldMessage (bitField).array();
 		byte[] unchokeBytes = PeerProtocolBuilder.unchokeMessage().array();
 		byte[] interestedBytes = PeerProtocolBuilder.interestedMessage().array();
-		byte[] streamBytes = new byte[handshakeBytes.length + bitFieldBytes.length + unchokeBytes.length + interestedBytes.length];
-		System.arraycopy (handshakeBytes, 0, streamBytes, 0, handshakeBytes.length);
-		System.arraycopy (bitFieldBytes, 0, streamBytes, handshakeBytes.length, bitFieldBytes.length);
-		System.arraycopy (unchokeBytes, 0, streamBytes, handshakeBytes.length + bitFieldBytes.length, unchokeBytes.length);
-		System.arraycopy (interestedBytes, 0, streamBytes, handshakeBytes.length + bitFieldBytes.length + unchokeBytes.length, interestedBytes.length);
+		byte[] streamBytes = new byte[bitFieldBytes.length + unchokeBytes.length + interestedBytes.length];
+		System.arraycopy (bitFieldBytes, 0, streamBytes, 0, bitFieldBytes.length);
+		System.arraycopy (unchokeBytes, 0, streamBytes, bitFieldBytes.length, unchokeBytes.length);
+		System.arraycopy (interestedBytes, 0, streamBytes, bitFieldBytes.length + unchokeBytes.length, interestedBytes.length);
 		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class); 
 		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, false, false);
 
@@ -2253,9 +1848,6 @@ public class TestPeerProtocolParser {
 
 		// Then
 		InOrder sequence = inOrder (mockConsumer);
-		sequence.verify(mockConsumer).handshakeBasicExtensions (false, false);
-		sequence.verify(mockConsumer).handshakeInfoHash (infoHash);
-		sequence.verify(mockConsumer).handshakePeerID (peerID);
 		sequence.verify(mockConsumer).bitfieldMessage (bitField.content());
 		sequence.verify(mockConsumer).chokeMessage (false);
 		sequence.verify(mockConsumer).interestedMessage (true);

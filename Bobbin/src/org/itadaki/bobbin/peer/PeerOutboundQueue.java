@@ -25,13 +25,11 @@ import org.itadaki.bobbin.connectionmanager.Connection;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConstants;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
-import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.counter.StatisticCounter;
-
 
 
 /**
@@ -169,21 +167,6 @@ public class PeerOutboundQueue {
 		 * Elastic pieces
 		 */
 		ELASTIC
-
-	}
-
-
-	/**
-	 * Sends an initial handshake
-	 * @param fastExtensionEnabled If {@code true}, advertise the Fast extension to the remote peer
-	 * @param extensionProtocolEnabled  If {@code true}, advertise the extension protocol to the remote peer
-	 * @param infoHash The info hash to use
-	 * @param peerID The peer ID of the local peer
-	 */
-	public void sendHandshake (boolean fastExtensionEnabled, boolean extensionProtocolEnabled, InfoHash infoHash, PeerID peerID) {
-
-		this.sendQueue.add (PeerProtocolBuilder.handshake (fastExtensionEnabled, extensionProtocolEnabled, infoHash, peerID));
-		this.connection.setWriteEnabled (true);
 
 	}
 
