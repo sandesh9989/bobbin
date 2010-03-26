@@ -23,6 +23,7 @@ import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
+import org.itadaki.bobbin.torrentdb.ResourceType;
 import org.itadaki.bobbin.torrentdb.StorageDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
@@ -338,10 +339,10 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#haveMessage(int)
+	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#haveMessage(org.itadaki.bobbin.torrentdb.ResourceType, int)
 	 */
 	@Override
-	public void haveMessage (int pieceIndex) throws IOException {
+	public void haveMessage (ResourceType resource, int pieceIndex) throws IOException {
 
 		if ((pieceIndex < 0) || (pieceIndex >= this.pieceDatabase.getStorageDescriptor().getNumberOfPieces())) {
 			throw new IOException ("Invalid have message");
@@ -368,10 +369,10 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#bitfieldMessage(byte[])
+	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#bitfieldMessage(org.itadaki.bobbin.torrentdb.ResourceType, byte[])
 	 */
 	@Override
-	public void bitfieldMessage (byte[] bitField) throws IOException {
+	public void bitfieldMessage (ResourceType resource, byte[] bitField) throws IOException {
 
 		// Validate the bitfield
 		try {
@@ -400,10 +401,10 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#requestMessage(int, int, int)
+	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#requestMessage(org.itadaki.bobbin.torrentdb.ResourceType, org.itadaki.bobbin.torrentdb.BlockDescriptor)
 	 */
 	@Override
-	public void requestMessage (BlockDescriptor descriptor) throws IOException {
+	public void requestMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException {
 
 		// Validate the descriptor
 		if (!validateBlockDescriptor (descriptor)) {
@@ -441,10 +442,10 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#pieceMessage(int, int, byte[])
+	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#pieceMessage(org.itadaki.bobbin.torrentdb.ResourceType, org.itadaki.bobbin.torrentdb.BlockDescriptor, byte[])
 	 */
 	@Override
-	public void pieceMessage (BlockDescriptor descriptor, byte[] data) throws IOException {
+	public void pieceMessage (ResourceType resource, BlockDescriptor descriptor, byte[] data) throws IOException {
 
 		if (this.pieceDatabase.getInfo().isMerkle()) {
 			throw new IOException ("Ordinary piece received for Merkle torrent");
@@ -480,10 +481,10 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.DefaultPeerProtocolConsumer#cancelMessage(int, int, int)
+	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#cancelMessage(org.itadaki.bobbin.torrentdb.ResourceType, org.itadaki.bobbin.torrentdb.BlockDescriptor)
 	 */
 	@Override
-	public void cancelMessage (BlockDescriptor descriptor) throws IOException {
+	public void cancelMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException {
 
 		// Validate the descriptor
 		if (!validateBlockDescriptor (descriptor)) {
@@ -558,10 +559,10 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#rejectRequestMessage(org.itadaki.bobbin.peer.BlockDescriptor)
+	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#rejectRequestMessage(org.itadaki.bobbin.torrentdb.ResourceType, org.itadaki.bobbin.torrentdb.BlockDescriptor)
 	 */
 	@Override
-	public void rejectRequestMessage (BlockDescriptor descriptor) throws IOException {
+	public void rejectRequestMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException {
 
 		if (!this.outboundQueue.rejectReceived (descriptor)) {
 			throw new IOException ("Reject received for unrequested piece");
@@ -739,7 +740,15 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 	public void elasticBitfieldMessage (byte[] bitField) throws IOException {
 
 		// TODO Temporary - to be replaced when new Elastic Bitfield format is decided
-		bitfieldMessage (bitField);
+		bitfieldMessage (null, bitField);
+
+	}
+
+
+	@Override
+	public void resourceSubscribeMessage (ResourceType resource) throws IOException {
+
+		// TODO implementation
 
 	}
 

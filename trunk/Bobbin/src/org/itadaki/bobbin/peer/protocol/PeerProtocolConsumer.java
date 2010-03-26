@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
+import org.itadaki.bobbin.torrentdb.ResourceType;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 
 
@@ -45,44 +46,49 @@ public interface PeerProtocolConsumer {
 
 	/**
 	 * Indicates that a "have" message has been received (basic protocol message ID 4)
-	 * 
+	 * @param resource The resource that is the subject of the message, or {@code null}
 	 * @param pieceIndex The index of the piece that has been announced
+	 * 
 	 * @throws IOException On any validation error
 	 */
-	public void haveMessage (int pieceIndex) throws IOException;
+	public void haveMessage (ResourceType resource, int pieceIndex) throws IOException;
 
 	/**
 	 * Indicates that a "bitfield" message has been received (basic protocol message ID 5)
-	 * 
+	 * @param resource The resource that is the subject of the message, or {@code null}
 	 * @param bitField The bits of the received bitfield
+	 * 
 	 * @throws IOException On any validation error
 	 */
-	public void bitfieldMessage (byte[] bitField) throws IOException;
+	public void bitfieldMessage (ResourceType resource, byte[] bitField) throws IOException;
 
 	/**
 	 * Indicates that a "request" message has been received (basic protocol message ID 6)
-	 * 
+	 * @param resource The resource that is the subject of the message, or {@code null}
 	 * @param descriptor The received request
+	 * 
 	 * @throws IOException On any validation error
 	 */
-	public void requestMessage (BlockDescriptor descriptor) throws IOException;
+	public void requestMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException;
 
 	/**
 	 * Indicates that a "piece" message has been received (basic protocol message ID 7)
-	 * 
+	 * @param resource The resource that is the subject of the message, or {@code null}
 	 * @param descriptor The descriptor of the block received
 	 * @param block The contents of the block received
+	 * 
 	 * @throws IOException On any validation error
 	 */
-	public void pieceMessage (BlockDescriptor descriptor, byte[] block) throws IOException;
+	public void pieceMessage (ResourceType resource, BlockDescriptor descriptor, byte[] block) throws IOException;
 
 	/**
 	 * Indicates that a "cancel" message has been received (basic protocol message ID 8)
-	 * 
+	 * @param resource The resource that is the subject of the message, or {@code null}
 	 * @param descriptor The request to cancel
+	 * 
 	 * @throws IOException On any validation error
 	 */
-	public void cancelMessage (BlockDescriptor descriptor) throws IOException;
+	public void cancelMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException;
 
 	/**
 	 * Indicates that a "suggest piece" message has been received (basic protocol message ID 13 when
@@ -112,11 +118,12 @@ public interface PeerProtocolConsumer {
 	/**
 	 * Indicates that a "reject request" message has been received (basic protocol message ID 16
 	 * when the Fast extension is enabled)
-	 *
+	 * @param resource The resource that is the subject of the message, or {@code null}
 	 * @param descriptor The descriptor of the request that has been rejected
+	 *
 	 * @throws IOException On any validation error
 	 */
-	public void rejectRequestMessage (BlockDescriptor descriptor) throws IOException;
+	public void rejectRequestMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException;
 
 	/**
 	 * Indicates that an "allowed fast" message has been received (basic protocol message ID 17 when
@@ -193,6 +200,15 @@ public interface PeerProtocolConsumer {
 	 * @throws IOException On any validation error
 	 */
 	public void elasticBitfieldMessage (byte[] bitField) throws IOException;
+
+
+	/**
+	 * Indicates that a "resource subscribe" message has been received (extension protocol
+	 * identifier "bo_resource", sub type 2)
+	 * @param resource The resource to subscribe to
+	 * @throws IOException On any validation error
+	 */
+	public void resourceSubscribeMessage (ResourceType resource) throws IOException;
 
 
 	/**

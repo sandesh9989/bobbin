@@ -10,9 +10,9 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ReadableByteChannel;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.itadaki.bobbin.bencode.BBinary;
@@ -22,13 +22,13 @@ import org.itadaki.bobbin.bencode.BInteger;
 import org.itadaki.bobbin.bencode.BList;
 import org.itadaki.bobbin.bencode.BValue;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
+import org.itadaki.bobbin.torrentdb.ResourceType;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 
 
 /**
- * A state machine to incrementally parse a peer protocol stream.
- * <p>Complete, successful decoding of the header and subsequent messages through successive calls
- * to {@link #parseBytes(ReadableByteChannel)} will result in calls to methods of the supplied
+ * A state machine to incrementally parse peer protocol messages. Successive calls to
+ * {@link #parseBytes(ReadableByteChannel)} will result in calls to methods of the supplied
  * {@link PeerProtocolConsumer}. If the stream is closed, or an error in the format of the stream is
  * detected, {@code IOException} will be thrown. 
  * <p>The content of the message data is not validated by the parser. Members of
@@ -38,15 +38,11 @@ import org.itadaki.bobbin.torrentdb.ViewSignature;
  *
  * <p>Stream format errors that are detected by the parser include:
  * <ul>
- *   <li>An incorrect handshake header</li>
  *   <li>A known message of provably incorrect size</li>
  *   <li>A "bitfield", "have all" or "have none" message sent at any time but the beginning of the
  *       stream</li>
  *   <li>A Fast extension message sent when the Fast extension has not been negotiated</li>
  * </ul>
- *
- *<p>The parser assumes that all parsed extensions are automatically supported by the outgoing
- *stream.
  */
 public class PeerProtocolParser {
 
@@ -103,10 +99,15 @@ public class PeerProtocolParser {
 	private boolean extensionProtocolEnabled = false;
 
 	/**
-	 * A map of extension strings and assigned extension message IDs that the remote peer is
-	 * offering
+	 * A map of extension message IDs and corresponding extension identifier strings offered by the
+	 * remote peer
 	 */
-	private Map<Integer,String> extensionIdentifiers = new TreeMap<Integer,String>();
+	private Map<Integer,String> extensionIdentifiers = new HashMap<Integer,String>();
+
+	/**
+	 * A map of resource IDs offered by the remote peer and the known resources they correspond to
+	 */
+	private Map<Integer,ResourceType> resourceIdentifiers = new HashMap<Integer,ResourceType>();
 
 	/**
 	 * {@code false} until a "Bitfield", "Have None" or "Have All" message has been received
@@ -133,6 +134,7 @@ public class PeerProtocolParser {
 
 	/**
 	 * Reads a big endian integer from the message data
+	 *
 	 * @return The integer that was read
 	 */
 	private int readInt () {
@@ -147,6 +149,7 @@ public class PeerProtocolParser {
 
 	/**
 	 * Reads a big endian long from the message data
+	 *
 	 * @return The long that was read
 	 */
 	private long readLong () {
@@ -164,13 +167,277 @@ public class PeerProtocolParser {
 
 
 	/**
-	 * Parses a complete extension handshake message
+	 * Parses the content of a Choke message at the current position
+	 *
+	 * @throws IOException
+	 */
+	private void parseChokeMessage() throws IOException {
+
+		if (this.messageData.remaining() == 0) {
+			this.consumer.chokeMessage (true);
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message size");
+		}
+
+	}
+
+
+	/**
+	 * Parses the content of an Unchoke message at the current position
+	 *
+	 * @throws IOException
+	 */
+	private void parseUnchokeMessage() throws IOException {
+
+		if (this.messageData.remaining() == 0) {
+			this.consumer.chokeMessage (false);
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message size");
+		}
+
+	}
+
+
+	/**
+	 * Parses the content of an Interested message at the current position
+	 *
+	 * @throws IOException
+	 */
+	private void parseInterestedMessage() throws IOException {
+
+		if (this.messageData.remaining() == 0) {
+			this.consumer.interestedMessage (true);
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message size");
+		}
+
+	}
+
+
+	/**
+	 * Parses the content of a Not Interested message at the current position
+	 *
+	 * @throws IOException
+	 */
+	private void parseNotInterestedMessage() throws IOException {
+
+		if (this.messageData.remaining() == 0) {
+			this.consumer.interestedMessage (false);
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message size");
+		}
+
+	}
+
+
+	/**
+	 * Parses the content of a Have message at the current position
+	 *
+	 * @param resource The resource to which the message applies
+	 * @throws IOException
+	 */
+	private void parseHaveMessage (ResourceType resource) throws IOException {
+
+		if (this.messageData.remaining() == 4) {
+			int havePieceIndex = readInt();
+			this.consumer.haveMessage (resource, havePieceIndex);
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message size");
+		}
+
+	}
+
+
+	/**
+	 * Parses the content of a Bitfield message at the current position
+	 *
+	 * @param resource The resource to which the message applies
+	 * @throws IOException
+	 */
+	private void parseBitfieldMessage (ResourceType resource) throws IOException {
+
+		if (!this.bitfieldReceived) {
+			this.bitfieldReceived = true;
+			byte[] bitFieldBytes = new byte[this.messageData.remaining()];
+			this.messageData.get (bitFieldBytes);
+			this.consumer.bitfieldMessage (resource, bitFieldBytes);
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message sequence");
+		}
+
+	}
+
+
+	/**
+	 * Parses the content of a Request message at the current position
+	 *
+	 * @param resource The resource to which the message applies
+	 * @throws IOException
+	 */
+	private void parseRequestMessage (ResourceType resource) throws IOException {
+
+		if (this.messageData.remaining() == 12) {
+			int requestPieceIndex = readInt();
+			int requestOffset = readInt();
+			int requestLength = readInt();
+			this.consumer.requestMessage (resource, new BlockDescriptor (requestPieceIndex, requestOffset, requestLength));
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message size");
+		}
+
+	}
+
+
+	/**
+	 * Parses the content of a Piece message at the current position
+	 *
+	 * @param resource The resource to which the message applies
+	 * @throws IOException
+	 */
+	private void parsePieceMessage (ResourceType resource) throws IOException {
+
+		if (this.messageData.remaining() >= 8) {
+			int piecePieceIndex = readInt();
+			int pieceOffset = readInt();
+			byte[] pieceData = new byte[this.messageData.remaining()];
+			this.messageData.get (pieceData);
+			this.consumer.pieceMessage (resource, new BlockDescriptor (piecePieceIndex, pieceOffset, pieceData.length), pieceData);
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message size");
+		}
+
+	}
+
+
+	/**
+	 * Parses the content of a Cancel message at the current position
+	 *
+	 * @param resource The resource to which the message applies
+	 * @throws IOException
+	 */
+	private void parseCancelMessage (ResourceType resource) throws IOException {
+
+		if (this.messageData.remaining() == 12) {
+			int cancelPieceIndex = readInt();
+			int cancelOffset = readInt();
+			int cancelLength = readInt();
+			this.consumer.cancelMessage (resource, new BlockDescriptor (cancelPieceIndex, cancelOffset, cancelLength));
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message size");
+		}
+
+	}
+
+
+	/**
+	 * Parses the content of a Suggest Piece message at the current position
+	 *
+	 * @throws IOException
+	 */
+	private void parseSuggestPieceMessage() throws IOException {
+
+		if (this.fastExtensionEnabled && (this.messageData.remaining() == 4)) {
+			int suggestPieceIndex = readInt();
+			this.consumer.suggestPieceMessage (suggestPieceIndex);
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message size or Fast extension disabled");
+		}
+
+	}
+
+
+	/**
+	 * Parses the content of a Have All message at the current position
+	 *
+	 * @throws IOException
+	 */
+	private void parseHaveAllMessage() throws IOException {
+
+		if (this.fastExtensionEnabled && (this.messageData.remaining() == 0) && !this.bitfieldReceived) {
+			this.bitfieldReceived = true;
+			this.consumer.haveAllMessage();
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message size, sequence or Fast extension disabled");
+		}
+
+	}
+
+	/**
+	 * Parses the content of a Have None message at the current position
+	 *
+	 * @throws IOException
+	 */
+	private void parseHaveNoneMessage() throws IOException {
+
+		if (this.fastExtensionEnabled && (this.messageData.remaining() == 0) && !this.bitfieldReceived) {
+			this.bitfieldReceived = true;
+			this.consumer.haveNoneMessage();
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message size, sequence or Fast extension disabled");
+		}
+
+	}
+
+
+	/**
+	 * Parses the content of a Reject Request message at the current position
+	 *
+	 * @param resource The resource to which the message applies
+	 * @throws IOException
+	 */
+	private void parseRejectRequestMessage (ResourceType resource) throws IOException {
+
+		if (this.fastExtensionEnabled && (this.messageData.remaining() == 12)) {
+			int requestPieceIndex = readInt();
+			int requestOffset = readInt();
+			int requestLength = readInt();
+			this.consumer.rejectRequestMessage (resource, new BlockDescriptor (requestPieceIndex, requestOffset, requestLength));
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message size or Fast extension disabled");
+		}
+
+	}
+
+
+	/**
+	 * Parses the content of an Allowed Fast message at the current position
+	 *
+	 * @throws IOException
+	 */
+	private void parseAllowedFastMessage() throws IOException {
+
+		if (this.fastExtensionEnabled && (this.messageData.remaining() == 4)) {
+			int allowedFastIndex = readInt();
+			this.consumer.allowedFastMessage (allowedFastIndex);
+		} else {
+			this.parserState = ParserState.ERROR;
+			throw new IOException ("Invalid message size or Fast extension disabled");
+		}
+
+	}
+
+
+	/**
+	 * Parses a complete extension handshake message at the current position
 	 *
 	 * @throws IOException if a parse error occurs
 	 */
 	private void parseExtensionHandshakeMessage() throws IOException {
 
-		byte[] handshakeBytes = new byte[this.messageData.limit() - 2];
+		byte[] handshakeBytes = new byte[this.messageData.remaining()];
 		this.messageData.get (handshakeBytes);
 
 		// The content must be a valid BDictionary with no additional data
@@ -218,13 +485,13 @@ public class PeerProtocolParser {
 
 
 	/**
-	 * Parses a complete Merkle piece message
+	 * Parses a complete Merkle piece message at the current position
 	 *
 	 * @throws IOException if a parse error occurs
 	 */
 	private void parseMerklePieceMessage() throws IOException {
 
-		if (this.messageData.limit() < 14) {
+		if (this.messageData.remaining() < 12) {
 			throw new IOException ("Invalid message size");
 		}
 
@@ -232,7 +499,7 @@ public class PeerProtocolParser {
 		int offset = readInt();
 		int hashChainLength = readInt();
 
-		if ((hashChainLength < 0) || (hashChainLength > this.messageData.limit() - 14)) {
+		if ((hashChainLength < 0) || (hashChainLength > this.messageData.remaining())) {
 			throw new IOException ("Invalid hash chain");
 		}
 
@@ -265,7 +532,7 @@ public class PeerProtocolParser {
 
 		}
 
-		byte[] block = new byte[this.messageData.limit() - hashChainLength - 14];
+		byte[] block = new byte[this.messageData.remaining()];
 		this.messageData.get (block);
 		this.consumer.merklePieceMessage (new BlockDescriptor (pieceNumber, offset, block.length), hashChain, block);
 
@@ -273,13 +540,13 @@ public class PeerProtocolParser {
 
 
 	/**
-	 * Parses a complete Elastic message
+	 * Parses a complete Elastic message at the current position
 	 *
 	 * @throws IOException if a parse error occurs
 	 */
 	private void parseElasticMessage() throws IOException {
 
-		if (this.messageData.limit() < 3) {
+		if (this.messageData.remaining() < 1) {
 			throw new IOException ("Invalid message size");
 		}
 
@@ -288,7 +555,7 @@ public class PeerProtocolParser {
 		switch (subMessageType) {
 
 			case PeerProtocolConstants.ELASTIC_MESSAGE_TYPE_SIGNATURE:
-				if (this.messageData.limit() < 70) {
+				if (this.messageData.remaining() != 68) {
 					throw new IOException ("Invalid message size");
 				}
 
@@ -305,7 +572,7 @@ public class PeerProtocolParser {
 				break;
 
 			case PeerProtocolConstants.ELASTIC_MESSAGE_TYPE_PIECE:
-				if (this.messageData.limit() < 15) {
+				if (this.messageData.remaining() < 9) {
 					throw new IOException ("Invalid message size");
 				}
 
@@ -313,7 +580,7 @@ public class PeerProtocolParser {
 				int offset = readInt();
 				int hashCount = this.messageData.get() & 0xff;
 
-				if (this.messageData.limit() < 12 + (hashCount == 0 ? 0 : 8 + (20 * hashCount))) {
+				if (this.messageData.remaining() < (20 * hashCount)) {
 					throw new IOException ("Invalid message size");
 				}
 
@@ -325,19 +592,117 @@ public class PeerProtocolParser {
 					this.messageData.get (hashChain);
 				}
 
-				byte[] block = new byte[this.messageData.limit() - this.messageData.position()];
+				byte[] block = new byte[this.messageData.remaining()];
 				this.messageData.get (block);
 				this.consumer.elasticPieceMessage (new BlockDescriptor (pieceNumber, offset, block.length), viewLength, hashChain, block);
 				break;
 
 			case PeerProtocolConstants.ELASTIC_MESSAGE_TYPE_BITFIELD:
-				byte[] bitFieldBytes = new byte[this.messageData.limit() - 3];
+				byte[] bitFieldBytes = new byte[this.messageData.remaining()];
 				this.messageData.get (bitFieldBytes);
 				this.consumer.elasticBitfieldMessage (bitFieldBytes);
 				break;
 
 			default:
 				throw new IOException ("Invalid Elastic message type");
+
+		}
+
+	}
+
+
+	/**
+	 * Parses a complete Resource message at the current position
+	 *
+	 * @throws IOException if a parse error occurs
+	 */
+	private void parseResourceMessage() throws IOException {
+
+		int subMessageType = this.messageData.get();
+
+		switch (subMessageType) {
+
+			case PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_DIRECTORY:
+				byte[] directoryBytes = new byte[this.messageData.remaining()];
+				this.messageData.get (directoryBytes);
+
+				// The content must be a valid BList
+				InputStream directoryInputStream = new ByteArrayInputStream (directoryBytes);
+				BList directory = new BDecoder(directoryInputStream).decodeList();
+				if (directoryInputStream.available() > 0) {
+					throw new IOException ("Extra data after resource directory");
+				}
+				for (BValue resourceValue : directory) {
+					if (!(resourceValue instanceof BList)) {
+						throw new IOException ("Invalid resource");
+					}
+					BList resourceList = (BList)resourceValue;
+					if (
+							(resourceList.size() != 3)
+							|| !(resourceList.get (0) instanceof BInteger)
+							|| !(resourceList.get (1) instanceof BBinary)
+							|| !(resourceList.get (2) instanceof BInteger)
+					   )
+					{
+						throw new IOException ("Invalid resource");
+					}
+					int resourceID = ((BInteger)(resourceList.get (0))).value().intValue();
+					String resourceName = ((BBinary)(resourceList.get (1))).stringValue();
+					int resourceLength = ((BInteger)(resourceList.get (2))).value().intValue();
+					if ((resourceID < 0) || (resourceID > 255) || (resourceLength < 0)) {
+						throw new IOException ("Invalid resource");
+					}
+					ResourceType resource = ResourceType.forName (resourceName);
+					if (resource != null) {
+						this.resourceIdentifiers.put (resourceID, resource);
+					}
+				}
+				break;
+
+			case PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_TRANSFER:
+				if (this.messageData.remaining() < 5) {
+					throw new IOException ("Invalid message size");
+				}
+				ResourceType resource = this.resourceIdentifiers.get (this.messageData.get() & 0xff);
+				if (resource == null) {
+					throw new IOException ("Unknown resource");
+				}
+				int transferMessageType = this.messageData.get();
+				switch (transferMessageType) {
+					case PeerProtocolConstants.MESSAGE_TYPE_HAVE:
+						parseHaveMessage (resource);
+						break;
+					case PeerProtocolConstants.MESSAGE_TYPE_BITFIELD:
+						parseBitfieldMessage (resource);
+						break;
+					case PeerProtocolConstants.MESSAGE_TYPE_REQUEST:
+						parseRequestMessage (resource);
+						break;
+					case PeerProtocolConstants.MESSAGE_TYPE_CANCEL:
+						parseCancelMessage (resource);
+						break;
+					case PeerProtocolConstants.MESSAGE_TYPE_PIECE:
+						parsePieceMessage (resource);
+						break;
+					case PeerProtocolConstants.MESSAGE_TYPE_REJECT_REQUEST:
+						parseRejectRequestMessage (resource);
+						break;
+				}
+				break;
+
+			case PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_SUBSCRIBE:
+				if (this.messageData.remaining() != 1) {
+					throw new IOException ("Invalid message size");
+				}
+				ResourceType subscriptionResource = this.resourceIdentifiers.get (this.messageData.get() & 0xff);
+				if (subscriptionResource == null) {
+					throw new IOException ("Unknown resource");
+				}
+				this.consumer.resourceSubscribeMessage (subscriptionResource);
+				break;
+
+			default:
+				throw new IOException ("Invalid resource message");
 
 		}
 
@@ -394,154 +759,63 @@ public class PeerProtocolParser {
 						switch (messageType) {
 
 							case PeerProtocolConstants.MESSAGE_TYPE_CHOKE:
-								if (this.messageData.limit() == 1) {
-									this.consumer.chokeMessage (true);
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message size");
-								}
+								parseChokeMessage();
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_UNCHOKE:
-								if (this.messageData.limit() == 1) {
-									this.consumer.chokeMessage (false);
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message size");
-								}
+								parseUnchokeMessage();
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_INTERESTED:
-								if (this.messageData.limit() == 1) {
-									this.consumer.interestedMessage (true);
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message size");
-								}
+								parseInterestedMessage();
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_NOT_INTERESTED:
-								if (this.messageData.limit() == 1) {
-									this.consumer.interestedMessage (false);
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message size");
-								}
+								parseNotInterestedMessage();
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_HAVE:
-								if (this.messageData.limit() == 5) {
-									int havePieceIndex = readInt();
-									this.consumer.haveMessage (havePieceIndex);
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message size");
-								}
+								parseHaveMessage (null);
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_BITFIELD:
-								if (!this.bitfieldReceived) {
-									this.bitfieldReceived = true;
-									byte[] bitFieldBytes = new byte[this.messageData.limit() - 1];
-									this.messageData.get (bitFieldBytes);
-									this.consumer.bitfieldMessage (bitFieldBytes);
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message sequence");
-								}
+								parseBitfieldMessage (null);
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_REQUEST:
-								if (this.messageData.limit() == 13) {
-									int requestPieceIndex = readInt();
-									int requestOffset = readInt();
-									int requestLength = readInt();
-									this.consumer.requestMessage (new BlockDescriptor (requestPieceIndex, requestOffset, requestLength));
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message size");
-								}
+								parseRequestMessage (null);
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_PIECE:
-								if (this.messageData.limit() >= 9) {
-									int piecePieceIndex = readInt();
-									int pieceOffset = readInt();
-									byte[] pieceData = new byte[this.messageData.limit() - 9];
-									this.messageData.get (pieceData);
-									this.consumer.pieceMessage (new BlockDescriptor (piecePieceIndex, pieceOffset, pieceData.length), pieceData);
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message size");
-								}
+								parsePieceMessage (null);
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_CANCEL:
-								if (this.messageData.limit() == 13) {
-									int cancelPieceIndex = readInt();
-									int cancelOffset = readInt();
-									int cancelLength = readInt();
-									this.consumer.cancelMessage (new BlockDescriptor (cancelPieceIndex, cancelOffset, cancelLength));
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message size");
-								}
+								parseCancelMessage (null);
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_SUGGEST_PIECE:
-								if (this.fastExtensionEnabled && (this.messageData.limit() == 5)) {
-									int suggestPieceIndex = readInt();
-									this.consumer.suggestPieceMessage (suggestPieceIndex);
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message size or Fast extension disabled");
-								}
+								parseSuggestPieceMessage();
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_HAVE_ALL:
-								if (this.fastExtensionEnabled && (this.messageData.limit() == 1) && !this.bitfieldReceived) {
-									this.bitfieldReceived = true;
-									this.consumer.haveAllMessage();
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message size, sequence or Fast extension disabled");
-								}
+								parseHaveAllMessage();
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_HAVE_NONE:
-								if (this.fastExtensionEnabled && (this.messageData.limit() == 1) && !this.bitfieldReceived) {
-									this.bitfieldReceived = true;
-									this.consumer.haveNoneMessage();
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message size, sequence or Fast extension disabled");
-								}
+								parseHaveNoneMessage();
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_REJECT_REQUEST:
-								if (this.fastExtensionEnabled && (this.messageData.limit() == 13)) {
-									int requestPieceIndex = readInt();
-									int requestOffset = readInt();
-									int requestLength = readInt();
-									this.consumer.rejectRequestMessage (new BlockDescriptor (requestPieceIndex, requestOffset, requestLength));
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message size or Fast extension disabled");
-								}
+								parseRejectRequestMessage (null);
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_ALLOWED_FAST:
-								if (this.fastExtensionEnabled && (this.messageData.limit() == 5)) {
-									int allowedFastIndex = readInt();
-									this.consumer.allowedFastMessage (allowedFastIndex);
-								} else {
-									this.parserState = ParserState.ERROR;
-									throw new IOException ("Invalid message size or Fast extension disabled");
-								}
+								parseAllowedFastMessage();
 								break;
 
 							case PeerProtocolConstants.MESSAGE_TYPE_EXTENDED:
-								if (this.extensionProtocolEnabled && (this.messageData.limit() >= 2)) {
+								if (this.extensionProtocolEnabled && (this.messageData.remaining() >= 1)) {
 									int extensionID = this.messageData.get() & 0xff;
 									if (extensionID == 0) {
 										parseExtensionHandshakeMessage();
@@ -552,8 +826,10 @@ public class PeerProtocolParser {
 											parseMerklePieceMessage();
 										} else if (PeerProtocolConstants.EXTENSION_ELASTIC.equals (identifier)) {
 											parseElasticMessage();
+										} else if (PeerProtocolConstants.EXTENSION_RESOURCE.equals (identifier)) {
+											parseResourceMessage();
 										} else {
-											byte[] extensionData = new byte[this.messageData.limit() - 2];
+											byte[] extensionData = new byte[this.messageData.remaining()];
 											this.messageData.get (extensionData);
 											this.consumer.extensionMessage (identifier, extensionData);
 										}
@@ -565,7 +841,7 @@ public class PeerProtocolParser {
 								break;
 
 							default:
-								byte[] unknownData = new byte[this.messageData.limit() - 1];
+								byte[] unknownData = new byte[this.messageData.remaining()];
 								this.messageData.get (unknownData);
 								this.consumer.unknownMessage (messageType, unknownData);
 								break;
@@ -603,5 +879,6 @@ public class PeerProtocolParser {
 		this.extensionProtocolEnabled = extensionProtocolEnabled;
 
 	}
+
 
 }
