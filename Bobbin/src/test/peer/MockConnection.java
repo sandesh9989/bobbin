@@ -22,6 +22,7 @@ import org.itadaki.bobbin.connectionmanager.ConnectionReadyListener;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
+import org.itadaki.bobbin.torrentdb.ResourceType;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.CharsetUtil;
 
@@ -417,16 +418,16 @@ public class MockConnection extends Connection {
 				System.out.printf ("%2d suggest piece (%d)\n", this.sequence++, pieceNumber);
 			}
 
-			public void requestMessage (BlockDescriptor descriptor) throws IOException {
-				System.out.printf ("%2d request (%d:%d,%d)\n", this.sequence++, descriptor.getPieceNumber(), descriptor.getOffset(), descriptor.getLength());
+			public void requestMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException {
+				System.out.printf ("%2d request (%s %d:%d,%d)\n", this.sequence++, resource, descriptor.getPieceNumber(), descriptor.getOffset(), descriptor.getLength());
 			}
 
-			public void rejectRequestMessage (BlockDescriptor descriptor) throws IOException {
-				System.out.printf ("%2d reject request (%d:%d,%d)\n", this.sequence++, descriptor.getPieceNumber(), descriptor.getOffset(), descriptor.getLength());
+			public void rejectRequestMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException {
+				System.out.printf ("%2d reject request (%s %d:%d,%d)\n", this.sequence++, resource, descriptor.getPieceNumber(), descriptor.getOffset(), descriptor.getLength());
 			}
 
-			public void pieceMessage (BlockDescriptor descriptor, byte[] data) throws IOException {
-				System.out.printf ("%2d piece (%d:%d,%d)\n", this.sequence++, descriptor.getPieceNumber(), descriptor.getOffset(), descriptor.getLength());
+			public void pieceMessage (ResourceType resource, BlockDescriptor descriptor, byte[] data) throws IOException {
+				System.out.printf ("%2d piece (%s %d:%d,%d)\n", this.sequence++, resource, descriptor.getPieceNumber(), descriptor.getOffset(), descriptor.getLength());
 			}
 
 			public void keepAliveMessage() throws IOException {
@@ -441,8 +442,8 @@ public class MockConnection extends Connection {
 				System.out.printf ("%2d have none\n", this.sequence++);
 			}
 
-			public void haveMessage (int pieceIndex) throws IOException {
-				System.out.printf ("%2d have (%d)\n", this.sequence++, pieceIndex);
+			public void haveMessage (ResourceType resource, int pieceIndex) throws IOException {
+				System.out.printf ("%2d have (%s %d)\n", this.sequence++, resource, pieceIndex);
 			}
 
 			public void haveAllMessage() throws IOException {
@@ -453,12 +454,12 @@ public class MockConnection extends Connection {
 				System.out.printf ("%2d choke (%b)\n", this.sequence++, choked);
 			}
 
-			public void cancelMessage (BlockDescriptor descriptor) throws IOException {
-				System.out.printf ("%2d cancel (%d:%d,%d)\n", this.sequence++, descriptor.getPieceNumber(), descriptor.getOffset(), descriptor.getLength());
+			public void cancelMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException {
+				System.out.printf ("%2d cancel (%s %d:%d,%d)\n", this.sequence++, resource, descriptor.getPieceNumber(), descriptor.getOffset(), descriptor.getLength());
 			}
 
-			public void bitfieldMessage (byte[] bitField) throws IOException {
-				System.out.printf ("%2d bitfield (%s)\n", this.sequence++, CharsetUtil.hexencode (bitField));
+			public void bitfieldMessage (ResourceType resource, byte[] bitField) throws IOException {
+				System.out.printf ("%2d bitfield (%s %s)\n", this.sequence++, resource, CharsetUtil.hexencode (bitField));
 			}
 
 			public void allowedFastMessage (int pieceNumber) throws IOException {
@@ -489,6 +490,11 @@ public class MockConnection extends Connection {
 
 			public void elasticBitfieldMessage (byte[] bitField) throws IOException {
 				System.out.printf ("%2d Elastic bitfield\n", this.sequence++);
+			}
+
+			@Override
+			public void resourceSubscribeMessage (ResourceType resource) throws IOException {
+				System.out.printf ("%2d Resource subscribe (%s)\n", this.sequence++, resource);
 			}
 
 		}, fastExtensionOffered, extensionProtocolOffered);
