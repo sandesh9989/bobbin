@@ -14,6 +14,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 
 import org.itadaki.bobbin.bencode.BDictionary;
@@ -490,6 +491,15 @@ public class MockConnection extends Connection {
 
 			public void elasticBitfieldMessage (byte[] bitField) throws IOException {
 				System.out.printf ("%2d Elastic bitfield\n", this.sequence++);
+			}
+
+			@Override
+			public void resourceDirectoryMessage (List<ResourceType> resources, List<Integer> lengths) throws IOException {
+				System.out.printf ("%2d Resource directory (", this.sequence++);
+				for (int i = 0; i < resources.size(); i++) {
+					System.out.printf ("%s:%d ", resources.get(i).name, lengths.get (i));
+				}
+				System.out.println ("\n");
 			}
 
 			@Override

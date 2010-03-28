@@ -5,6 +5,7 @@
 package org.itadaki.bobbin.peer.protocol;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 
 import org.itadaki.bobbin.bencode.BDictionary;
@@ -28,7 +29,7 @@ public interface PeerProtocolConsumer {
 	/**
 	 * Indicates that a "choke" or "unchoke" message has been received (basic protocol message IDs 0
 	 * and 1)
-	 * 
+	 *
 	 * @param choked {@code true} if choked, otherwise {@code false}
 	 * @throws IOException On any validation error
 
@@ -38,54 +39,83 @@ public interface PeerProtocolConsumer {
 	/**
 	 * Indicates that an "interested" or "not interested" message has been received (basic protocol
 	 * message IDs 2 and 3)
-	 * 
+	 *
 	 * @param interested {@code true} if interested, otherwise {@code false}
 	 * @throws IOException On any validation error
 	 */
 	public void interestedMessage (boolean interested) throws IOException;
 
 	/**
-	 * Indicates that a "have" message has been received (basic protocol message ID 4)
+	 * Indicates that a "have" or "resource have" message has been received (basic protocol message
+	 * ID 4)
+	 *
 	 * @param resource The resource that is the subject of the message, or {@code null}
 	 * @param pieceIndex The index of the piece that has been announced
-	 * 
 	 * @throws IOException On any validation error
 	 */
 	public void haveMessage (ResourceType resource, int pieceIndex) throws IOException;
 
 	/**
-	 * Indicates that a "bitfield" message has been received (basic protocol message ID 5)
+	 * Indicates that a "bitfield" or "resource bitfield" message has been received (basic protocol
+	 * message ID 5)
+	 *
 	 * @param resource The resource that is the subject of the message, or {@code null}
 	 * @param bitField The bits of the received bitfield
-	 * 
 	 * @throws IOException On any validation error
 	 */
 	public void bitfieldMessage (ResourceType resource, byte[] bitField) throws IOException;
 
 	/**
-	 * Indicates that a "request" message has been received (basic protocol message ID 6)
+	 * Indicates that a "request" or "resource request" message has been received (basic protocol
+	 * message ID 6)
+	 *
 	 * @param resource The resource that is the subject of the message, or {@code null}
 	 * @param descriptor The received request
-	 * 
 	 * @throws IOException On any validation error
 	 */
 	public void requestMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException;
 
 	/**
-	 * Indicates that a "piece" message has been received (basic protocol message ID 7)
+	 * Indicates that a "piece" or "resource piece" message has been received (basic protocol
+	 * message ID 7)
+	 *
 	 * @param resource The resource that is the subject of the message, or {@code null}
 	 * @param descriptor The descriptor of the block received
 	 * @param block The contents of the block received
-	 * 
 	 * @throws IOException On any validation error
 	 */
 	public void pieceMessage (ResourceType resource, BlockDescriptor descriptor, byte[] block) throws IOException;
 
 	/**
-	 * Indicates that a "cancel" message has been received (basic protocol message ID 8)
+	 * Indicates that a "Merkle piece" message has been received (extension protocol identifier
+	 * "Tr_hashpiece")
+	 *
+	 * @param descriptor The descriptor of the block received
+	 * @param hashChain The sibling hash chain received
+	 * @param block The contents of the block received
+	 * @throws IOException On any validation error
+	 */
+	public void merklePieceMessage (BlockDescriptor descriptor, byte[] hashChain, byte[] block) throws IOException;
+
+
+	/**
+	 * Indicates that a "elastic piece" message has been received (extension protocol identifier
+	 * "bo_elastic", sub type 1)
+	 *
+	 * @param descriptor The descriptor of the block received
+	 * @param viewLength The view length to which the hash chain applies
+	 * @param hashChain The sibling hash chain received
+	 * @param block The contents of the block received
+	 * @throws IOException On any validation error
+	 */
+	public void elasticPieceMessage (BlockDescriptor descriptor, Long viewLength, byte[] hashChain, byte[] block) throws IOException;
+
+	/**
+	 * Indicates that a "cancel" or "resource cancel" message has been received (basic protocol
+	 * message ID 8)
+	 *
 	 * @param resource The resource that is the subject of the message, or {@code null}
 	 * @param descriptor The request to cancel
-	 * 
 	 * @throws IOException On any validation error
 	 */
 	public void cancelMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException;
@@ -116,11 +146,11 @@ public interface PeerProtocolConsumer {
 	public void haveNoneMessage() throws IOException;
 
 	/**
-	 * Indicates that a "reject request" message has been received (basic protocol message ID 16
-	 * when the Fast extension is enabled)
+	 * Indicates that a "reject request" or "resource reject request" message has been received
+	 * (basic protocol message ID 16 when the Fast extension is enabled)
+	 *
 	 * @param resource The resource that is the subject of the message, or {@code null}
 	 * @param descriptor The descriptor of the request that has been rejected
-	 *
 	 * @throws IOException On any validation error
 	 */
 	public void rejectRequestMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException;
@@ -157,63 +187,45 @@ public interface PeerProtocolConsumer {
 	public void extensionMessage (String identifier, byte[] data) throws IOException;
 
 	/**
-	 * Indicates that a "Merkle piece" message has been received (extension protocol identifier
-	 * "Tr_hashpiece")
-	 * 
-	 * @param descriptor The descriptor of the block received
-	 * @param hashChain The sibling hash chain received
-	 * @param block The contents of the block received
-	 * @throws IOException On any validation error
-	 */
-	public void merklePieceMessage (BlockDescriptor descriptor, byte[] hashChain, byte[] block) throws IOException;
-
-
-	/**
 	 * Indicates that a "elastic signature" message has been received (extension protocol identifier
 	 * "bo_elastic", sub type 0)
 	 *
 	 * @param signature The view signature
-	 * 
 	 * @throws IOException On any validation error
 	 */
 	public void elasticSignatureMessage (ViewSignature signature) throws IOException;
 
-
-	/**
-	 * Indicates that a "elastic piece" message has been received (extension protocol identifier
-	 * "bo_elastic", sub type 1)
-	 * @param descriptor The descriptor of the block received
-	 * @param viewLength The view length to which the hash chain applies
-	 * @param hashChain The sibling hash chain received
-	 * @param block The contents of the block received
-	 * 
-	 * @throws IOException On any validation error
-	 */
-	public void elasticPieceMessage (BlockDescriptor descriptor, Long viewLength, byte[] hashChain, byte[] block) throws IOException;
-
-
 	/**
 	 * Indicates that a "elastic bitfield" message has been received (extension protocol identifier
 	 * "bo_elastic", sub type 2)
-	 * 
+	 *
 	 * @param bitField The bits of the received bitfield
 	 * @throws IOException On any validation error
 	 */
 	public void elasticBitfieldMessage (byte[] bitField) throws IOException;
 
+	/**
+	 * Indicates that a "resource directory" message has been received (extension protocol
+	 * identifier "bo_resource", sub type 1)
+	 *
+	 * @param resources The resources advertised
+	 * @param lengths The lengths of the advertised resources
+	 * @throws IOException On any validation error
+	 */
+	public void resourceDirectoryMessage (List<ResourceType> resources, List<Integer> lengths) throws IOException;
 
 	/**
 	 * Indicates that a "resource subscribe" message has been received (extension protocol
 	 * identifier "bo_resource", sub type 2)
+	 *
 	 * @param resource The resource to subscribe to
 	 * @throws IOException On any validation error
 	 */
 	public void resourceSubscribeMessage (ResourceType resource) throws IOException;
 
-
 	/**
 	 * Indicates that an unknown message has been received
-	 * 
+	 *
 	 * @param messageID The type ID of the received message
 	 * @param messageBytes The content of the received message
 	 * @throws IOException On any validation error

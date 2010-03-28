@@ -9,7 +9,6 @@ import java.util.Set;
 
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
-import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.elastictree.HashChain;
 
@@ -18,15 +17,6 @@ import org.itadaki.bobbin.util.elastictree.HashChain;
  * A PeerHandler's view of the peer set management services provided by a PeerCoordinator
  */
 public interface PeerServices {
-
-	/**
-	 * Returns the local peer ID
-	 *
-	 * <p><b>Thread safety:</b> This method is thread safe
-	 * 
-	 * @return The local peer ID
-	 */
-	public PeerID getLocalPeerID();
 
 	/**
 	 * Deregisters a peer that has disconnected. The peer's available pieces will be subtracted
@@ -145,13 +135,6 @@ public interface PeerServices {
 	public void adjustChoking (boolean opportunistic);
 
 	/**
-	 * <p><b>Thread safety:</b> This method must be called with the peer context lock held
-	 *
-	 * @return The PieceDatabase for this torrent
-	 */
-	public PieceDatabase getPieceDatabase();
-
-	/**
 	 * Handle a view signature, updating the piece database and request manager, and propagating to
 	 * other peers as appropriate
 	 *
@@ -161,13 +144,6 @@ public interface PeerServices {
 	 * @return {@code true} if the signature verified correctly, otherwise {@code false}
 	 */
 	public boolean handleViewSignature (ViewSignature viewSignature);
-
-	/**
-	 * <p><b>Thread safety:</b> This method is thread safe
-	 *
-	 * @return The parent statistic set for the entire peer set
-	 */
-	public PeerStatistics getStatistics();
 
 	/**
 	 * Acquires the reentrant peer context lock. All peer and peer set management (including that in
