@@ -92,7 +92,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 	/**
 	 * Protocol statistics about the peer
 	 */
-	private final PeerStatistics peerStatistics = new PeerStatistics();
+	private final PeerStatistics peerStatistics;
 
 	/**
 	 * The peer protocol state
@@ -218,7 +218,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 	 */
 	public void rejectPiece (int pieceNumber) {
 
-		this.outboundQueue.rejectPieceMessages(pieceNumber);
+		this.outboundQueue.rejectPieceMessages (pieceNumber);
 
 	}
 
@@ -285,7 +285,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		try {
 			this.connection.close();
 		} catch (IOException e) {
-			// Shouldn't happen
+			// Shouldn't happen, and nothing we can do if it does
 		}
 		if (this.peerServices != null) {
 			this.peerServices.peerDisconnected (this);
@@ -745,6 +745,20 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 	}
 
 
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#resourceDirectoryMessage(java.util.List, java.util.List)
+	 */
+	@Override
+	public void resourceDirectoryMessage (List<ResourceType> resources, List<Integer> lengths) throws IOException {
+
+		// TODO implementation
+
+	}
+
+
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#resourceSubscribeMessage(org.itadaki.bobbin.torrentdb.ResourceType)
+	 */
 	@Override
 	public void resourceSubscribeMessage (ResourceType resource) throws IOException {
 
@@ -911,14 +925,17 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/**
-	 * TODO
-	 * @param peerServices
-	 * @param connection
-	 * @param remotePeerID TODO
-	 * @param fastExtensionEnabled
-	 * @param extensionProtocolEnabled
+	 * @param peerServices The peer services
+	 * @param connection The connection through which to send and receive messages
+	 * @param remotePeerID The remote peer ID
+	 * @param parentStatistics The parent aggregate PeerStatistics for the whole peer set
+	 * @param pieceDatabase The piece database
+	 * @param fastExtensionEnabled {@code true} if the fast extension is enabled
+	 * @param extensionProtocolEnabled {@code true} if the extension protocol is enabled
 	 */
-	public PeerHandler (PeerServices peerServices, Connection connection, PeerID remotePeerID, boolean fastExtensionEnabled, boolean extensionProtocolEnabled) {
+	public PeerHandler (PeerServices peerServices, Connection connection, PeerID remotePeerID, PeerStatistics parentStatistics, PieceDatabase pieceDatabase,
+			boolean fastExtensionEnabled, boolean extensionProtocolEnabled)
+	{
 
 		this.peerServices = peerServices;
 		this.connection = connection;
@@ -926,14 +943,14 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		this.state.fastExtensionEnabled = fastExtensionEnabled;
 		this.state.extensionProtocolEnabled = extensionProtocolEnabled;
 		this.protocolParser = new PeerProtocolParser (this, fastExtensionEnabled, extensionProtocolEnabled);
+		this.peerStatistics = new PeerStatistics (parentStatistics);
+		this.pieceDatabase = pieceDatabase;
 		this.connection.setListener (this);
 
-		this.pieceDatabase = this.peerServices.getPieceDatabase();
 		StorageDescriptor initialDescriptor = this.pieceDatabase.getInfo().getStorageDescriptor();
 		this.state.remoteBitField = new BitField (initialDescriptor.getNumberOfPieces());
 		this.state.remoteView = initialDescriptor;
 		this.outboundQueue = new PeerOutboundQueue (this.connection, this.pieceDatabase, this.peerStatistics.blockBytesSent);
-		this.peerStatistics.setParent (this.peerServices.getStatistics());
 
 		// Send bitfield
 		BitField bitField = this.pieceDatabase.getPresentPieces();

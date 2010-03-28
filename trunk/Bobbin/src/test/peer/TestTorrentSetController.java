@@ -181,10 +181,10 @@ public class TestTorrentSetController {
 		assertEquals (0, manager.getPeers().size());
 
 		// Handshake through the port and wait to hear that the coordinator has replied
-		final SocketChannel socketChannel = SocketChannel.open (new InetSocketAddress (InetAddress.getLocalHost (), localPort));
+		final SocketChannel socketChannel = SocketChannel.open (new InetSocketAddress (InetAddress.getLocalHost(), localPort));
 		socketChannel.write (PeerProtocolBuilder.handshake (false, false, metaInfo.getInfo().getHash(), new PeerID()));
 
-		while (socketChannel.read (ByteBuffer.allocate(1)) == 0);
+		while (socketChannel.read (ByteBuffer.allocate (1)) == 0);
 
 		Thread.sleep (250);
 

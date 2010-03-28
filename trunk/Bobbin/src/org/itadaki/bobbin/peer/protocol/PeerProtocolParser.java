@@ -10,7 +10,9 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ReadableByteChannel;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -499,7 +501,13 @@ public class PeerProtocolParser {
 		int offset = readInt();
 		int hashChainLength = readInt();
 
-		if ((hashChainLength < 0) || (hashChainLength > this.messageData.remaining())) {
+		if (
+				   (hashChainLength < 0)
+				|| (hashChainLength > this.messageData.remaining())
+				|| ((offset == 0) && (hashChainLength == 0))
+				|| ((offset != 0) && (hashChainLength != 0))
+		)
+		{
 			throw new IOException ("Invalid hash chain");
 		}
 
@@ -580,6 +588,9 @@ public class PeerProtocolParser {
 				int offset = readInt();
 				int hashCount = this.messageData.get() & 0xff;
 
+				if (((offset == 0) && (hashCount == 0)) || ((offset != 0) && (hashCount != 0))) {
+					throw new IOException ("Invalid hash count");
+				}
 				if (this.messageData.remaining() < (20 * hashCount)) {
 					throw new IOException ("Invalid message size");
 				}
@@ -632,6 +643,8 @@ public class PeerProtocolParser {
 				if (directoryInputStream.available() > 0) {
 					throw new IOException ("Extra data after resource directory");
 				}
+				List<ResourceType> resources = new ArrayList<ResourceType>();
+				List<Integer> lengths = new ArrayList<Integer>();
 				for (BValue resourceValue : directory) {
 					if (!(resourceValue instanceof BList)) {
 						throw new IOException ("Invalid resource");
@@ -655,8 +668,11 @@ public class PeerProtocolParser {
 					ResourceType resource = ResourceType.forName (resourceName);
 					if (resource != null) {
 						this.resourceIdentifiers.put (resourceID, resource);
+						resources.add (resource);
+						lengths.add (resourceLength);
 					}
 				}
+				this.consumer.resourceDirectoryMessage (resources, lengths);
 				break;
 
 			case PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_TRANSFER:

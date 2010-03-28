@@ -253,7 +253,7 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 			}
 
 			// Register the peer
-			PeerHandler peer = new PeerHandler (this, connection, remotePeerID, fastExtensionEnabled, extensionProtocolEnabled);
+			PeerHandler peer = new PeerHandler (this, connection, remotePeerID, this.peerSetStatistics, this.pieceDatabase, fastExtensionEnabled, extensionProtocolEnabled);
 			this.connectedPeers.add (peer);
 			this.connectedPeerIDs.add (remotePeerID);
 			for (PeerCoordinatorListener listener : this.listeners) {
@@ -321,16 +321,6 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 	/* PeerServices interface */
 	/* This interface is used by PeerHandler to access the peer set management services provided by
 	 * the PeerCoordinator */
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#getLocalPeerID()
-	 */
-	public PeerID getLocalPeerID() {
-
-		return this.localPeerID;
-
-	}
-
 
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.PeerServices#peerDisconnected(org.itadaki.bobbin.peer.ManageablePeer)
@@ -474,16 +464,6 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#getPieceDatabase()
-	 */
-	public PieceDatabase getPieceDatabase() {
-
-		return this.pieceDatabase;
-
-	}
-
-
-	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.PeerServices#handleViewSignature(org.itadaki.bobbin.peer.ViewSignature)
 	 */
 	public boolean handleViewSignature (ViewSignature viewSignature) {
@@ -522,16 +502,6 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 		}
 
 		return true;
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#getStatistics()
-	 */
-	public PeerStatistics getStatistics() {
-
-		return this.peerSetStatistics;
 
 	}
 
@@ -644,6 +614,16 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 				&& ((this.pendingConnections.size() + this.unconnectedPeers.size() + this.connectedPeers.size())
 						< Math.min (this.maximumPeerConnections, this.desiredPeerConnections))
 		       );
+
+	}
+
+
+	/**
+	 * @return The aggregate peer set statistics
+	 */
+	public PeerStatistics getStatistics() {
+
+		return this.peerSetStatistics;
 
 	}
 
