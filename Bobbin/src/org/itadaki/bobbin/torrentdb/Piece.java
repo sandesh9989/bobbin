@@ -143,11 +143,11 @@ public class Piece {
 	 * @return {@code true} if the piece has been assembled, otherwise
 	 * {@code false}
 	 */
-	public boolean putBlock (BlockDescriptor descriptor, byte[] block) {
+	public boolean putBlock (BlockDescriptor descriptor, ByteBuffer block) {
 
 		if (
 				   (!this.neededBlocks.contains (descriptor))
-				|| (block.length != descriptor.getLength())
+				|| (block.remaining() != descriptor.getLength())
 		   )
 		{
 			throw new IllegalArgumentException();

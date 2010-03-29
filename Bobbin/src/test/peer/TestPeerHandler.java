@@ -212,7 +212,7 @@ public class TestPeerHandler {
 
 		// Then
 		mockConnection.mockExpectNoMoreOutput();
-		verify (mockPeerServices).handleBlock (eq (handler), eq (request), eq ((ViewSignature)null), eq ((HashChain)null), any (byte[].class));
+		verify (mockPeerServices).handleBlock (eq (handler), eq (request), eq ((ViewSignature)null), eq ((HashChain)null), any (ByteBuffer.class));
 		assertEquals (16384, handler.getReadableStatistics().getTotal (PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW));
 
 

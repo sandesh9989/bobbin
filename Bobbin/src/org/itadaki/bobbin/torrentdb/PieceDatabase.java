@@ -370,7 +370,7 @@ public class PieceDatabase {
 					if (this.elasticTree != null) {
 						ByteBuffer elasticImmutableHashes = this.elasticTree.getImmutableHashes();
 						this.metadata.put ("elasticImmutable", elasticImmutableHashes.array());
-						if (!this.info.isElastic()) {
+						if (this.info.getPieceStyle() != PieceStyle.ELASTIC) {
 							ByteBuffer mutableHashes = this.elasticTree.getCeilingView(0).getMutableHashes();
 							this.metadata.put ("elasticView", (mutableHashes == null) ? new byte[0] :  mutableHashes.array());
 						} else {
@@ -758,7 +758,7 @@ public class PieceDatabase {
 	 */
 	public void extend (ViewSignature viewSignature) throws IOException {
 
-		if (!this.info.isElastic()) {
+		if (this.info.getPieceStyle() != PieceStyle.ELASTIC) {
 			throw new IllegalStateException ("Cannot extend non-elastic database");
 		}
 
@@ -814,7 +814,7 @@ public class PieceDatabase {
 
 		// TODO Refactor - partial merge with extendData
 
-		if (!this.info.isElastic()) {
+		if (this.info.getPieceStyle() != PieceStyle.ELASTIC) {
 			throw new IllegalStateException ("Cannot extend non-elastic database");
 		}
 
@@ -903,7 +903,7 @@ public class PieceDatabase {
 	 */
 	public ViewSignature extendData (PrivateKey privateKey, ByteBuffer additionalData) throws IOException {
 
-		if (!this.info.isElastic()) {
+		if (this.info.getPieceStyle() != PieceStyle.ELASTIC) {
 			throw new IllegalStateException ("Cannot extend non-elastic database");
 		}
 
@@ -1274,7 +1274,7 @@ public class PieceDatabase {
 		// Resume previous state from metadata if possible
 		if (metadata != null ) {
 
-			if (info.isMerkle()) {
+			if (this.info.getPieceStyle() == PieceStyle.MERKLE) {
 				elasticImmutableHashes = metadata.get ("elasticImmutable");
 				elasticViewHashes = metadata.get ("elasticView");
 				if ((elasticImmutableHashes != null) && (elasticViewHashes != null)) {
@@ -1283,7 +1283,7 @@ public class PieceDatabase {
 				} else {
 					this.elasticTree = ElasticTree.emptyTree (storage.getDescriptor().getPieceSize(), storage.getDescriptor().getLength(), ByteBuffer.wrap (info.getRootHash()));
 				}
-			} else if (info.isElastic()) {
+			} else if (this.info.getPieceStyle() == PieceStyle.ELASTIC) {
 				elasticImmutableHashes = metadata.get ("elasticImmutable");
 				byte[] viewsBytes = metadata.get ("elasticViews");
 				byte[] viewSignaturesBytes = metadata.get ("elasticViewSignatures");

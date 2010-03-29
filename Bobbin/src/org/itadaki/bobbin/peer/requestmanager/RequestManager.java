@@ -4,6 +4,7 @@
  */
 package org.itadaki.bobbin.peer.requestmanager;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.itadaki.bobbin.peer.ManageablePeer;
@@ -86,7 +87,7 @@ public interface RequestManager extends PeerCoordinatorListener {
 	 * @param block The data of the block
 	 * @return The piece data if a piece was successfully assembled
 	 */
-	public Piece handleBlock (ManageablePeer peer, BlockDescriptor descriptor, ViewSignature viewSignature, HashChain hashChain, byte[] block);
+	public Piece handleBlock (ManageablePeer peer, BlockDescriptor descriptor, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block);
 
 	/**
 	 * @param neededPieces The set of needed pieces

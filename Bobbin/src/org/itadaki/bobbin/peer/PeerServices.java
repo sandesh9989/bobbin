@@ -4,6 +4,7 @@
  */
 package org.itadaki.bobbin.peer;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
 
@@ -122,7 +123,7 @@ public interface PeerServices {
 	 * @param hashChain The supplied hash chain, if present, or {@code null}
 	 * @param block The data of the block
 	 */
-	public void handleBlock (ManageablePeer peer, BlockDescriptor request, ViewSignature viewSignature, HashChain hashChain, byte[] block);
+	public void handleBlock (ManageablePeer peer, BlockDescriptor request, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block);
 
 	/**
 	 * Adjust the choked and unchoked peers

@@ -23,6 +23,7 @@ import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
+import org.itadaki.bobbin.torrentdb.PieceStyle;
 import org.itadaki.bobbin.torrentdb.ResourceType;
 import org.itadaki.bobbin.torrentdb.StorageDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
@@ -390,7 +391,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		// Send an Allowed Fast set if appropriate 
 		if (
 				   this.state.fastExtensionEnabled
-				&& !this.pieceDatabase.getInfo().isElastic()
+				&& (this.pieceDatabase.getInfo().getPieceStyle() != PieceStyle.ELASTIC)
 				&& this.state.remoteBitField.cardinality() < PeerProtocolConstants.ALLOWED_FAST_THRESHOLD
 		   )
 		{
@@ -442,29 +443,49 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#pieceMessage(org.itadaki.bobbin.torrentdb.ResourceType, org.itadaki.bobbin.torrentdb.BlockDescriptor, byte[])
+	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#pieceMessage(org.itadaki.bobbin.torrentdb.PieceStyle, org.itadaki.bobbin.torrentdb.ResourceType, org.itadaki.bobbin.torrentdb.BlockDescriptor, java.lang.Long, java.nio.ByteBuffer, java.nio.ByteBuffer)
 	 */
 	@Override
-	public void pieceMessage (ResourceType resource, BlockDescriptor descriptor, byte[] data) throws IOException {
+	public void pieceMessage (PieceStyle pieceStyle, ResourceType resource, BlockDescriptor descriptor, Long viewLength, ByteBuffer hashes, ByteBuffer block)
+			throws IOException
+	{
 
-		if (this.pieceDatabase.getInfo().isMerkle()) {
-			throw new IOException ("Ordinary piece received for Merkle torrent");
+		// Check that the block is of the expected style
+		if (this.pieceDatabase.getInfo().getPieceStyle() != pieceStyle) {
+			throw new IOException ("Expected " + this.pieceDatabase.getInfo().getPieceStyle() + " piece, received " + pieceStyle);
 		}
-
-		if (this.pieceDatabase.getInfo().isElastic()) {
-			throw new IOException ("Ordinary piece received for Elastic torrent");
-		}
-
 
 		// Validate the descriptor (PeerProtocolParser ensures that the data is of the correct length)
 		if (!validateBlockDescriptor (descriptor)) {
 			throw new IOException ("Invalid piece message");
 		}
 
+		// Validate the view length for an Elastic piece
+		if (
+				   (pieceStyle == PieceStyle.ELASTIC)
+				&& (hashes != null)
+				&& (!this.state.remoteViewSignatures.containsKey (viewLength))
+				&& (this.pieceDatabase.getInfo().getStorageDescriptor().getLength() != viewLength)
+		   )
+		{
+			throw new IOException ("Invalid view length in piece");
+		}
+
 		// Handle the block
 		if (this.outboundQueue.requestReceived (descriptor)) {
 			this.peerStatistics.blockBytesReceivedRaw.add (descriptor.getLength());
-			this.peerServices.handleBlock (this, descriptor, null, null, data);
+			ViewSignature viewSignature = null;
+			HashChain hashChain = null;
+			switch (pieceStyle) {
+				case MERKLE:
+					hashChain = (hashes == null) ? null : new HashChain (this.pieceDatabase.getStorageDescriptor().getLength(), hashes);
+					break;
+				case ELASTIC:
+					viewSignature = (hashes == null) ? null : this.state.remoteViewSignatures.get (viewLength);
+					hashChain = (hashes == null) ? null : new HashChain (viewLength, hashes);
+					break;
+			}
+			this.peerServices.handleBlock (this, descriptor, viewSignature, hashChain, block);
 		} else {
 			if (!this.state.fastExtensionEnabled) {
 				// Spam, or a request we cancelled. Can't tell the difference in the base protocol,
@@ -551,7 +572,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		// The remote bitfield is initially all zero, so there's no need to do anything to it
 
 		// Send an Allowed Fast set
-		if (!this.pieceDatabase.getInfo().isElastic()) {
+		if (this.pieceDatabase.getInfo().getPieceStyle() != PieceStyle.ELASTIC) {
 			generateAndSendAllowedFastSet();
 		}
 
@@ -620,45 +641,6 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#merklePieceMessage(org.itadaki.bobbin.torrentdb.BlockDescriptor, byte[], byte[])
-	 */
-	@Override
-	public void merklePieceMessage (BlockDescriptor descriptor, byte[] hashChain, byte[] block) throws IOException {
-
-		if (!this.pieceDatabase.getInfo().isMerkle()) {
-			throw new IOException ("Merkle piece received for ordinary torrent");
-		}
-
-		// Validate the descriptor (PeerProtocolParser ensures that the data is of the correct length)
-		if (!validateBlockDescriptor (descriptor)) {
-			throw new IOException ("Invalid piece message");
-		}
-
-		// Handle the block
-		if (this.outboundQueue.requestReceived (descriptor)) {
-			this.peerStatistics.blockBytesReceivedRaw.add (descriptor.getLength());
-			this.peerServices.handleBlock (
-					this,
-					descriptor,
-					null,
-					new HashChain (this.pieceDatabase.getStorageDescriptor().getLength(), ByteBuffer.wrap (hashChain)), block
-			);
-		} else {
-			if (!this.state.fastExtensionEnabled) {
-				// Spam, or a request we cancelled. Can't tell the difference in the base protocol,
-				// so do nothing
-			} else {
-				throw new IOException ("Unrequested piece received");
-			}
-		}
-
-		// We may need to send new requests. They will be added in connectionReady() when all read
-		// processing is finished
-
-	}
-
-
-	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#elasticSignatureMessage(org.itadaki.bobbin.peer.ViewSignature)
 	 */
 	@Override
@@ -682,53 +664,6 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 			this.state.remoteViewSignatures.pollFirstEntry();
 		}
 		this.state.remoteViewSignatures.put (viewSignature.getViewLength(), viewSignature);
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#elasticPieceMessage(long, org.itadaki.bobbin.torrentdb.BlockDescriptor, byte[], byte[])
-	 */
-	@Override
-	public void elasticPieceMessage (BlockDescriptor descriptor, Long viewLength, byte[] hashChain, byte[] block) throws IOException {
-
-		if (!this.pieceDatabase.getInfo().isElastic()) {
-			throw new IOException ("Elastic piece received for ordinary torrent");
-		}
-
-		// Validate the descriptor (PeerProtocolParser ensures that the data is of the correct length)
-		if (!validateBlockDescriptor (descriptor)) {
-			throw new IOException ("Invalid piece message");
-		}
-
-		// Handle the block
-		if (this.outboundQueue.requestReceived (descriptor)) {
-			if (
-					   (hashChain != null)
-					&& (!this.state.remoteViewSignatures.containsKey (viewLength))
-					&& (this.pieceDatabase.getInfo().getStorageDescriptor().getLength() != viewLength)
-			   )
-			{
-				throw new IOException ("Invalid view length in piece");
-			}
-			this.peerStatistics.blockBytesReceivedRaw.add (descriptor.getLength());
-			this.peerServices.handleBlock (
-					this,
-					descriptor,
-					hashChain == null ? null : this.state.remoteViewSignatures.get (viewLength),
-					hashChain == null ? null : new HashChain (viewLength, ByteBuffer.wrap (hashChain)), block
-			);
-		} else {
-			if (!this.state.fastExtensionEnabled) {
-				// Spam, or a request we cancelled. Can't tell the difference in the base protocol,
-				// so do nothing
-			} else {
-				throw new IOException ("Unrequested piece received");
-			}
-		}
-
-		// We may need to send new requests. They will be added in connectionReady() when all read
-		// processing is finished
 
 	}
 
@@ -954,7 +889,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 		// Send bitfield
 		BitField bitField = this.pieceDatabase.getPresentPieces();
-		if (this.pieceDatabase.getInfo().isElastic()) {
+		if (this.pieceDatabase.getInfo().getPieceStyle() == PieceStyle.ELASTIC) {
 			this.outboundQueue.sendHaveNoneMessage();
 		} else {
 			if (this.state.fastExtensionEnabled) {
@@ -973,13 +908,13 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 			}
 		}
 
-		if (this.pieceDatabase.getInfo().isElastic()) {
+		if (this.pieceDatabase.getInfo().getPieceStyle() == PieceStyle.ELASTIC) {
 			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC)), null, null);
 			if (this.pieceDatabase.getStorageDescriptor().getLength() > this.pieceDatabase.getInfo().getStorageDescriptor().getLength()) {
 				this.outboundQueue.sendElasticSignatureMessage (this.pieceDatabase.getViewSignature (this.pieceDatabase.getStorageDescriptor().getLength()));
 			}
 			this.outboundQueue.sendElasticBitfieldMessage (this.pieceDatabase.getPresentPieces());
-		} else if (this.pieceDatabase.getInfo().isMerkle()) {
+		} else if (this.pieceDatabase.getInfo().getPieceStyle() == PieceStyle.MERKLE) {
 			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_MERKLE)), null, null);
 		};
 

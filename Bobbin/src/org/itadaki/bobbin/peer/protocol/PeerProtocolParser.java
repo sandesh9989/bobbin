@@ -24,6 +24,7 @@ import org.itadaki.bobbin.bencode.BInteger;
 import org.itadaki.bobbin.bencode.BList;
 import org.itadaki.bobbin.bencode.BValue;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
+import org.itadaki.bobbin.torrentdb.PieceStyle;
 import org.itadaki.bobbin.torrentdb.ResourceType;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 
@@ -308,9 +309,10 @@ public class PeerProtocolParser {
 		if (this.messageData.remaining() >= 8) {
 			int piecePieceIndex = readInt();
 			int pieceOffset = readInt();
-			byte[] pieceData = new byte[this.messageData.remaining()];
-			this.messageData.get (pieceData);
-			this.consumer.pieceMessage (resource, new BlockDescriptor (piecePieceIndex, pieceOffset, pieceData.length), pieceData);
+			ByteBuffer block = ByteBuffer.allocate (this.messageData.remaining());
+			block.put (this.messageData);
+			block.rewind();
+			this.consumer.pieceMessage (PieceStyle.PLAIN, resource, new BlockDescriptor (piecePieceIndex, pieceOffset, block.remaining()), null, null, block);
 		} else {
 			this.parserState = ParserState.ERROR;
 			throw new IOException ("Invalid message size");
@@ -540,9 +542,11 @@ public class PeerProtocolParser {
 
 		}
 
-		byte[] block = new byte[this.messageData.remaining()];
-		this.messageData.get (block);
-		this.consumer.merklePieceMessage (new BlockDescriptor (pieceNumber, offset, block.length), hashChain, block);
+		ByteBuffer block = ByteBuffer.allocate (this.messageData.remaining());
+		block.put (this.messageData);
+		block.rewind();
+
+		this.consumer.pieceMessage (PieceStyle.MERKLE, null, new BlockDescriptor (pieceNumber, offset, block.remaining()), null, ByteBuffer.wrap (hashChain), block);
 
 	}
 
@@ -603,9 +607,11 @@ public class PeerProtocolParser {
 					this.messageData.get (hashChain);
 				}
 
-				byte[] block = new byte[this.messageData.remaining()];
-				this.messageData.get (block);
-				this.consumer.elasticPieceMessage (new BlockDescriptor (pieceNumber, offset, block.length), viewLength, hashChain, block);
+				ByteBuffer block = ByteBuffer.allocate (this.messageData.remaining());
+				block.put (this.messageData);
+				block.rewind();
+				this.consumer.pieceMessage (PieceStyle.ELASTIC, null, new BlockDescriptor (pieceNumber, offset, block.remaining()), viewLength, ByteBuffer.wrap (hashChain),
+						block);
 				break;
 
 			case PeerProtocolConstants.ELASTIC_MESSAGE_TYPE_BITFIELD:

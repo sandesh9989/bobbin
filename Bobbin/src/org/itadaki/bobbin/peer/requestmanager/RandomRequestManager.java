@@ -5,6 +5,7 @@
 package org.itadaki.bobbin.peer.requestmanager;
 
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -432,9 +433,9 @@ public class RandomRequestManager implements RequestManager {
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.requestmanager.RequestManager#handleBlock(org.itadaki.bobbin.peer.ManageablePeer, org.itadaki.bobbin.peer.BlockDescriptor, byte[])
+	 * @see org.itadaki.bobbin.peer.requestmanager.RequestManager#handleBlock(org.itadaki.bobbin.peer.ManageablePeer, org.itadaki.bobbin.torrentdb.BlockDescriptor, org.itadaki.bobbin.torrentdb.ViewSignature, org.itadaki.bobbin.util.elastictree.HashChain, java.nio.ByteBuffer)
 	 */
-	public Piece handleBlock (ManageablePeer peer, BlockDescriptor descriptor, ViewSignature viewSignature, HashChain hashChain, byte[] block) {
+	public Piece handleBlock (ManageablePeer peer, BlockDescriptor descriptor, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block) {
 
 		Integer pieceIndex = descriptor.getPieceNumber();
 
