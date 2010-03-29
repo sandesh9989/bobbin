@@ -62,6 +62,12 @@ public final class Info {
 	 */
 	private InfoHash hash;
 
+	/**
+	 * Cached value calculated from the dictionary:<br>
+	 * The style of pieces exchanged within the torrent
+	 */
+	private PieceStyle pieceStyle;
+
 
 	/**
 	 * Helper method for dictionary validation. Throws {@link InvalidEncodingException}
@@ -226,6 +232,13 @@ public final class Info {
 			throw new InternalError (e.toString());
 		}
 
+		// Cache piece style
+		if (piecesValue != null) {
+			this.pieceStyle = PieceStyle.PLAIN;
+		} else if (rootHashValue != null) {
+			this.pieceStyle = (elasticValue == null) ? PieceStyle.MERKLE : PieceStyle.ELASTIC;
+		}
+
 	}
 
 
@@ -340,37 +353,11 @@ public final class Info {
 
 
 	/**
-	 * @return {@code true} if the Info represents a plain torrent, else {@code false}
+	 * @return The style of pieces exchanged within the torrent
 	 */
-	public boolean isPlain() {
+	public PieceStyle getPieceStyle() {
 
-		return (this.dictionary.get ("pieces") != null);
-
-	}
-
-
-	/**
-	 * @return {@code true} if the Info represents a Merkle torrent, else {@code false}
-	 */
-	public boolean isMerkle() {
-
-		return ((this.dictionary.get ("root hash") != null) && (this.dictionary.get ("elastic") == null));
-
-	}
-
-
-	/**
-	 * @return {@code true} if the Info represents an Elastic torrent, else {@code false}
-	 */
-	public boolean isElastic() {
-
-		BValue elasticValue = this.dictionary.get ("elastic");
-		if (elasticValue != null) {
-			byte[] elastic = ((BBinary)elasticValue).value();
-			return ((elastic.length == 1) && (elastic[0] == 1));
-		}
-
-		return false;
+		return this.pieceStyle;
 
 	}
 

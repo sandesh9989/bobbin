@@ -34,6 +34,7 @@ import org.itadaki.bobbin.peer.requestmanager.RequestManager;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
+import org.itadaki.bobbin.torrentdb.PieceStyle;
 import org.itadaki.bobbin.torrentdb.StorageDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.trackerclient.PeerIdentifier;
@@ -225,7 +226,7 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 		this.unconnectedPeers.remove (connection);
 
-		if (!this.pieceDatabase.getInfo().isPlain() && !extensionProtocolEnabled) {
+		if ((this.pieceDatabase.getInfo().getPieceStyle() != PieceStyle.PLAIN) && !extensionProtocolEnabled) {
 
 			// If the torrent is a Merkle or Elastic torrent, the extension protocol is mandatory
 			try {
@@ -407,9 +408,9 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#handleBlock(org.itadaki.bobbin.peer.ManageablePeer, org.itadaki.bobbin.peer.BlockDescriptor, byte[])
+	 * @see org.itadaki.bobbin.peer.PeerServices#handleBlock(org.itadaki.bobbin.peer.ManageablePeer, org.itadaki.bobbin.torrentdb.BlockDescriptor, org.itadaki.bobbin.torrentdb.ViewSignature, org.itadaki.bobbin.util.elastictree.HashChain, java.nio.ByteBuffer)
 	 */
-	public void handleBlock (ManageablePeer peer, BlockDescriptor request, ViewSignature viewSignature, HashChain hashChain, byte[] block) {
+	public void handleBlock (ManageablePeer peer, BlockDescriptor request, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block) {
 
 		Piece piece = this.requestManager.handleBlock (peer, request, viewSignature, hashChain, block);
 
@@ -418,7 +419,7 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 				if (this.pieceDatabase.writePiece (piece)) {
 					this.requestManager.setPieceNotNeeded (request.getPieceNumber());
 				}
-				if ((this.requestManager.getNeededPieceCount() == 0) && (!this.pieceDatabase.getInfo().isElastic())) {
+				if ((this.requestManager.getNeededPieceCount() == 0) && (this.pieceDatabase.getInfo().getPieceStyle() != PieceStyle.ELASTIC)) {
 					for (PeerCoordinatorListener listener : this.listeners) {
 						listener.peerCoordinatorCompleted();
 					}

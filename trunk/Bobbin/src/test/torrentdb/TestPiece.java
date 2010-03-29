@@ -149,9 +149,9 @@ public class TestPiece {
 
 		Piece piece = new Piece (1234, 32769, PeerProtocolConstants.BLOCK_LENGTH);
 
-		assertFalse (piece.putBlock (new BlockDescriptor (1234, 0, 16384), new byte[16384]));
-		assertFalse (piece.putBlock (new BlockDescriptor (1234, 16384, 16384), new byte[16384]));
-		assertTrue (piece.putBlock (new BlockDescriptor (1234, 32768, 1), new byte[1]));
+		assertFalse (piece.putBlock (new BlockDescriptor (1234, 0, 16384), ByteBuffer.allocate (16384)));
+		assertFalse (piece.putBlock (new BlockDescriptor (1234, 16384, 16384), ByteBuffer.allocate (16384)));
+		assertTrue (piece.putBlock (new BlockDescriptor (1234, 32768, 1), ByteBuffer.allocate (1)));
 
 	}
 
@@ -164,7 +164,7 @@ public class TestPiece {
 
 		Piece piece = new Piece (1234, 32769, PeerProtocolConstants.BLOCK_LENGTH);
 
-		piece.putBlock (new BlockDescriptor (1234, 0, 16384), new byte[1]);
+		piece.putBlock (new BlockDescriptor (1234, 0, 16384), ByteBuffer.allocate (1));
 
 	}
 
@@ -177,7 +177,7 @@ public class TestPiece {
 
 		Piece piece = new Piece (1234, 16384, PeerProtocolConstants.BLOCK_LENGTH);
 
-		piece.putBlock (new BlockDescriptor (1234, 16384, 16384), new byte[16384]);
+		piece.putBlock (new BlockDescriptor (1234, 16384, 16384), ByteBuffer.allocate (16384));
 
 	}
 
@@ -193,8 +193,8 @@ public class TestPiece {
 
 		Piece piece = new Piece (1234, 32768, PeerProtocolConstants.BLOCK_LENGTH);
 
-		assertFalse (piece.putBlock (new BlockDescriptor (1234, 0, 16384), Util.pseudoRandomBlock (0, 16384, 16384)));
-		assertTrue (piece.putBlock (new BlockDescriptor (1234, 16384, 16384), Util.pseudoRandomBlock (1, 16384, 16384)));
+		assertFalse (piece.putBlock (new BlockDescriptor (1234, 0, 16384), ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384))));
+		assertTrue (piece.putBlock (new BlockDescriptor (1234, 16384, 16384), ByteBuffer.wrap (Util.pseudoRandomBlock (1, 16384, 16384))));
 
 		assertEquals (ByteBuffer.wrap (expectedContent), piece.getContent());
 

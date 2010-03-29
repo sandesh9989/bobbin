@@ -23,6 +23,7 @@ import org.itadaki.bobbin.connectionmanager.ConnectionReadyListener;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
+import org.itadaki.bobbin.torrentdb.PieceStyle;
 import org.itadaki.bobbin.torrentdb.ResourceType;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.CharsetUtil;
@@ -424,11 +425,14 @@ public class MockConnection extends Connection {
 			}
 
 			public void rejectRequestMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException {
-				System.out.printf ("%2d reject request (%s %d:%d,%d)\n", this.sequence++, resource, descriptor.getPieceNumber(), descriptor.getOffset(), descriptor.getLength());
+				System.out.printf ("%2d reject request (%s %d:%d,%d)\n", this.sequence++, resource, descriptor.getPieceNumber(), descriptor.getOffset(),
+						descriptor.getLength());
 			}
 
-			public void pieceMessage (ResourceType resource, BlockDescriptor descriptor, byte[] data) throws IOException {
-				System.out.printf ("%2d piece (%s %d:%d,%d)\n", this.sequence++, resource, descriptor.getPieceNumber(), descriptor.getOffset(), descriptor.getLength());
+			public void pieceMessage (PieceStyle pieceStyle, ResourceType resource, BlockDescriptor descriptor, Long viewLength, ByteBuffer hashChain, ByteBuffer block)
+					throws IOException {
+				System.out.printf ("%2d piece (%s %s %b %d:%d:%d,%d)\n", this.sequence++, pieceStyle, resource, (hashChain != null), viewLength, descriptor.getPieceNumber(),
+						descriptor.getOffset(), descriptor.getLength());
 			}
 
 			public void keepAliveMessage() throws IOException {
@@ -477,16 +481,8 @@ public class MockConnection extends Connection {
 				System.out.printf ("%2d extension (%s:%d)\n", this.sequence++, identifier, data.length);
 			}
 
-			public void merklePieceMessage (BlockDescriptor descriptor, byte[] hashChain, byte[] block) throws IOException {
-				System.out.printf ("%2d Merkle piece (%d:%d,%d %d)\n", this.sequence++, descriptor.getPieceNumber(), descriptor.getOffset(), descriptor.getLength(), hashChain.length);
-			}
-
 			public void elasticSignatureMessage (ViewSignature viewSignature) throws IOException {
 				System.out.printf ("%2d Elastic signature\n", this.sequence++);
-			}
-
-			public void elasticPieceMessage (BlockDescriptor descriptor, Long viewLength, byte[] hashChain, byte[] block) throws IOException {
-				System.out.printf ("%2d Elastic piece\n", this.sequence++);
 			}
 
 			public void elasticBitfieldMessage (byte[] bitField) throws IOException {

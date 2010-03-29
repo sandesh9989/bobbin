@@ -5,11 +5,13 @@
 package org.itadaki.bobbin.peer.protocol;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
 
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
+import org.itadaki.bobbin.torrentdb.PieceStyle;
 import org.itadaki.bobbin.torrentdb.ResourceType;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 
@@ -76,39 +78,19 @@ public interface PeerProtocolConsumer {
 	public void requestMessage (ResourceType resource, BlockDescriptor descriptor) throws IOException;
 
 	/**
-	 * Indicates that a "piece" or "resource piece" message has been received (basic protocol
-	 * message ID 7)
-	 *
+	 * Indicates that a "piece", "Merkle piece", "Elastic piece" or "resource piece" message has
+	 * been received (basic protocol message ID 7)
+	 * @param pieceStyle The style of the block received
 	 * @param resource The resource that is the subject of the message, or {@code null}
 	 * @param descriptor The descriptor of the block received
+	 * @param viewLength For an elastic block, the view length to which the hash chain applies
+	 * @param hashes For a Merkle or elastic block, the sibling hash chain received
 	 * @param block The contents of the block received
-	 * @throws IOException On any validation error
-	 */
-	public void pieceMessage (ResourceType resource, BlockDescriptor descriptor, byte[] block) throws IOException;
-
-	/**
-	 * Indicates that a "Merkle piece" message has been received (extension protocol identifier
-	 * "Tr_hashpiece")
 	 *
-	 * @param descriptor The descriptor of the block received
-	 * @param hashChain The sibling hash chain received
-	 * @param block The contents of the block received
 	 * @throws IOException On any validation error
 	 */
-	public void merklePieceMessage (BlockDescriptor descriptor, byte[] hashChain, byte[] block) throws IOException;
-
-
-	/**
-	 * Indicates that a "elastic piece" message has been received (extension protocol identifier
-	 * "bo_elastic", sub type 1)
-	 *
-	 * @param descriptor The descriptor of the block received
-	 * @param viewLength The view length to which the hash chain applies
-	 * @param hashChain The sibling hash chain received
-	 * @param block The contents of the block received
-	 * @throws IOException On any validation error
-	 */
-	public void elasticPieceMessage (BlockDescriptor descriptor, Long viewLength, byte[] hashChain, byte[] block) throws IOException;
+	public void pieceMessage (PieceStyle pieceStyle, ResourceType resource, BlockDescriptor descriptor, Long viewLength, ByteBuffer hashes, ByteBuffer block)
+			throws IOException;
 
 	/**
 	 * Indicates that a "cancel" or "resource cancel" message has been received (basic protocol

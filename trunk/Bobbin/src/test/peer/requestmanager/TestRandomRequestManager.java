@@ -7,6 +7,7 @@ package test.peer.requestmanager;
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.itadaki.bobbin.peer.ManageablePeer;
@@ -325,7 +326,7 @@ public class TestRandomRequestManager {
 			byte[] blockData = new byte[16384];
 			System.arraycopy (piece, position, blockData, 0, 16384);
 			position += 16384;
-			if (requestManager.handleBlock (peer, block, null, null, blockData) != null) {
+			if (requestManager.handleBlock (peer, block, null, null, ByteBuffer.wrap (blockData)) != null) {
 				requestManager.setPieceNotNeeded (block.getPieceNumber());
 			}
 		}
@@ -379,7 +380,7 @@ public class TestRandomRequestManager {
 			byte[] blockData = new byte[16384];
 			System.arraycopy (piece, position, blockData, 0, 16384);
 			position += 16384;
-			if (requestManager.handleBlock (peer, block, null, null, blockData) != null) {
+			if (requestManager.handleBlock (peer, block, null, null, ByteBuffer.wrap (blockData)) != null) {
 				requestManager.setPieceNotNeeded (block.getPieceNumber());
 			}
 		}
@@ -430,7 +431,7 @@ public class TestRandomRequestManager {
 			byte[] blockData = new byte[16384];
 			System.arraycopy (piece, position, blockData, 0, 16384);
 			position += 16384;
-			requestManager.handleBlock (peer, block, null, null, blockData);
+			requestManager.handleBlock (peer, block, null, null, ByteBuffer.wrap (blockData));
 		}
 
 		requestManager.peerDeregistered (peer);
@@ -444,7 +445,7 @@ public class TestRandomRequestManager {
 			byte[] blockData = new byte[16384];
 			System.arraycopy (piece, position, blockData, 0, 16384);
 			position += 16384;
-			if (requestManager.handleBlock (peer2, block, null, null, blockData) != null) {
+			if (requestManager.handleBlock (peer2, block, null, null, ByteBuffer.wrap (blockData)) != null) {
 				requestManager.setPieceNotNeeded (block.getPieceNumber());
 			}
 
@@ -516,7 +517,7 @@ public class TestRandomRequestManager {
 			byte[] blockData = new byte[16384];
 			System.arraycopy (piece, position, blockData, 0, 16384);
 			position += 16384;
-			if (requestManager.handleBlock (peer2, block, null, null, blockData) != null) {
+			if (requestManager.handleBlock (peer2, block, null, null, ByteBuffer.wrap (blockData)) != null) {
 				requestManager.setPieceNotNeeded (block.getPieceNumber());
 			}
 		}

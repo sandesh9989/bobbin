@@ -24,6 +24,7 @@ import org.itadaki.bobbin.peer.protocol.PeerProtocolConstants;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
+import org.itadaki.bobbin.torrentdb.PieceStyle;
 import org.itadaki.bobbin.torrentdb.ResourceType;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
@@ -232,7 +233,7 @@ public class TestPeerProtocolParser {
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.pieceMessage (requestDescriptor, ByteBuffer.wrap (data))));
 
 		// Then
-		verify(mockConsumer).pieceMessage (null, requestDescriptor, data);
+		verify(mockConsumer).pieceMessage (PieceStyle.PLAIN, null, requestDescriptor, null, null, ByteBuffer.wrap (data));
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -503,7 +504,7 @@ public class TestPeerProtocolParser {
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.merklePieceMessage (
 				expectedDescriptor,
 				expectedHashChain.duplicate(),
-				expectedBlock
+				expectedBlock.duplicate()
 		)));
 
 		// Then
@@ -513,7 +514,7 @@ public class TestPeerProtocolParser {
 				new HashSet<String>(),
 				new BDictionary()
 		);
-		sequence.verify(mockConsumer).merklePieceMessage (expectedDescriptor, expectedHashChain.array(), expectedBlock.array());
+		sequence.verify(mockConsumer).pieceMessage (PieceStyle.MERKLE, null, expectedDescriptor, null, expectedHashChain, expectedBlock);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -583,8 +584,8 @@ public class TestPeerProtocolParser {
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.elasticPieceMessage (
 				expectedDescriptor,
 				expectedViewLength,
-				expectedHashChain,
-				expectedBlock
+				expectedHashChain.duplicate(),
+				expectedBlock.duplicate()
 		)));
 
 		// Then
@@ -594,7 +595,7 @@ public class TestPeerProtocolParser {
 				new HashSet<String>(),
 				new BDictionary()
 		);
-		sequence.verify(mockConsumer).elasticPieceMessage (expectedDescriptor, expectedViewLength, expectedHashChain.array(), expectedBlock.array());
+		sequence.verify(mockConsumer).pieceMessage (PieceStyle.ELASTIC, null, expectedDescriptor, expectedViewLength, expectedHashChain, expectedBlock);
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -816,7 +817,7 @@ public class TestPeerProtocolParser {
 				new HashSet<String>(), new BDictionary()
 		);
 		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
-		sequence.verify(mockConsumer).pieceMessage (ResourceType.INFO, requestDescriptor, pieceData);
+		sequence.verify(mockConsumer).pieceMessage (PieceStyle.PLAIN, ResourceType.INFO, requestDescriptor, null, null, ByteBuffer.wrap (pieceData));
 		verifyNoMoreInteractions (mockConsumer);
 
 	}
@@ -1309,7 +1310,8 @@ public class TestPeerProtocolParser {
 		parser.parseBytes (Util.infiniteReadableByteChannelFor (messageData));
 
 		// Then
-		verify(consumer).pieceMessage (any (ResourceType.class), any (BlockDescriptor.class), any (byte[].class));
+		verify(consumer).pieceMessage (eq (PieceStyle.PLAIN), any (ResourceType.class), any (BlockDescriptor.class), any (Long.class), any (ByteBuffer.class),
+				any (ByteBuffer.class));
 
 	}
 
