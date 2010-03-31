@@ -20,7 +20,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.connectionmanager.Connection;
 import org.itadaki.bobbin.connectionmanager.ConnectionManager;
 import org.itadaki.bobbin.connectionmanager.OutboundConnectionListener;
@@ -30,8 +29,7 @@ import org.itadaki.bobbin.peer.extensionmanager.ExtensionManager;
 import org.itadaki.bobbin.peer.protocol.PeerConnectionListener;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolNegotiator;
 import org.itadaki.bobbin.peer.requestmanager.DefaultRequestManager;
-import org.itadaki.bobbin.peer.requestmanager.RequestManager;
-import org.itadaki.bobbin.torrentdb.BlockDescriptor;
+import org.itadaki.bobbin.peer.requestmanager.RequestManagerListener;
 import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.PieceStyle;
@@ -42,14 +40,13 @@ import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.CharsetUtil;
 import org.itadaki.bobbin.util.WorkQueue;
 import org.itadaki.bobbin.util.counter.Period;
-import org.itadaki.bobbin.util.elastictree.HashChain;
 
 
 /**
  * Administrates the connected peer set of a torrent, coordinating choking, request allocation,
  * received piece assembly and protocol extensions for the connected peers
  */
-public class PeerCoordinator implements PeerConnectionListener, PeerSourceListener, PeerServices {
+public class PeerCoordinator implements PeerConnectionListener, PeerSourceListener, PeerServices, RequestManagerListener {
 
 	/**
 	 * A period of two seconds measured in 500ms intervals. Used in network statistics gathering
@@ -80,24 +77,14 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 	private final ConnectionManager connectionManager;
 
 	/**
+	 * The PeerSetContext for the managed torrent
+	 */
+	private final PeerSetContext peerSetContext;
+
+	/**
 	 * The ChokingManager for the managed torrent
 	 */
 	private final ChokingManager chokingManager;
-
-	/**
-	 * The PieceDatabase for the managed torrent
-	 */
-	private final PieceDatabase pieceDatabase;
-
-	/**
-	 * The RequestManager for the managed torrent
-	 */
-	private final RequestManager requestManager;
-
-	/**
-	 * The ExtensionManager for the managed torrent
-	 */
-	private final ExtensionManager extensionManager;
 
 	/**
 	 * The local peer's ID
@@ -168,7 +155,7 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 			// manager (outside the peer context lock) and their receipt here (inside the lock) 
 			if (connection.isOpen() && mayConnectToPeer()) {
 				PeerCoordinator.this.unconnectedPeers.add (connection);
-				new PeerProtocolNegotiator (connection, PeerCoordinator.this, PeerCoordinator.this.pieceDatabase.getInfo().getHash(), PeerCoordinator.this.localPeerID);
+				new PeerProtocolNegotiator (connection, PeerCoordinator.this, PeerCoordinator.this.peerSetContext.pieceDatabase.getInfo().getHash(), PeerCoordinator.this.localPeerID);
 			} else {
 				try {
 					connection.close();
@@ -208,7 +195,7 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 					}
 
 					// Clean unneeded views from the piece database
-					PeerCoordinator.this.pieceDatabase.garbageCollectViews();
+					PeerCoordinator.this.peerSetContext.pieceDatabase.garbageCollectViews();
 				}
 			} finally {
 				unlock();
@@ -226,7 +213,7 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 		this.unconnectedPeers.remove (connection);
 
-		if ((this.pieceDatabase.getInfo().getPieceStyle() != PieceStyle.PLAIN) && !extensionProtocolEnabled) {
+		if ((this.peerSetContext.pieceDatabase.getInfo().getPieceStyle() != PieceStyle.PLAIN) && !extensionProtocolEnabled) {
 
 			// If the torrent is a Merkle or Elastic torrent, the extension protocol is mandatory
 			try {
@@ -254,7 +241,7 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 			}
 
 			// Register the peer
-			PeerHandler peer = new PeerHandler (this, connection, remotePeerID, this.peerSetStatistics, this.pieceDatabase, fastExtensionEnabled, extensionProtocolEnabled);
+			PeerHandler peer = new PeerHandler (this.peerSetContext, connection, remotePeerID, this.peerSetStatistics, fastExtensionEnabled, extensionProtocolEnabled);
 			this.connectedPeers.add (peer);
 			this.connectedPeerIDs.add (remotePeerID);
 			for (PeerCoordinatorListener listener : this.listeners) {
@@ -347,118 +334,12 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#configureExtensions(org.itadaki.bobbin.peer.PeerHandler)
-	 */
-	public void offerExtensionsToPeer (ExtensiblePeer peerHandler) {
-
-		this.extensionManager.offerExtensionsToPeer (peerHandler);
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#enableDisableExtensions(org.itadaki.bobbin.peer.ExtensiblePeer, java.util.Set, java.util.Set, org.itadaki.bobbin.bencode.BDictionary)
-	 */
-	public void enableDisablePeerExtensions (ExtensiblePeer peer, Set<String> extensionsEnabled, Set<String> extensionsDisabled,
-			BDictionary extra) {
-
-		this.extensionManager.enableDisablePeerExtensions (peer, extensionsEnabled, extensionsDisabled, null);
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#processExtensionMessage(org.itadaki.bobbin.peer.PeerHandler, java.lang.String, byte[])
-	 */
-	public void processExtensionMessage (ExtensiblePeer peer, String identifier, byte[] data) {
-
-		this.extensionManager.processExtensionMessage (peer, identifier, data);
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#addAvailablePieces(org.itadaki.bobbin.peer.ManageablePeer)
-	 */
-	public boolean addAvailablePieces (ManageablePeer peer) {
-
-		return this.requestManager.piecesAvailable (peer);
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#addAvailablePiece(org.itadaki.bobbin.peer.ManageablePeer, int)
-	 */
-	public boolean addAvailablePiece (ManageablePeer peer, int pieceNumber) {
-
-		return this.requestManager.pieceAvailable (peer, pieceNumber);
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#getRequests(org.itadaki.bobbin.peer.ManageablePeer, int)
-	 */
-	public List<BlockDescriptor> getRequests (ManageablePeer peer, int numRequests, boolean allowedFastOnly) {
-
-		return this.requestManager.allocateRequests (peer, numRequests, allowedFastOnly);
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#handleBlock(org.itadaki.bobbin.peer.ManageablePeer, org.itadaki.bobbin.torrentdb.BlockDescriptor, org.itadaki.bobbin.torrentdb.ViewSignature, org.itadaki.bobbin.util.elastictree.HashChain, java.nio.ByteBuffer)
-	 */
-	public void handleBlock (ManageablePeer peer, BlockDescriptor request, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block) {
-
-		Piece piece = this.requestManager.handleBlock (peer, request, viewSignature, hashChain, block);
-
-		if (piece != null) {
-			try {
-				if (this.pieceDatabase.writePiece (piece)) {
-					this.requestManager.setPieceNotNeeded (request.getPieceNumber());
-				}
-				if ((this.requestManager.getNeededPieceCount() == 0) && (this.pieceDatabase.getInfo().getPieceStyle() != PieceStyle.ELASTIC)) {
-					for (PeerCoordinatorListener listener : this.listeners) {
-						listener.peerCoordinatorCompleted();
-					}
-				}
-			} catch (IOException e) {
-				// PieceDatabase will signal the error shortly
-			}
-		}
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#pieceSuggested(org.itadaki.bobbin.peer.ManageablePeer, int)
-	 */
-	public void setPieceAllowedFast (ManageablePeer peer, int pieceNumber) {
-
-		this.requestManager.setPieceAllowedFast (peer, pieceNumber);
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.PeerServices#setPieceSuggested(org.itadaki.bobbin.peer.ManageablePeer, int)
-	 */
-	public void setPieceSuggested (ManageablePeer peer, int pieceNumber) {
-
-		this.requestManager.setPieceSuggested (peer, pieceNumber);
-
-	}
-
-
-	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.PeerServices#adjustChoking()
 	 */
 	public void adjustChoking (boolean opportunistic) {
 
 		if (!opportunistic || (this.connectedPeers.size() <= 4)) {
-			this.chokingManager.chokePeers (this.requestManager.getNeededPieceCount() == 0);
+			this.chokingManager.chokePeers (this.peerSetContext.requestManager.getNeededPieceCount() == 0);
 		}
 
 	}
@@ -470,16 +351,16 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 	public boolean handleViewSignature (ViewSignature viewSignature) {
 
 		// Verify the signature
-		if (!this.pieceDatabase.verifyViewSignature (viewSignature)) {
+		if (!this.peerSetContext.pieceDatabase.verifyViewSignature (viewSignature)) {
 			return false;
 		}
 
 		// If the signed view is longer than our view, extend our view
-		if (viewSignature.getViewLength() > this.pieceDatabase.getStorageDescriptor().getLength()) {
+		if (viewSignature.getViewLength() > this.peerSetContext.pieceDatabase.getStorageDescriptor().getLength()) {
 
 			// If the last piece is irregular, reject peers' requests for blocks within it
-			if (!this.pieceDatabase.getStorageDescriptor().isRegular()) {
-				int rejectPieceNumber = this.pieceDatabase.getStorageDescriptor().getNumberOfPieces() - 1;
+			if (!this.peerSetContext.pieceDatabase.getStorageDescriptor().isRegular()) {
+				int rejectPieceNumber = this.peerSetContext.pieceDatabase.getStorageDescriptor().getNumberOfPieces() - 1;
 				for (ManageablePeer peer : this.connectedPeers) {
 					peer.rejectPiece (rejectPieceNumber);
 				}
@@ -487,7 +368,7 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 			// Extend the database and services
 			try {
-				this.pieceDatabase.extend (viewSignature);
+				this.peerSetContext.pieceDatabase.extend (viewSignature);
 				extendServices (viewSignature);
 			} catch (IOException e) {
 				// PieceDatabase will signal the error shortly
@@ -497,8 +378,8 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 			this.wantedPieces.clear();
 			this.wantedPieces.not();
 			BitField neededPieces = this.wantedPieces.clone();
-			neededPieces.and (this.pieceDatabase.getPresentPieces().not());
-			this.requestManager.setNeededPieces (neededPieces);
+			neededPieces.and (this.peerSetContext.pieceDatabase.getPresentPieces().not());
+			this.peerSetContext.requestManager.setNeededPieces (neededPieces);
 
 		}
 
@@ -523,6 +404,29 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 	public void unlock() {
 
 		this.peerContextLock.unlock();
+
+	}
+
+
+	// RequestManagerListener interface
+
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.peer.requestmanager.RequestManagerListener#pieceAssembled(org.itadaki.bobbin.torrentdb.Piece)
+	 */
+	public void pieceAssembled(Piece piece) {
+
+		try {
+			if (this.peerSetContext.pieceDatabase.writePiece (piece)) {
+				this.peerSetContext.requestManager.setPieceNotNeeded (piece.getPieceNumber());
+			}
+			if ((this.peerSetContext.requestManager.getNeededPieceCount() == 0) && (this.peerSetContext.pieceDatabase.getInfo().getPieceStyle() != PieceStyle.ELASTIC)) {
+				for (PeerCoordinatorListener listener : this.listeners) {
+					listener.peerCoordinatorCompleted();
+				}
+			}
+		} catch (IOException e) {
+			// PieceDatabase will signal the error shortly
+		}
 
 	}
 
@@ -574,8 +478,8 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 	 */
 	private void extendServices (ViewSignature viewSignature) {
 
-		this.requestManager.extend (this.pieceDatabase.getStorageDescriptor());
-		this.wantedPieces.extend (this.pieceDatabase.getStorageDescriptor().getNumberOfPieces());
+		this.peerSetContext.requestManager.extend (this.peerSetContext.pieceDatabase.getStorageDescriptor());
+		this.wantedPieces.extend (this.peerSetContext.pieceDatabase.getStorageDescriptor().getNumberOfPieces());
 
 		for (ManageablePeer peer : this.connectedPeers) {
 			peer.sendViewSignature (viewSignature);
@@ -691,8 +595,8 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 			if (this.running) {
 				BitField neededPieces = wantedPieces.clone();
-				neededPieces.and (this.pieceDatabase.getPresentPieces().not());
-				this.requestManager.setNeededPieces (neededPieces);
+				neededPieces.and (this.peerSetContext.pieceDatabase.getPresentPieces().not());
+				this.peerSetContext.requestManager.setNeededPieces (neededPieces);
 			}
 		} finally {
 			unlock();
@@ -824,10 +728,10 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 		try {
 
-			StorageDescriptor oldDescriptor = this.pieceDatabase.getStorageDescriptor();
-			ViewSignature viewSignature = this.pieceDatabase.extendData (privateKey, additionalData);
+			StorageDescriptor oldDescriptor = this.peerSetContext.pieceDatabase.getStorageDescriptor();
+			ViewSignature viewSignature = this.peerSetContext.pieceDatabase.extendData (privateKey, additionalData);
 			extendServices (viewSignature);
-			StorageDescriptor newDescriptor = this.pieceDatabase.getStorageDescriptor();
+			StorageDescriptor newDescriptor = this.peerSetContext.pieceDatabase.getStorageDescriptor();
 
 			int fromHavePiece = oldDescriptor.getNumberOfPieces() - (oldDescriptor.isRegular() ? 0 : 1);
 			int toHavePiece = newDescriptor.getNumberOfPieces() - 1;
@@ -862,10 +766,10 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 		try {
 
-			StorageDescriptor oldDescriptor = this.pieceDatabase.getStorageDescriptor();
-			ViewSignature viewSignature = this.pieceDatabase.extendDataInPlace (privateKey, length);
+			StorageDescriptor oldDescriptor = this.peerSetContext.pieceDatabase.getStorageDescriptor();
+			ViewSignature viewSignature = this.peerSetContext.pieceDatabase.extendDataInPlace (privateKey, length);
 			extendServices (viewSignature);
-			StorageDescriptor newDescriptor = this.pieceDatabase.getStorageDescriptor();
+			StorageDescriptor newDescriptor = this.peerSetContext.pieceDatabase.getStorageDescriptor();
 
 			int fromHavePiece = oldDescriptor.getNumberOfPieces() - (oldDescriptor.isRegular() ? 0 : 1);
 			int toHavePiece = newDescriptor.getNumberOfPieces() - 1;
@@ -893,7 +797,7 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 		lock();
 		try {
-			return this.requestManager.getNeededPieceCount ();
+			return this.peerSetContext.requestManager.getNeededPieceCount ();
 		} finally {
 			unlock();
 		}
@@ -925,8 +829,8 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 		this.running = true;
 		synchronized (this) {
 			BitField neededPieces = this.wantedPieces.clone();
-			neededPieces.and (this.pieceDatabase.getPresentPieces().not());
-			this.requestManager.setNeededPieces (neededPieces);
+			neededPieces.and (this.peerSetContext.pieceDatabase.getPresentPieces().not());
+			this.peerSetContext.requestManager.setNeededPieces (neededPieces);
 		}
 		unlock();
 
@@ -974,16 +878,20 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 		this.workQueue = new WorkQueue ("PeerCoordinator WorkQueue - " + CharsetUtil.hexencode (pieceDatabase.getInfo().getHash().getBytes()));
 
+		this.peerSetContext = new PeerSetContext (
+				this,
+				pieceDatabase,
+				new DefaultRequestManager (pieceDatabase.getStorageDescriptor(), this),
+				new ExtensionManager()
+		);
+
 		this.localPeerID = localPeerID;
 		this.connectionManager = connectionManager;
-		this.pieceDatabase = pieceDatabase;
 		this.wantedPieces = wantedPieces.clone();
 		this.chokingManager = new DefaultChokingManager();
 		this.listeners.add (this.chokingManager);
-		this.requestManager = new DefaultRequestManager (pieceDatabase.getStorageDescriptor());
-		this.listeners.add (this.requestManager);
-		this.extensionManager = new ExtensionManager();
-		this.listeners.add (this.extensionManager);
+		this.listeners.add (this.peerSetContext.requestManager);
+		this.listeners.add (this.peerSetContext.extensionManager);
 
 		this.workQueue.scheduleWithFixedDelay (this.maintenanceRunnable, 10, 10, TimeUnit.SECONDS);
 

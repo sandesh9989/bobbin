@@ -14,6 +14,7 @@ import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerState;
 import org.itadaki.bobbin.peer.requestmanager.DefaultRequestManager;
 import org.itadaki.bobbin.peer.requestmanager.RequestManager;
+import org.itadaki.bobbin.peer.requestmanager.RequestManagerListener;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.StorageDescriptor;
 import org.itadaki.bobbin.util.BitField;
@@ -60,7 +61,7 @@ public class TestDefaultRequestManager {
 		long totalLength = pieceSize;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField (1);
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField (1);
 		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
@@ -88,7 +89,7 @@ public class TestDefaultRequestManager {
 		long totalLength = pieceSize;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField (1);
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
@@ -117,7 +118,7 @@ public class TestDefaultRequestManager {
 		long totalLength = pieceSize;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField (1);
 		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
@@ -145,7 +146,7 @@ public class TestDefaultRequestManager {
 		long totalLength = pieceSize;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
@@ -175,7 +176,7 @@ public class TestDefaultRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerABitField = new BitField (1);
@@ -218,7 +219,7 @@ public class TestDefaultRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(2).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerABitField = new BitField (2);
@@ -262,7 +263,7 @@ public class TestDefaultRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(16).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerABitField = new BitField (16);
@@ -295,7 +296,7 @@ public class TestDefaultRequestManager {
 	// Test piece handling
 
 	/**
-	 * After receiving 1 of 1 pieces, PieceDatabase contains the piece and no more allocations are given
+	 * After setting the last piece not needed, no more allocations are given
 	 *
 	 * @throws Exception
 	 */
@@ -308,7 +309,8 @@ public class TestDefaultRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManagerListener listener = mock (RequestManagerListener.class);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, listener);
 
 		requestManager.setNeededPieces (neededBitField);
 
@@ -318,24 +320,11 @@ public class TestDefaultRequestManager {
 		requestManager.peerRegistered (peer);
 
 		// When
+		requestManager.setPieceNotNeeded (0);
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 16, false);
 
-		byte[] piece = Util.pseudoRandomBlock (0, 262144, 262144);
-		int position = 0;
-		for (BlockDescriptor block : blocks) {
-			byte[] blockData = new byte[16384];
-			System.arraycopy (piece, position, blockData, 0, 16384);
-			position += 16384;
-			if (requestManager.handleBlock (peer, block, null, null, ByteBuffer.wrap (blockData)) != null) {
-				requestManager.setPieceNotNeeded (block.getPieceNumber());
-			}
-		}
-
-		List<BlockDescriptor> blocks2 = requestManager.allocateRequests (peer, 16, false);
-
 		// Then
-		assertEquals (16, blocks.size());
-		assertEquals (0, blocks2.size());
+		assertEquals (0, blocks.size());
 
 	}
 
@@ -355,7 +344,8 @@ public class TestDefaultRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManagerListener listener = mock (RequestManagerListener.class);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, listener);
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerBitField = new BitField (1);
@@ -380,10 +370,9 @@ public class TestDefaultRequestManager {
 			byte[] blockData = new byte[16384];
 			System.arraycopy (piece, position, blockData, 0, 16384);
 			position += 16384;
-			if (requestManager.handleBlock (peer, block, null, null, ByteBuffer.wrap (blockData)) != null) {
-				requestManager.setPieceNotNeeded (block.getPieceNumber());
-			}
+			requestManager.handleBlock (peer, block, null, null, ByteBuffer.wrap (blockData));
 		}
+		requestManager.setPieceNotNeeded (0);
 
 		assertEquals (16, blocks.size());
 		assertArrayEquals (blocks.toArray(), blocks2.toArray());
@@ -409,7 +398,8 @@ public class TestDefaultRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManagerListener listener = mock (RequestManagerListener.class);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, listener);
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerBitField = new BitField (1);
@@ -445,10 +435,7 @@ public class TestDefaultRequestManager {
 			byte[] blockData = new byte[16384];
 			System.arraycopy (piece, position, blockData, 0, 16384);
 			position += 16384;
-			if (requestManager.handleBlock (peer2, block, null, null, ByteBuffer.wrap (blockData)) != null) {
-				requestManager.setPieceNotNeeded (block.getPieceNumber());
-			}
-
+			requestManager.handleBlock (peer2, block, null, null, ByteBuffer.wrap (blockData));
 		}
 
 		// Then
@@ -481,7 +468,8 @@ public class TestDefaultRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManagerListener listener = mock (RequestManagerListener.class);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, listener);
 		requestManager.setNeededPieces (neededBitField);
 
 		// Register 3 peers
@@ -517,10 +505,9 @@ public class TestDefaultRequestManager {
 			byte[] blockData = new byte[16384];
 			System.arraycopy (piece, position, blockData, 0, 16384);
 			position += 16384;
-			if (requestManager.handleBlock (peer2, block, null, null, ByteBuffer.wrap (blockData)) != null) {
-				requestManager.setPieceNotNeeded (block.getPieceNumber());
-			}
+			requestManager.handleBlock (peer2, block, null, null, ByteBuffer.wrap (blockData));
 		}
+		requestManager.setPieceNotNeeded (0);
 
 		// Allocation for peer 3
 		List<BlockDescriptor> blocks3 = requestManager.allocateRequests (peer3, 16, false);
@@ -549,7 +536,7 @@ public class TestDefaultRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerBitField = new BitField (1);
@@ -591,7 +578,7 @@ public class TestDefaultRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(2).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerBitField = new BitField (2);
@@ -643,7 +630,7 @@ public class TestDefaultRequestManager {
 		long totalLength = pieceSize;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
@@ -672,7 +659,7 @@ public class TestDefaultRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerBitField = new BitField (1);
@@ -702,7 +689,7 @@ public class TestDefaultRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(5).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerBitField = new BitField (5);
@@ -732,7 +719,7 @@ public class TestDefaultRequestManager {
 		long totalLength = pieceSize * 5;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(5).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 
 		// When
@@ -758,7 +745,7 @@ public class TestDefaultRequestManager {
 		long theirTotalLength = pieceSize + 512;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, ourTotalLength);
 		BitField neededBitField = new BitField(2).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField(2).not();
 		ManageablePeer peer = mockManageablePeer (new StorageDescriptor (pieceSize, theirTotalLength), peerBitField);
@@ -786,7 +773,7 @@ public class TestDefaultRequestManager {
 		long theirTotalLength = (2 * pieceSize);
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, ourTotalLength);
 		BitField neededBitField = new BitField(3).not();
-		RequestManager requestManager = new DefaultRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor, mock (RequestManagerListener.class));
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField(2).not();
 		ManageablePeer peer = mockManageablePeer (new StorageDescriptor (pieceSize, theirTotalLength), peerBitField);

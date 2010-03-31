@@ -10,7 +10,6 @@ import java.util.List;
 import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerCoordinatorListener;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
-import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.StorageDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
@@ -74,10 +73,11 @@ public interface RequestManager extends PeerCoordinatorListener {
 	public List<BlockDescriptor> allocateRequests (ManageablePeer peer, int numRequests, boolean allowedFastOnly);
 
 	/**
-	 * Handles a received block, assembling the piece data if we have a complete set of blocks.
+	 * Handles a received block, notifying a listener when a complete, unverified piece has been
+	 * assembled
 	 * 
-	 * <p>If a piece is returned by this method and is successfully verified, a call to
-	 * {@link #setPieceNotNeeded(int)} should subsequently be made
+	 * <p>Even after a piece is assembled, the piece will still be wanted until a call to
+	 * {@link #setPieceNotNeeded(int)} is made
 	 *
 	 * @param peer The peer that sent the block
 	 * @param descriptor The request corresponding to this block
@@ -85,9 +85,8 @@ public interface RequestManager extends PeerCoordinatorListener {
 	 *        {@code null}
 	 * @param hashChain The hash chain of the piece, if supplied, or {@code null}
 	 * @param block The data of the block
-	 * @return The piece data if a piece was successfully assembled
 	 */
-	public Piece handleBlock (ManageablePeer peer, BlockDescriptor descriptor, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block);
+	public void handleBlock (ManageablePeer peer, BlockDescriptor descriptor, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block);
 
 	/**
 	 * @param neededPieces The set of needed pieces
