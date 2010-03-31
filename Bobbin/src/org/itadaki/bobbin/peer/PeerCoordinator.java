@@ -29,7 +29,7 @@ import org.itadaki.bobbin.peer.chokingmanager.DefaultChokingManager;
 import org.itadaki.bobbin.peer.extensionmanager.ExtensionManager;
 import org.itadaki.bobbin.peer.protocol.PeerConnectionListener;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolNegotiator;
-import org.itadaki.bobbin.peer.requestmanager.RandomRequestManager;
+import org.itadaki.bobbin.peer.requestmanager.DefaultRequestManager;
 import org.itadaki.bobbin.peer.requestmanager.RequestManager;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.Piece;
@@ -980,7 +980,7 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 		this.wantedPieces = wantedPieces.clone();
 		this.chokingManager = new DefaultChokingManager();
 		this.listeners.add (this.chokingManager);
-		this.requestManager = new RandomRequestManager (pieceDatabase.getStorageDescriptor());
+		this.requestManager = new DefaultRequestManager (pieceDatabase.getStorageDescriptor());
 		this.listeners.add (this.requestManager);
 		this.extensionManager = new ExtensionManager();
 		this.listeners.add (this.extensionManager);

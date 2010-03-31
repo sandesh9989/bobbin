@@ -32,7 +32,7 @@ import org.itadaki.bobbin.util.elastictree.HashChain;
 /**
  * A {@link RequestManager} that implements a random piece allocation order
  */
-public class RandomRequestManager implements RequestManager {
+public class DefaultRequestManager implements RequestManager {
 
 	/**
 	 * The {@code StorageDescriptor} for the managed torrent
@@ -117,8 +117,8 @@ public class RandomRequestManager implements RequestManager {
 			    && peerBitField.get (pieceNumber)
 			    && (
 			               (pieceNumber < (peerBitField.length() - 1))
-			            || (peerViewLength == RandomRequestManager.this.storageDescriptor.getLength())
-			            || (peerViewLength % RandomRequestManager.this.storageDescriptor.getPieceSize() == 0)
+			            || (peerViewLength == DefaultRequestManager.this.storageDescriptor.getLength())
+			            || (peerViewLength % DefaultRequestManager.this.storageDescriptor.getPieceSize() == 0)
 			       );
 
 		}
@@ -139,7 +139,7 @@ public class RandomRequestManager implements RequestManager {
 		private void allocateRequestsFrom (Collection<Integer> pieceNumbers, long peerViewLength, BitField peerBitField, int numRequests) {
 
 			// Attempt to allocate pieces from the queue
-			Iterator<Integer> iterator = (pieceNumbers == null) ? RandomRequestManager.this.piecePriority.iterator() : pieceNumbers.iterator();
+			Iterator<Integer> iterator = (pieceNumbers == null) ? DefaultRequestManager.this.piecePriority.iterator() : pieceNumbers.iterator();
 			List<Integer> removedPieces = new LinkedList<Integer>();
 			for (; numRequests > this.unissuedRequests.size() && iterator.hasNext();) {
 				Integer pieceNumber = iterator.next();
@@ -148,9 +148,9 @@ public class RandomRequestManager implements RequestManager {
 				} else {
 					if (peerHasCompatiblePiece (peerViewLength, peerBitField, pieceNumber) && !this.pieces.containsKey (pieceNumber)) {
 						// Check for orphaned pieces first
-						Piece piece = RandomRequestManager.this.orphanedPieces.remove (pieceNumber);
+						Piece piece = DefaultRequestManager.this.orphanedPieces.remove (pieceNumber);
 						if (piece == null) {
-							piece = new Piece (pieceNumber, RandomRequestManager.this.storageDescriptor.getPieceLength (pieceNumber),
+							piece = new Piece (pieceNumber, DefaultRequestManager.this.storageDescriptor.getPieceLength (pieceNumber),
 									PeerProtocolConstants.BLOCK_LENGTH);
 						}
 						this.pieces.put (pieceNumber, piece);
@@ -158,13 +158,13 @@ public class RandomRequestManager implements RequestManager {
 
 						iterator.remove();
 						if (pieceNumbers != null) {
-							RandomRequestManager.this.piecePriority.remove (pieceNumber);
+							DefaultRequestManager.this.piecePriority.remove (pieceNumber);
 						}
 						removedPieces.add (pieceNumber);
 					}
 				}
 			}
-			RandomRequestManager.this.piecePriority.addAll (removedPieces);
+			DefaultRequestManager.this.piecePriority.addAll (removedPieces);
 
 		}
 
@@ -183,7 +183,7 @@ public class RandomRequestManager implements RequestManager {
 				allocateRequestsFrom (this.allowedFastPieces, peerViewLength, peerBitField, numRequests);
 			} else {
 				// Attempt to allocate orphaned pieces first
-				List<Integer> orphanPieceNumbers = new ArrayList<Integer> (RandomRequestManager.this.orphanedPieces.keySet());
+				List<Integer> orphanPieceNumbers = new ArrayList<Integer> (DefaultRequestManager.this.orphanedPieces.keySet());
 				allocateRequestsFrom (orphanPieceNumbers, peerViewLength, peerBitField, numRequests);
 	
 				// Attempt to allocate suggested pieces
@@ -568,7 +568,7 @@ public class RandomRequestManager implements RequestManager {
 	 */
 	private boolean pieceIsAllocated (Integer pieceNumber) {
 
-		for (PeerState peerState : RandomRequestManager.this.peerStates.values()) {
+		for (PeerState peerState : DefaultRequestManager.this.peerStates.values()) {
 			if (peerState.pieces.containsKey (pieceNumber)) {
 				return true;
 			}
@@ -582,7 +582,7 @@ public class RandomRequestManager implements RequestManager {
 	/**
 	 * @param storageDescriptor The {@code StorageDescriptor} for the managed torrent
 	 */
-	public RandomRequestManager (StorageDescriptor storageDescriptor) {
+	public DefaultRequestManager (StorageDescriptor storageDescriptor) {
 
 		this.storageDescriptor = storageDescriptor;
 		this.pieceAvailability = new short [storageDescriptor.getNumberOfPieces()];

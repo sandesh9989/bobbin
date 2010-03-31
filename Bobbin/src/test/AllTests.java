@@ -27,7 +27,7 @@ import test.peer.extensionmanager.TestExtensionManager;
 import test.peer.protocol.TestPeerProtocolBuilder;
 import test.peer.protocol.TestPeerProtocolNegotiator;
 import test.peer.protocol.TestPeerProtocolParser;
-import test.peer.requestmanager.TestRandomRequestManager;
+import test.peer.requestmanager.TestDefaultRequestManager;
 import test.statemachine.TestStateMachine;
 import test.torrentdb.TestBlockDescriptor;
 import test.torrentdb.TestFileMetadata;
@@ -82,7 +82,7 @@ import test.util.elastictree.TestElasticTree;
 	TestDefaultChokingManager.class,
 	TestConnectionManager.class,
 	TestPiece.class,
-	TestRandomRequestManager.class,
+	TestDefaultRequestManager.class,
 	TestPeerOutboundQueue.class,
 	TestHTTPResponseParser.class,
 	TestHTTPRequestHandler.class,
