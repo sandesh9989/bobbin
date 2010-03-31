@@ -19,9 +19,12 @@ import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerHandler;
 import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.peer.PeerServices;
+import org.itadaki.bobbin.peer.PeerSetContext;
 import org.itadaki.bobbin.peer.PeerStatistics;
+import org.itadaki.bobbin.peer.extensionmanager.ExtensionManager;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConstants;
+import org.itadaki.bobbin.peer.requestmanager.RequestManager;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.Info;
 import org.itadaki.bobbin.torrentdb.MemoryStorage;
@@ -54,10 +57,11 @@ public class TestPeerHandler {
 
 		// Given
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, null, null);
 
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// Then
 		assertFalse (handler.getPeerState().getWeAreInterested());
@@ -83,9 +87,10 @@ public class TestPeerHandler {
 
 		// Given
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, null, null);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		// Remote peer sends us an unchoke
@@ -107,9 +112,10 @@ public class TestPeerHandler {
 
 		// Given
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, null, null);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		// Remote peer sends us an unchoke then a choke
@@ -133,9 +139,10 @@ public class TestPeerHandler {
 
 		// Given
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, null, null);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		// Remote peer sends us an interested message
@@ -143,7 +150,7 @@ public class TestPeerHandler {
 		handler.connectionReady (mockConnection, true, false);
 
 		// Then
-		verify(mockPeerServices).adjustChoking (true);
+		verify(peerServices).adjustChoking (true);
 		assertTrue (handler.getPeerState().getTheyAreInterested());
 
 	}
@@ -158,9 +165,10 @@ public class TestPeerHandler {
 
 		// Given
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, null, null);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		// Remote peer sends us an interested message then a not interested message
@@ -169,7 +177,7 @@ public class TestPeerHandler {
 		handler.connectionReady (mockConnection, true, false);
 
 		// Then
-		verify(mockPeerServices, times(2)).adjustChoking (true);
+		verify(peerServices, times(2)).adjustChoking (true);
 		assertFalse (handler.getPeerState().getTheyAreInterested());
 
 	}
@@ -187,12 +195,14 @@ public class TestPeerHandler {
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		BlockDescriptor request = new BlockDescriptor (0, 0, 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (Arrays.asList (new BlockDescriptor[] { request }));
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false)))
+				.thenReturn (Arrays.asList (new BlockDescriptor[] { request }));
 
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		// We send remote peer a request
@@ -212,7 +222,7 @@ public class TestPeerHandler {
 
 		// Then
 		mockConnection.mockExpectNoMoreOutput();
-		verify (mockPeerServices).handleBlock (eq (handler), eq (request), eq ((ViewSignature)null), eq ((HashChain)null), any (ByteBuffer.class));
+		verify (peerSetContext.requestManager).handleBlock (eq (handler), eq (request), eq ((ViewSignature)null), eq ((HashChain)null), any (ByteBuffer.class));
 		assertEquals (16384, handler.getReadableStatistics().getTotal (PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW));
 
 
@@ -232,10 +242,11 @@ public class TestPeerHandler {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 		BlockDescriptor request = new BlockDescriptor (0, 0, 16384);
 
 		// When
@@ -280,11 +291,13 @@ public class TestPeerHandler {
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		BlockDescriptor request = new BlockDescriptor (0, 0, 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (Arrays.asList (new BlockDescriptor[] { request }));
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false)))
+				.thenReturn (Arrays.asList (new BlockDescriptor[] { request }));
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		// Remote peer sends us a block
@@ -315,10 +328,12 @@ public class TestPeerHandler {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		// We send the remote peer a block
@@ -350,10 +365,11 @@ public class TestPeerHandler {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		// The remote peer requests a block but we don't send it
@@ -384,10 +400,11 @@ public class TestPeerHandler {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		// The remote peer requests a block
@@ -426,10 +443,11 @@ public class TestPeerHandler {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
@@ -462,13 +480,14 @@ public class TestPeerHandler {
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		BlockDescriptor request = new BlockDescriptor (0, 0, 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { request }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		// We make a request but cancel it before it is sent
@@ -499,13 +518,14 @@ public class TestPeerHandler {
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		BlockDescriptor request = new BlockDescriptor (0, 0, 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { request }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		// We make a request and cancel it after it has been sent
@@ -544,11 +564,12 @@ public class TestPeerHandler {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
@@ -583,9 +604,10 @@ public class TestPeerHandler {
 		// Given
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, null, null);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		handler.connectionReady (mockConnection, true, false);
@@ -611,11 +633,12 @@ public class TestPeerHandler {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
@@ -641,10 +664,10 @@ public class TestPeerHandler {
 		// Given
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, null, new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, null, new PeerStatistics(), false, false);
 
 		// Then
 		assertEquals ("1.2.3.4", handler.getRemoteSocketAddress().getAddress().getHostAddress());
@@ -666,9 +689,10 @@ public class TestPeerHandler {
 		// Given
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, null, null);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), false, false);
 
 		// When
 		PeerID remotePeerID = new PeerID();
@@ -694,9 +718,10 @@ public class TestPeerHandler {
 		// Given
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, null, null);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), false, false);
 
 		// When
 		PeerID remotePeerID = new PeerID();
@@ -723,10 +748,11 @@ public class TestPeerHandler {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("111111111111111", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
@@ -788,10 +814,11 @@ public class TestPeerHandler {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
@@ -819,10 +846,11 @@ public class TestPeerHandler {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
@@ -850,10 +878,11 @@ public class TestPeerHandler {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("10", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
@@ -882,11 +911,12 @@ public class TestPeerHandler {
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("00000", 16384);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
@@ -920,9 +950,10 @@ public class TestPeerHandler {
 		// Given
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("111111111111111", 16384);
 		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 		BlockDescriptor requestDescriptor = new BlockDescriptor (0, 0, 16384);
 
 		// WHen
@@ -970,9 +1001,10 @@ public class TestPeerHandler {
 		// Given
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 		BlockDescriptor request = new BlockDescriptor (0, 0, 16384);
 
 		// When
@@ -1014,9 +1046,10 @@ public class TestPeerHandler {
 		// Given
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("111111111111111", 16384);
 		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 		BlockDescriptor request = new BlockDescriptor (14, 0, 16384);
 
 		// When
@@ -1073,11 +1106,12 @@ public class TestPeerHandler {
 		// Given
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 		BlockDescriptor requestDescriptor = new BlockDescriptor (0, 0, 16384);
 
 		// When
@@ -1090,7 +1124,7 @@ public class TestPeerHandler {
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectNoMoreOutput();
-		verify(mockPeerServices).peerDisconnected (any (ManageablePeer.class));
+		verify(peerServices).peerDisconnected (any (ManageablePeer.class));
 		assertFalse (mockConnection.isOpen());
 
 
@@ -1109,9 +1143,10 @@ public class TestPeerHandler {
 		// Given
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 		BlockDescriptor requestDescriptor = new BlockDescriptor (0, 0, 16384);
 
 		// When
@@ -1147,11 +1182,12 @@ public class TestPeerHandler {
 		// Given
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("00000", 16384);
 		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.haveAllMessage());
@@ -1180,10 +1216,11 @@ public class TestPeerHandler {
 		// Given
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("00000", 16384);
 		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.haveNoneMessage());
@@ -1217,13 +1254,14 @@ public class TestPeerHandler {
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		final BlockDescriptor requestDescriptor = new BlockDescriptor (0, 0, 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { requestDescriptor }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 
 		// When
 		// They allow us to make a request
@@ -1274,13 +1312,14 @@ public class TestPeerHandler {
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		final BlockDescriptor requestDescriptor = new BlockDescriptor (0, 0, 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { requestDescriptor }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 
 		// When
 		// They allow us to make a request
@@ -1303,7 +1342,7 @@ public class TestPeerHandler {
 
 		// Then
 		mockConnection.mockExpectNoMoreOutput();
-		verify(mockPeerServices).peerDisconnected (handler);
+		verify(peerServices).peerDisconnected (handler);
 		assertFalse (mockConnection.isOpen());
 
 
@@ -1323,13 +1362,14 @@ public class TestPeerHandler {
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		final BlockDescriptor requestDescriptor = new BlockDescriptor (0, 0, 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { requestDescriptor }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 
 		// When
 		// They allow us to make a request
@@ -1361,7 +1401,7 @@ public class TestPeerHandler {
 
 		// Then
 		mockConnection.mockExpectNoMoreOutput();
-		verify(mockPeerServices).peerDisconnected (handler);
+		verify(peerServices).peerDisconnected (handler);
 		assertFalse (mockConnection.isOpen());
 
 
@@ -1382,13 +1422,14 @@ public class TestPeerHandler {
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("00000", 16384);
 		pieceDatabase.start (true);
 		final BlockDescriptor requestDescriptor = new BlockDescriptor (2, 0, 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (true)))
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (true)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { requestDescriptor }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 
 		// When
 		// They send an Allowed Fast message, allowing us to make a request while choked
@@ -1401,7 +1442,7 @@ public class TestPeerHandler {
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.requestMessage (requestDescriptor));
 		mockConnection.mockExpectNoMoreOutput();
-		verify(mockPeerServices).setPieceAllowedFast (handler, 2);
+		verify(peerSetContext.requestManager).setPieceAllowedFast (handler, 2);
 		assertTrue (mockConnection.isOpen());
 
 
@@ -1421,12 +1462,13 @@ public class TestPeerHandler {
 		final PieceDatabase pieceDatabase = MockPieceDatabase.create ("00000", 16384);
 		pieceDatabase.start (true);
 		final BlockDescriptor requestDescriptor = new BlockDescriptor (2, 0, 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (true))).thenReturn (new ArrayList<BlockDescriptor>());
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (Arrays.asList (new BlockDescriptor[] { requestDescriptor }));
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), null);
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (true))).thenReturn (new ArrayList<BlockDescriptor>());
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false))).thenReturn (Arrays.asList (new BlockDescriptor[] { requestDescriptor }));
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, false);
 
 		// When
 		// They suggest a piece and unchoke
@@ -1440,7 +1482,7 @@ public class TestPeerHandler {
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.requestMessage (requestDescriptor));
 		mockConnection.mockExpectNoMoreOutput();
-		verify(mockPeerServices).setPieceSuggested (handler, 2);
+		verify(peerSetContext.requestManager).setPieceSuggested (handler, 2);
 		assertTrue (mockConnection.isOpen());
 
 
@@ -1460,10 +1502,11 @@ public class TestPeerHandler {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, false, true);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), false, true);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
@@ -1471,7 +1514,7 @@ public class TestPeerHandler {
 
 		// Then
 		mockConnection.mockExpectNoMoreOutput();
-		verify(mockPeerServices).offerExtensionsToPeer(handler);
+		verify(peerSetContext.extensionManager).offerExtensionsToPeer (handler);
 
 
 		pieceDatabase.terminate (true);
@@ -1492,10 +1535,11 @@ public class TestPeerHandler {
 		Map<String,Integer> extensions = new HashMap<String,Integer>();
 		extensions.put ("bl_ah", 1);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, false, true);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), false, true);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.bitfieldMessage (wantedPieces));
@@ -1504,8 +1548,8 @@ public class TestPeerHandler {
 
 		// Then
 		mockConnection.mockExpectNoMoreOutput();
-		verify(mockPeerServices).offerExtensionsToPeer (handler);
-		verify(mockPeerServices).enableDisablePeerExtensions (
+		verify(peerSetContext.extensionManager).offerExtensionsToPeer (handler);
+		verify(peerSetContext.extensionManager).enableDisablePeerExtensions (
 				eq (handler),
 				eq (new HashSet<String> (Arrays.asList ("bl_ah"))),
 				eq (new HashSet<String>()),
@@ -1538,10 +1582,11 @@ public class TestPeerHandler {
 		Map<String,Integer> extensions = new HashMap<String,Integer>();
 		extensions.put (PeerProtocolConstants.EXTENSION_MERKLE, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, true);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, true);
 		ElasticTree tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
 
 		// When
@@ -1554,8 +1599,8 @@ public class TestPeerHandler {
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (0));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
 		mockConnection.mockExpectNoMoreOutput();
-		verify(mockPeerServices).offerExtensionsToPeer (handler);
-		verify(mockPeerServices).enableDisablePeerExtensions (
+		verify(peerSetContext.extensionManager).offerExtensionsToPeer (handler);
+		verify(peerSetContext.extensionManager).enableDisablePeerExtensions (
 				eq (handler),
 				eq (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_MERKLE))),
 				eq (new HashSet<String>()),
@@ -1602,14 +1647,15 @@ public class TestPeerHandler {
 		Map<String,Integer> extensions = new HashMap<String,Integer>();
 		extensions.put (PeerProtocolConstants.EXTENSION_MERKLE, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE);
 		final BlockDescriptor requestDescriptor = new BlockDescriptor (0, 0, 16384);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (true))).thenReturn (new ArrayList<BlockDescriptor>());
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), eq (false)))
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (true))).thenReturn (new ArrayList<BlockDescriptor>());
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), eq (false)))
 				.thenReturn (Arrays.asList (new BlockDescriptor[] { requestDescriptor }))
 				.thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, true);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, true);
 		ElasticTree tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
 
 		// When
@@ -1622,8 +1668,8 @@ public class TestPeerHandler {
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectNoMoreOutput();
-		verify(mockPeerServices).offerExtensionsToPeer (handler);
-		verify(mockPeerServices).enableDisablePeerExtensions (
+		verify(peerSetContext.extensionManager).offerExtensionsToPeer (handler);
+		verify(peerSetContext.extensionManager).enableDisablePeerExtensions (
 				eq (handler),
 				eq (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_MERKLE))),
 				eq (new HashSet<String>()),
@@ -1674,11 +1720,12 @@ public class TestPeerHandler {
 		pieceDatabase.start (true);
 		Map<String,Integer> extensions = new HashMap<String,Integer>();
 		extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), anyBoolean())).thenReturn (new ArrayList<BlockDescriptor>());
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), anyBoolean())).thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, true);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, true);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.haveAllMessage());
@@ -1691,8 +1738,8 @@ public class TestPeerHandler {
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (new BitField(4).not()));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectNoMoreOutput();
-		verify(mockPeerServices).offerExtensionsToPeer (handler);
-		verify(mockPeerServices).enableDisablePeerExtensions (
+		verify(peerSetContext.extensionManager).offerExtensionsToPeer (handler);
+		verify(peerSetContext.extensionManager).enableDisablePeerExtensions (
 				eq (handler),
 				eq (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC))),
 				eq (new HashSet<String>()),
@@ -1728,15 +1775,16 @@ public class TestPeerHandler {
 		pieceDatabase.start (true);
 		Map<String,Integer> extensions = new HashMap<String,Integer>();
 		extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (true);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), anyBoolean())).thenReturn (new ArrayList<BlockDescriptor>());
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), anyBoolean())).thenReturn (new ArrayList<BlockDescriptor>());
 		// Extend the database. The info hash will not change
 		totalLength += pieceSize;
 		pieceDatabase.extendData (MockPieceDatabase.mockPrivateKey, ByteBuffer.wrap (Util.pseudoRandomBlock (4, pieceSize, pieceSize)));
 		// Remote peer connects on the original info hash
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, true);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, true);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.haveAllMessage());
@@ -1750,8 +1798,8 @@ public class TestPeerHandler {
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (new BitField(5).not()));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectNoMoreOutput();
-		verify(mockPeerServices).offerExtensionsToPeer (handler);
-		verify(mockPeerServices).enableDisablePeerExtensions (
+		verify(peerSetContext.extensionManager).offerExtensionsToPeer (handler);
+		verify(peerSetContext.extensionManager).enableDisablePeerExtensions (
 				eq (handler),
 				eq (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC))),
 				eq (new HashSet<String>()),
@@ -1792,11 +1840,12 @@ public class TestPeerHandler {
 		pieceDatabase.writePiece (new Piece (1, ByteBuffer.wrap (Util.pseudoRandomBlock (1, 8192, 8192)), tree.getHashChain (1, 8192)));
 		Map<String,Integer> extensions = new HashMap<String,Integer>();
 		extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
-		PeerServices mockPeerServices = mock (PeerServices.class);
-		when(mockPeerServices.addAvailablePieces (any (ManageablePeer.class))).thenReturn (false);
-		when(mockPeerServices.getRequests (any (ManageablePeer.class), anyInt(), anyBoolean())).thenReturn (new ArrayList<BlockDescriptor>());
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
+		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
+		when(peerSetContext.requestManager.allocateRequests (any (ManageablePeer.class), anyInt(), anyBoolean())).thenReturn (new ArrayList<BlockDescriptor>());
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, true, true);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), true, true);
 
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.haveNoneMessage());
@@ -1860,16 +1909,17 @@ public class TestPeerHandler {
 		// Given
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
-		PeerServices mockPeerServices = mock (PeerServices.class);
+		PeerServices peerServices = mock (PeerServices.class);
+		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, null, null);
 		MockConnection mockConnection = new MockConnection();
-		PeerHandler handler = new PeerHandler (mockPeerServices, mockConnection, new PeerID(), new PeerStatistics(), pieceDatabase, false, false);
+		PeerHandler handler = new PeerHandler (peerSetContext, mockConnection, new PeerID(), new PeerStatistics(), false, false);
 
 		// When
 		handler.connectionReady (mockConnection, true, false);
 		handler.close();
 
 		// Then
-		verify(mockPeerServices).peerDisconnected (handler);
+		verify(peerServices).peerDisconnected (handler);
 		assertFalse (mockConnection.isOpen());
 
 

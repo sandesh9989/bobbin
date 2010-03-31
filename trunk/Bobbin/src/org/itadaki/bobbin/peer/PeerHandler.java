@@ -22,7 +22,6 @@ import org.itadaki.bobbin.peer.protocol.PeerProtocolConstants;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
-import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.PieceStyle;
 import org.itadaki.bobbin.torrentdb.ResourceType;
 import org.itadaki.bobbin.torrentdb.StorageDescriptor;
@@ -71,9 +70,9 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 	private final Connection connection;
 
 	/**
-	 * The PeerServices for the torrent that we are talking to the remote peer about
+	 * The PeerSetContext for the torrent that we are talking to the remote peer about
 	 */
-	private PeerServices peerServices;
+	private final PeerSetContext peerSetContext;
 
 	/**
 	 * The parser used to process incoming data
@@ -84,11 +83,6 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 	 * The queue used to process outgoing data
 	 */
 	private PeerOutboundQueue outboundQueue;
-
-	/**
-	 * The torrent's PieceDatabase
-	 */
-	private PieceDatabase pieceDatabase;
 
 	/**
 	 * Protocol statistics about the peer
@@ -288,8 +282,8 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		} catch (IOException e) {
 			// Shouldn't happen, and nothing we can do if it does
 		}
-		if (this.peerServices != null) {
-			this.peerServices.peerDisconnected (this);
+		if (this.peerSetContext.peerServices != null) {
+			this.peerSetContext.peerServices.peerDisconnected (this);
 		}
 
 	}
@@ -334,7 +328,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 	public void interestedMessage (boolean interested) {
 
 		this.state.theyAreInterested = interested;
-		this.peerServices.adjustChoking (this.state.weAreChoking);
+		this.peerSetContext.peerServices.adjustChoking (this.state.weAreChoking);
 
 	}
 
@@ -345,7 +339,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 	@Override
 	public void haveMessage (ResourceType resource, int pieceIndex) throws IOException {
 
-		if ((pieceIndex < 0) || (pieceIndex >= this.pieceDatabase.getStorageDescriptor().getNumberOfPieces())) {
+		if ((pieceIndex < 0) || (pieceIndex >= this.peerSetContext.pieceDatabase.getStorageDescriptor().getNumberOfPieces())) {
 			throw new IOException ("Invalid have message");
 		}
 
@@ -353,7 +347,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		// need, inform them of our interest and fill the request queue
 		if (!this.state.remoteBitField.get (pieceIndex)) {
 			this.state.remoteBitField.set (pieceIndex);
-			if (this.peerServices.addAvailablePiece (this, pieceIndex) && (!this.state.weAreInterested)) {
+			if (this.peerSetContext.requestManager.pieceAvailable (this, pieceIndex) && (!this.state.weAreInterested)) {
 				this.state.weAreInterested = true;
 				this.outboundQueue.sendInterestedMessage (true);
 			}
@@ -383,7 +377,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		}
 
 		// Set our interest in the remote peer
-		if (this.peerServices.addAvailablePieces (this)) {
+		if (this.peerSetContext.requestManager.piecesAvailable (this)) {
 			this.state.weAreInterested = true;
 			this.outboundQueue.sendInterestedMessage (true);
 		}
@@ -391,7 +385,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		// Send an Allowed Fast set if appropriate 
 		if (
 				   this.state.fastExtensionEnabled
-				&& (this.pieceDatabase.getInfo().getPieceStyle() != PieceStyle.ELASTIC)
+				&& (this.peerSetContext.pieceDatabase.getInfo().getPieceStyle() != PieceStyle.ELASTIC)
 				&& this.state.remoteBitField.cardinality() < PeerProtocolConstants.ALLOWED_FAST_THRESHOLD
 		   )
 		{
@@ -412,7 +406,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 			throw new IOException ("Invalid request message");
 		}
 
-		if (this.pieceDatabase.havePiece (descriptor.getPieceNumber())) {
+		if (this.peerSetContext.pieceDatabase.havePiece (descriptor.getPieceNumber())) {
 
 			// Queue the request if we are not choking; If we are choking,
 			//   Base protocol:  Do nothing
@@ -451,8 +445,8 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 	{
 
 		// Check that the block is of the expected style
-		if (this.pieceDatabase.getInfo().getPieceStyle() != pieceStyle) {
-			throw new IOException ("Expected " + this.pieceDatabase.getInfo().getPieceStyle() + " piece, received " + pieceStyle);
+		if (this.peerSetContext.pieceDatabase.getInfo().getPieceStyle() != pieceStyle) {
+			throw new IOException ("Expected " + this.peerSetContext.pieceDatabase.getInfo().getPieceStyle() + " piece, received " + pieceStyle);
 		}
 
 		// Validate the descriptor (PeerProtocolParser ensures that the data is of the correct length)
@@ -465,7 +459,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 				   (pieceStyle == PieceStyle.ELASTIC)
 				&& (hashes != null)
 				&& (!this.state.remoteViewSignatures.containsKey (viewLength))
-				&& (this.pieceDatabase.getInfo().getStorageDescriptor().getLength() != viewLength)
+				&& (this.peerSetContext.pieceDatabase.getInfo().getStorageDescriptor().getLength() != viewLength)
 		   )
 		{
 			throw new IOException ("Invalid view length in piece");
@@ -478,14 +472,14 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 			HashChain hashChain = null;
 			switch (pieceStyle) {
 				case MERKLE:
-					hashChain = (hashes == null) ? null : new HashChain (this.pieceDatabase.getStorageDescriptor().getLength(), hashes);
+					hashChain = (hashes == null) ? null : new HashChain (this.peerSetContext.pieceDatabase.getStorageDescriptor().getLength(), hashes);
 					break;
 				case ELASTIC:
 					viewSignature = (hashes == null) ? null : this.state.remoteViewSignatures.get (viewLength);
 					hashChain = (hashes == null) ? null : new HashChain (viewLength, hashes);
 					break;
 			}
-			this.peerServices.handleBlock (this, descriptor, viewSignature, hashChain, block);
+			this.peerSetContext.requestManager.handleBlock (this, descriptor, viewSignature, hashChain, block);
 		} else {
 			if (!this.state.fastExtensionEnabled) {
 				// Spam, or a request we cancelled. Can't tell the difference in the base protocol,
@@ -529,7 +523,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 	@Override
 	public void suggestPieceMessage (int pieceNumber) throws IOException {
 
-		if ((pieceNumber < 0) || (pieceNumber >= this.pieceDatabase.getStorageDescriptor().getNumberOfPieces())) {
+		if ((pieceNumber < 0) || (pieceNumber >= this.peerSetContext.pieceDatabase.getStorageDescriptor().getNumberOfPieces())) {
 			throw new IOException ("Invalid suggest piece message");
 		}
 
@@ -538,7 +532,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		// do). We will simply ignore any such suggestions.
 
 		if (this.state.remoteBitField.get (pieceNumber)) {
-			this.peerServices.setPieceSuggested (this, pieceNumber);
+			this.peerSetContext.requestManager.setPieceSuggested (this, pieceNumber);
 		}
 
 	}
@@ -555,7 +549,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		this.state.remoteBitField.not();
 
 		// Set our interest in the remote peer.
-		if (this.peerServices.addAvailablePieces (this)) {
+		if (this.peerSetContext.requestManager.piecesAvailable (this)) {
 			this.state.weAreInterested = true;
 			this.outboundQueue.sendInterestedMessage (true);
 		}
@@ -572,7 +566,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		// The remote bitfield is initially all zero, so there's no need to do anything to it
 
 		// Send an Allowed Fast set
-		if (this.pieceDatabase.getInfo().getPieceStyle() != PieceStyle.ELASTIC) {
+		if (this.peerSetContext.pieceDatabase.getInfo().getPieceStyle() != PieceStyle.ELASTIC) {
 			generateAndSendAllowedFastSet();
 		}
 
@@ -605,7 +599,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		// The Fast Extension spec explicitly allows peers to send Allowed Fast messages for pieces
 		// they don't actually have. We drop any such messages here
 		if (this.state.remoteBitField.get (pieceNumber)) {
-			this.peerServices.setPieceAllowedFast (this, pieceNumber);
+			this.peerSetContext.requestManager.setPieceAllowedFast (this, pieceNumber);
 			this.outboundQueue.setRequestAllowedFast (pieceNumber);
 		}
 
@@ -624,7 +618,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 		this.state.remoteExtensions.addAll (extensionsEnabled);
 		this.state.remoteExtensions.removeAll (extensionsDisabled);
-		this.peerServices.enableDisablePeerExtensions (this, extensionsEnabled, extensionsDisabled, extra);
+		this.peerSetContext.extensionManager.enableDisablePeerExtensions (this, extensionsEnabled, extensionsDisabled, extra);
 
 	}
 
@@ -635,7 +629,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 	@Override
 	public void extensionMessage (String identifier, byte[] data) throws IOException {
 
-		this.peerServices.processExtensionMessage (this, identifier, data);
+		this.peerSetContext.extensionManager.processExtensionMessage (this, identifier, data);
 
 	}
 
@@ -650,13 +644,13 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 			this.state.remoteView = new StorageDescriptor (this.state.remoteView.getPieceSize(), viewSignature.getViewLength());
 		}
 
-		int pieceSize = this.pieceDatabase.getStorageDescriptor().getPieceSize();
+		int pieceSize = this.peerSetContext.pieceDatabase.getStorageDescriptor().getPieceSize();
 		int viewNumPieces = (int)((viewSignature.getViewLength() + pieceSize - 1) / pieceSize);
 		if (viewNumPieces > this.state.remoteBitField.length()) {
 			this.state.remoteBitField.extend (viewNumPieces);
 		}
 
-		if (!this.peerServices.handleViewSignature (viewSignature)) {
+		if (!this.peerSetContext.peerServices.handleViewSignature (viewSignature)) {
 			throw new IOException ("Signature failed verification");
 		}
 
@@ -720,8 +714,8 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 	 */
 	public void connectionReady (Connection connection, boolean readable, boolean writeable) {
 
-		if (this.peerServices != null) {
-			this.peerServices.lock();
+		if (this.peerSetContext.peerServices != null) {
+			this.peerSetContext.peerServices.lock();
 		}
 
 		try {
@@ -749,8 +743,8 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 		}
 
-		if (this.peerServices != null) {
-			this.peerServices.unlock();
+		if (this.peerSetContext.peerServices != null) {
+			this.peerSetContext.peerServices.unlock();
 		}
 
 	}
@@ -767,11 +761,11 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 		if (
 			   (blockDescriptor.getPieceNumber() >= 0)
-			&& (blockDescriptor.getPieceNumber () < this.pieceDatabase.getStorageDescriptor().getNumberOfPieces())
+			&& (blockDescriptor.getPieceNumber () < this.peerSetContext.pieceDatabase.getStorageDescriptor().getNumberOfPieces())
 			&& (blockDescriptor.getOffset() >= 0
 			&& (blockDescriptor.getLength() > 0))
 			&& (blockDescriptor.getLength() <= PeerProtocolConstants.MAXIMUM_BLOCK_LENGTH)
-			&& ((blockDescriptor.getOffset() + blockDescriptor.getLength()) <= this.pieceDatabase.getStorageDescriptor().getPieceLength (blockDescriptor.getPieceNumber())))
+			&& ((blockDescriptor.getOffset() + blockDescriptor.getLength()) <= this.peerSetContext.pieceDatabase.getStorageDescriptor().getPieceLength (blockDescriptor.getPieceNumber())))
 		{
 			return true;
 		}
@@ -792,10 +786,10 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 			if (remoteAddressBytes.length == 4) {
 				Set<Integer> allowedFastSet = new HashSet<Integer>();
-				int numberOfPieces = this.pieceDatabase.getStorageDescriptor().getNumberOfPieces();
+				int numberOfPieces = this.peerSetContext.pieceDatabase.getStorageDescriptor().getNumberOfPieces();
 
 				remoteAddressBytes[3] = 0;
-				byte[] infoHashBytes = this.pieceDatabase.getInfo().getHash().getBytes();
+				byte[] infoHashBytes = this.peerSetContext.pieceDatabase.getInfo().getHash().getBytes();
 				byte[] hash = new byte[20];
 
 				MessageDigest digest = MessageDigest.getInstance ("SHA");
@@ -845,7 +839,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		int numRequests = this.outboundQueue.getRequestsNeeded();
 
 		if (numRequests > 0) {
-			List<BlockDescriptor> requests = this.peerServices.getRequests (this, numRequests, this.state.theyAreChoking);
+			List<BlockDescriptor> requests = this.peerSetContext.requestManager.allocateRequests (this, numRequests, this.state.theyAreChoking);
 			if (requests.size() > 0) {
 				this.outboundQueue.sendRequestMessages (requests);
 			} else {
@@ -860,43 +854,41 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/**
-	 * @param peerServices The peer services
+	 * @param peerSetContext The peer set context
 	 * @param connection The connection through which to send and receive messages
 	 * @param remotePeerID The remote peer ID
 	 * @param parentStatistics The parent aggregate PeerStatistics for the whole peer set
-	 * @param pieceDatabase The piece database
 	 * @param fastExtensionEnabled {@code true} if the fast extension is enabled
 	 * @param extensionProtocolEnabled {@code true} if the extension protocol is enabled
 	 */
-	public PeerHandler (PeerServices peerServices, Connection connection, PeerID remotePeerID, PeerStatistics parentStatistics, PieceDatabase pieceDatabase,
-			boolean fastExtensionEnabled, boolean extensionProtocolEnabled)
+	public PeerHandler (PeerSetContext peerSetContext, Connection connection, PeerID remotePeerID, PeerStatistics parentStatistics, boolean fastExtensionEnabled,
+			boolean extensionProtocolEnabled)
 	{
 
-		this.peerServices = peerServices;
+		this.peerSetContext = peerSetContext;
 		this.connection = connection;
 		this.state.remotePeerID = remotePeerID;
 		this.state.fastExtensionEnabled = fastExtensionEnabled;
 		this.state.extensionProtocolEnabled = extensionProtocolEnabled;
 		this.protocolParser = new PeerProtocolParser (this, fastExtensionEnabled, extensionProtocolEnabled);
 		this.peerStatistics = new PeerStatistics (parentStatistics);
-		this.pieceDatabase = pieceDatabase;
 		this.connection.setListener (this);
 
-		StorageDescriptor initialDescriptor = this.pieceDatabase.getInfo().getStorageDescriptor();
+		StorageDescriptor initialDescriptor = this.peerSetContext.pieceDatabase.getInfo().getStorageDescriptor();
 		this.state.remoteBitField = new BitField (initialDescriptor.getNumberOfPieces());
 		this.state.remoteView = initialDescriptor;
-		this.outboundQueue = new PeerOutboundQueue (this.connection, this.pieceDatabase, this.peerStatistics.blockBytesSent);
+		this.outboundQueue = new PeerOutboundQueue (this.connection, this.peerSetContext.pieceDatabase, this.peerStatistics.blockBytesSent);
 
 		// Send bitfield
-		BitField bitField = this.pieceDatabase.getPresentPieces();
-		if (this.pieceDatabase.getInfo().getPieceStyle() == PieceStyle.ELASTIC) {
+		BitField bitField = this.peerSetContext.pieceDatabase.getPresentPieces();
+		if (this.peerSetContext.pieceDatabase.getInfo().getPieceStyle() == PieceStyle.ELASTIC) {
 			this.outboundQueue.sendHaveNoneMessage();
 		} else {
 			if (this.state.fastExtensionEnabled) {
 				int pieceCount = bitField.cardinality();
 				if (pieceCount == 0) {
 					this.outboundQueue.sendHaveNoneMessage();
-				} else if (pieceCount == this.pieceDatabase.getStorageDescriptor().getNumberOfPieces()) {
+				} else if (pieceCount == this.peerSetContext.pieceDatabase.getStorageDescriptor().getNumberOfPieces()) {
 					this.outboundQueue.sendHaveAllMessage();
 				} else {
 					this.outboundQueue.sendBitfieldMessage (bitField);
@@ -908,18 +900,18 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 			}
 		}
 
-		if (this.pieceDatabase.getInfo().getPieceStyle() == PieceStyle.ELASTIC) {
+		if (this.peerSetContext.pieceDatabase.getInfo().getPieceStyle() == PieceStyle.ELASTIC) {
 			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC)), null, null);
-			if (this.pieceDatabase.getStorageDescriptor().getLength() > this.pieceDatabase.getInfo().getStorageDescriptor().getLength()) {
-				this.outboundQueue.sendElasticSignatureMessage (this.pieceDatabase.getViewSignature (this.pieceDatabase.getStorageDescriptor().getLength()));
+			if (this.peerSetContext.pieceDatabase.getStorageDescriptor().getLength() > this.peerSetContext.pieceDatabase.getInfo().getStorageDescriptor().getLength()) {
+				this.outboundQueue.sendElasticSignatureMessage (this.peerSetContext.pieceDatabase.getViewSignature (this.peerSetContext.pieceDatabase.getStorageDescriptor().getLength()));
 			}
-			this.outboundQueue.sendElasticBitfieldMessage (this.pieceDatabase.getPresentPieces());
-		} else if (this.pieceDatabase.getInfo().getPieceStyle() == PieceStyle.MERKLE) {
+			this.outboundQueue.sendElasticBitfieldMessage (this.peerSetContext.pieceDatabase.getPresentPieces());
+		} else if (this.peerSetContext.pieceDatabase.getInfo().getPieceStyle() == PieceStyle.MERKLE) {
 			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_MERKLE)), null, null);
 		};
 
 		if (this.state.extensionProtocolEnabled) {
-			this.peerServices.offerExtensionsToPeer (this);
+			this.peerSetContext.extensionManager.offerExtensionsToPeer (this);
 		}
 
 	}

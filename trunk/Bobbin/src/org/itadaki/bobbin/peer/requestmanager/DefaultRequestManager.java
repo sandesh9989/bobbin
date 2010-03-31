@@ -40,6 +40,11 @@ public class DefaultRequestManager implements RequestManager {
 	private StorageDescriptor storageDescriptor;
 
 	/**
+	 * The listener to inform of events
+	 */
+	private RequestManagerListener listener;
+
+	/**
 	 * The set of pieces that are needed and not available in the PieceDatabase
 	 */
 	private BitField neededPieces;
@@ -435,7 +440,7 @@ public class DefaultRequestManager implements RequestManager {
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.requestmanager.RequestManager#handleBlock(org.itadaki.bobbin.peer.ManageablePeer, org.itadaki.bobbin.torrentdb.BlockDescriptor, org.itadaki.bobbin.torrentdb.ViewSignature, org.itadaki.bobbin.util.elastictree.HashChain, java.nio.ByteBuffer)
 	 */
-	public Piece handleBlock (ManageablePeer peer, BlockDescriptor descriptor, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block) {
+	public void handleBlock (ManageablePeer peer, BlockDescriptor descriptor, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block) {
 
 		Integer pieceIndex = descriptor.getPieceNumber();
 
@@ -451,11 +456,9 @@ public class DefaultRequestManager implements RequestManager {
 			}
 			if (piece.putBlock (descriptor, block)) {
 				peerState.pieces.remove (pieceIndex);
-				return piece;
+				this.listener.pieceAssembled (piece);
 			}
 		}
-
-		return null;
 
 	}
 
@@ -581,10 +584,12 @@ public class DefaultRequestManager implements RequestManager {
 
 	/**
 	 * @param storageDescriptor The {@code StorageDescriptor} for the managed torrent
+	 * @param listener The listener to inform of events
 	 */
-	public DefaultRequestManager (StorageDescriptor storageDescriptor) {
+	public DefaultRequestManager (StorageDescriptor storageDescriptor, RequestManagerListener listener) {
 
 		this.storageDescriptor = storageDescriptor;
+		this.listener = listener;
 		this.pieceAvailability = new short [storageDescriptor.getNumberOfPieces()];
 		this.neededPieces = new BitField (storageDescriptor.getNumberOfPieces());
 		this.neededPieceCount = 0;

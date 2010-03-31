@@ -4,147 +4,13 @@
  */
 package org.itadaki.bobbin.peer;
 
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.Set;
-
-import org.itadaki.bobbin.bencode.BDictionary;
-import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
-import org.itadaki.bobbin.util.elastictree.HashChain;
 
 
 /**
  * A PeerHandler's view of the peer set management services provided by a PeerCoordinator
  */
 public interface PeerServices {
-
-	/**
-	 * Deregisters a peer that has disconnected. The peer's available pieces will be subtracted
-	 * from the available piece map; if the peer was unchoked then the choking algorithm will be
-	 * invoked.
-	 *
-	 * <p><b>Thread safety:</b> This method must be called with the peer context lock held
-	 *
-	 * @param peer The peer to deregister
-	 */
-	public void peerDisconnected (ManageablePeer peer);
-
-	/**
-	 * Offers all available extensions to a peer
-	 *
-	 * @param peerHandler
-	 */
-	public void offerExtensionsToPeer (ExtensiblePeer peerHandler);
-
-	/**
-	 * Enables and disables extensions in response to a peer's extension handshake message
-	 *
-	 * @param peer The peer that has enabled and/or disabled extensions
-	 * @param extensionsEnabled The extension identifiers that have been enabled, or {@code null}
-	 * @param extensionsDisabled The extension identifiers that have been disabled, or {@code null}
-	 * @param extra Additional key/value pairs 
-	 */
-	public void enableDisablePeerExtensions (ExtensiblePeer peer, Set<String> extensionsEnabled, Set<String> extensionsDisabled,
-			BDictionary extra);
-
-	/**
-	 * Processes a peer extension message through the appropriate handler
-	 *
-	 * @param peer The peer that sent the message
-	 * @param identifier The extension's identifier
-	 * @param messageData The message payload
-	 */
-	public void processExtensionMessage (ExtensiblePeer peer, String identifier, byte[] messageData);
-
-	/**
-	 * Adds all of a peer's available pieces to the available piece map
-	 *
-	 * <p><b>Thread safety:</b> This method must be called with the peer context lock held
-	 *
-	 * @param peer The peer to add pieces from
-	 * @return {@code true} if the peer has one or more pieces we are interested in, otherwise
-	 *         {@code false}
-	 */
-	public boolean addAvailablePieces (ManageablePeer peer);
-
-	/**
-	 * Adds a single piece to the available piece map
-	 *
-	 * <p><b>Thread safety:</b> This method must be called with the peer context lock held
-	 *
-	 * @param peer The peer that has the piece
-	 * @param pieceNumber The piece number to add to the available piece map
-	 * @return {@code true} if the peer has one or more pieces we are interested in, otherwise
-	 *         {@code false}
-	 */
-	public boolean addAvailablePiece (ManageablePeer peer, int pieceNumber);
-
-	/**
-	 * Get requests to send to a remote peer
-	 *
-	 * <p><b>Thread safety:</b> This method must be called with the peer context lock held
-	 *
-	 * @param peer The peer that we should send requests to
-	 * @param numRequests The number of requests we should send
-	 * @param allowedFastOnly If {@code true}, only pieces that have been marked Allowed Fast for
-	 *        the given peer will be allocated
-	 * @return The requests to send
-	 */
-	public List<BlockDescriptor> getRequests (ManageablePeer peer, int numRequests, boolean allowedFastOnly);
-
-	/**
-	 * Indicates that the remote peer has Allowed Fast a given piece
-	 *
-	 * <p><b>Thread safety:</b> This method must be called with the peer context lock held
-	 *
-	 * @param peer The peer that Allowed Fast the piece
-	 * @param pieceNumber The piece that was Allowed Fast. Must be a piece actually advertised by
-	 *        the given peer
-	 */
-	public void setPieceAllowedFast (ManageablePeer peer, int pieceNumber);
-
-	/**
-	 * Indicates that the remote peer has suggested a given piece
-	 *
-	 * @param peer The peer that suggested the piece
-	 * @param pieceNumber The piece that was suggested
-	 */
-	public void setPieceSuggested (ManageablePeer peer, int pieceNumber);
-
-	/**
-	 * Handle a piece block that has been received
-	 *
-	 * <p><b>Thread safety:</b> This method must be called with the peer context lock held
-	 *
-	 * @param peer The peer that received the block
-	 * @param request The request that was fulfilled
-	 * @param viewSignature The view signature for the supplied hash chain, or {@code null}
-	 * @param hashChain The supplied hash chain, if present, or {@code null}
-	 * @param block The data of the block
-	 */
-	public void handleBlock (ManageablePeer peer, BlockDescriptor request, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block);
-
-	/**
-	 * Adjust the choked and unchoked peers
-	 *
-	 * <p><b>Thread safety:</b> This method must be called with the peer context lock held
-	 * @param opportunistic If {@code false}, the peer is presently interested and unchoked, and a
-	 *        regular choking round will result. If {@code true}, the peer is presently interested
-	 *        and choked, and may be opportunistically unchoked if there are few peers 
-	 */
-	public void adjustChoking (boolean opportunistic);
-
-	/**
-	 * Handle a view signature, updating the piece database and request manager, and propagating to
-	 * other peers as appropriate
-	 *
-	 * <p><b>Thread safety:</b> This method must be called with the peer context lock held
-	 *
-	 * @param viewSignature The view signature
-	 * @return {@code true} if the signature verified correctly, otherwise {@code false}
-	 */
-	public boolean handleViewSignature (ViewSignature viewSignature);
 
 	/**
 	 * Acquires the reentrant peer context lock. All peer and peer set management (including that in
@@ -166,5 +32,37 @@ public interface PeerServices {
 	 * <p><b>Thread safety:</b> This method is thread safe
 	 */
 	public void unlock();
+
+	/**
+	 * Deregisters a peer that has disconnected. The peer's available pieces will be subtracted
+	 * from the available piece map; if the peer was unchoked then the choking algorithm will be
+	 * invoked.
+	 *
+	 * <p><b>Thread safety:</b> This method must be called with the peer context lock held
+	 *
+	 * @param peer The peer to deregister
+	 */
+	public void peerDisconnected (ManageablePeer peer);
+
+	/**
+	 * Adjust the choked and unchoked peers
+	 *
+	 * <p><b>Thread safety:</b> This method must be called with the peer context lock held
+	 * @param opportunistic If {@code false}, the peer is presently interested and unchoked, and a
+	 *        regular choking round will result. If {@code true}, the peer is presently interested
+	 *        and choked, and may be opportunistically unchoked if there are few peers 
+	 */
+	public void adjustChoking (boolean opportunistic);
+
+	/**
+	 * Handle a view signature, updating the piece database and request manager, and propagating to
+	 * other peers as appropriate
+	 *
+	 * <p><b>Thread safety:</b> This method must be called with the peer context lock held
+	 *
+	 * @param viewSignature The view signature
+	 * @return {@code true} if the signature verified correctly, otherwise {@code false}
+	 */
+	public boolean handleViewSignature (ViewSignature viewSignature);
 
 }
