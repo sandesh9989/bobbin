@@ -12,7 +12,7 @@ import java.util.List;
 
 import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerState;
-import org.itadaki.bobbin.peer.requestmanager.RandomRequestManager;
+import org.itadaki.bobbin.peer.requestmanager.DefaultRequestManager;
 import org.itadaki.bobbin.peer.requestmanager.RequestManager;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.StorageDescriptor;
@@ -24,9 +24,9 @@ import test.Util;
 
 
 /**
- * Tests RandomRequestManager
+ * Tests DefaultRequestManager
  */
-public class TestRandomRequestManager {
+public class TestDefaultRequestManager {
 
 	/**
 	 * @param descriptor The remote peer's view
@@ -60,7 +60,7 @@ public class TestRandomRequestManager {
 		long totalLength = pieceSize;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField (1);
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField (1);
 		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
@@ -88,7 +88,7 @@ public class TestRandomRequestManager {
 		long totalLength = pieceSize;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField (1);
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
@@ -117,7 +117,7 @@ public class TestRandomRequestManager {
 		long totalLength = pieceSize;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField (1);
 		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
@@ -145,7 +145,7 @@ public class TestRandomRequestManager {
 		long totalLength = pieceSize;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
@@ -175,7 +175,7 @@ public class TestRandomRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerABitField = new BitField (1);
@@ -218,7 +218,7 @@ public class TestRandomRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(2).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerABitField = new BitField (2);
@@ -262,7 +262,7 @@ public class TestRandomRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(16).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerABitField = new BitField (16);
@@ -308,7 +308,7 @@ public class TestRandomRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 
 		requestManager.setNeededPieces (neededBitField);
 
@@ -355,7 +355,7 @@ public class TestRandomRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerBitField = new BitField (1);
@@ -409,7 +409,7 @@ public class TestRandomRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerBitField = new BitField (1);
@@ -481,7 +481,7 @@ public class TestRandomRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
 		// Register 3 peers
@@ -549,7 +549,7 @@ public class TestRandomRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerBitField = new BitField (1);
@@ -591,7 +591,7 @@ public class TestRandomRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(2).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerBitField = new BitField (2);
@@ -643,7 +643,7 @@ public class TestRandomRequestManager {
 		long totalLength = pieceSize;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField (1);
 		peerBitField.set (0);
@@ -672,7 +672,7 @@ public class TestRandomRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(1).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerBitField = new BitField (1);
@@ -702,7 +702,7 @@ public class TestRandomRequestManager {
 
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(5).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
 		BitField peerBitField = new BitField (5);
@@ -732,7 +732,7 @@ public class TestRandomRequestManager {
 		long totalLength = pieceSize * 5;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, totalLength);
 		BitField neededBitField = new BitField(5).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 
 		// When
@@ -758,7 +758,7 @@ public class TestRandomRequestManager {
 		long theirTotalLength = pieceSize + 512;
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, ourTotalLength);
 		BitField neededBitField = new BitField(2).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField(2).not();
 		ManageablePeer peer = mockManageablePeer (new StorageDescriptor (pieceSize, theirTotalLength), peerBitField);
@@ -786,7 +786,7 @@ public class TestRandomRequestManager {
 		long theirTotalLength = (2 * pieceSize);
 		StorageDescriptor descriptor = new StorageDescriptor (pieceSize, ourTotalLength);
 		BitField neededBitField = new BitField(3).not();
-		RequestManager requestManager = new RandomRequestManager (descriptor);
+		RequestManager requestManager = new DefaultRequestManager (descriptor);
 		requestManager.setNeededPieces (neededBitField);
 		BitField peerBitField = new BitField(2).not();
 		ManageablePeer peer = mockManageablePeer (new StorageDescriptor (pieceSize, theirTotalLength), peerBitField);
