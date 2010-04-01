@@ -11,7 +11,7 @@ import java.io.IOException;
  * An exception representing a failure to decode bencoded data<br>
  * It extends IOException for convenience, such that if you don't particularly
  * care why decoding failed (stream error, EOF, invalid data) you can simply
- * catch IOException and not worry about it.s
+ * catch IOException and not worry about it.
  */
 public class InvalidEncodingException extends IOException {
 

@@ -159,29 +159,29 @@ public class PieceDatabase {
 	private final Metadata metadata;
 
 	/**
+	 * The set of view signatures indexed by view length
+	 */
+	private final Map<Long,ViewSignature> viewSignatures = new HashMap<Long,ViewSignature>();
+
+	/**
 	 * The set of pieces that are present
 	 */
-	private final BitField presentPieces;
+	private BitField presentPieces;
 
 	/**
 	 * The set of pieces that have been verified as being either present or absent
 	 */
-	private final BitField verifiedPieces;
+	private BitField verifiedPieces;
 
 	/**
 	 * The concatenated piece hashes (cached from Info)
 	 */
-	private final byte[] pieceHashes;
+	private byte[] pieceHashes;
 
 	/**
 	 * The expandable Merkle hash tree
 	 */
-	private final ElasticTree elasticTree;
-
-	/**
-	 * The set of view signatures indexed by view length
-	 */
-	private final Map<Long,ViewSignature> viewSignatures = new HashMap<Long,ViewSignature>();
+	private ElasticTree elasticTree;
 
 	/**
 	 * A thread that verifies the database asynchronously
@@ -544,7 +544,7 @@ public class PieceDatabase {
 
 				ElasticTreeView verificationView = verificationTree.getView (PieceDatabase.this.storage.getDescriptor().getLength());
 				ElasticTreeView databaseView = PieceDatabase.this.elasticTree.getView (PieceDatabase.this.storage.getDescriptor().getLength());
-				if (ByteBuffer.wrap (verificationView.getRootHash()).equals (ByteBuffer.wrap (databaseView.getRootHash()))) {
+				if (ByteBuffer.wrap(verificationView.getRootHash()).equals (ByteBuffer.wrap (databaseView.getRootHash()))) {
 					// TODO Inefficient
 					for (int i = 0; i < numPieces; i++) {
 						if (databaseView.verifyHashChain (i, ByteBuffer.wrap (verificationView.getHashChain (i)))) {
@@ -617,6 +617,117 @@ public class PieceDatabase {
 		}
 
 	};
+
+
+	/**
+	 * Resumes state from metadata if possible
+	 *
+	 * @throws IOException if an I/O error was encountered while resuming
+	 */
+	private void resume() throws IOException {
+
+		BitField presentPieces;
+		byte[] elasticImmutableHashes;
+		byte[] elasticViewHashes;
+
+		switch (this.info.getPieceStyle()) {
+
+			case MERKLE:
+				elasticImmutableHashes = this.metadata.get ("elasticImmutable");
+				elasticViewHashes = this.metadata.get ("elasticView");
+				if ((elasticImmutableHashes != null) && (elasticViewHashes != null)) {
+					this.elasticTree = ElasticTree.withNodeHashes (
+							this.storage.getDescriptor().getPieceSize(),
+							this.storage.getDescriptor().getLength(),
+							elasticImmutableHashes
+					);
+					this.elasticTree.addView (ElasticTreeView.withMutableHashes (this.elasticTree, this.storage.getDescriptor().getLength(), elasticViewHashes));
+				} else {
+					this.elasticTree = ElasticTree.emptyTree (
+							this.storage.getDescriptor().getPieceSize(),
+							this.storage.getDescriptor().getLength(),
+							ByteBuffer.wrap (this.info.getRootHash())
+					);
+				}
+				break;
+
+			case ELASTIC:
+				elasticImmutableHashes = this.metadata.get ("elasticImmutable");
+				byte[] viewsBytes = this.metadata.get ("elasticViews");
+				byte[] viewSignaturesBytes = this.metadata.get ("elasticViewSignatures");
+				if ((elasticImmutableHashes != null) && (viewsBytes != null) && (viewSignaturesBytes != null)) {
+					this.elasticTree = ElasticTree.withNodeHashes (
+							this.storage.getDescriptor().getPieceSize(),
+							this.storage.getDescriptor().getLength(),
+							elasticImmutableHashes
+					);
+				} else {
+					this.elasticTree = ElasticTree.emptyTree (
+							this.storage.getDescriptor().getPieceSize(),
+							this.storage.getDescriptor().getLength(),
+							ByteBuffer.wrap (this.info.getRootHash())
+					);
+				}
+				try {
+					if ((viewsBytes != null) && (viewSignaturesBytes != null)) {
+						BDictionary viewsDictionary = (BDictionary)BDecoder.decode (viewsBytes);
+						BDictionary viewSignaturesDictionary = (BDictionary)BDecoder.decode (viewSignaturesBytes);
+						// elasticViews
+						long length = this.info.getStorageDescriptor().getLength();
+						for (BBinary viewLengthBinary : viewsDictionary.keySet()) {
+							byte[] viewMutableHashes = viewsDictionary.getBytes (viewLengthBinary.stringValue());
+							this.elasticTree.addView (ElasticTreeView.withMutableHashes (this.elasticTree, new Long (viewLengthBinary.stringValue()), viewMutableHashes));
+							length = new Long (viewLengthBinary.stringValue());
+						}
+						// elasticViewSignatures
+						for (BBinary viewLengthBinary : viewSignaturesDictionary.keySet()) {
+							BList signatureList = (BList)viewSignaturesDictionary.get (viewLengthBinary);
+							Long viewLength = new Long (viewLengthBinary.stringValue());
+							ViewSignature viewSignature = new ViewSignature (
+									viewLength,
+									ByteBuffer.wrap (((BBinary)signatureList.get(0)).value()),
+									ByteBuffer.wrap (((BBinary)signatureList.get(1)).value())
+							);
+							this.viewSignatures.put (viewLength, viewSignature);
+						}
+
+						this.storage.extend (length);
+
+					}
+				} catch (InvalidEncodingException e) {
+					// TODO Test - test behaviour on failure
+				}
+				break;
+
+		}
+
+		presentPieces = new BitField (this.storage.getDescriptor().getNumberOfPieces());
+		this.verifiedPieces = new BitField (this.storage.getDescriptor().getNumberOfPieces());
+		this.verifiedPieceCount = 0;
+
+		try {
+			byte[] resumeBytes = this.metadata.get ("resume");
+			if (resumeBytes != null) {
+				BDictionary resumeDictionary = new BDecoder (resumeBytes).decodeDictionary();
+				byte[] storageCookie = resumeDictionary.getBytes ("storageCookie");
+				byte[] presentPiecesBytes = resumeDictionary.getBytes ("presentPieces");
+				if (this.storage.validate (ByteBuffer.wrap (storageCookie))) {
+					if ((presentPiecesBytes != null) && (presentPiecesBytes.length == presentPieces.byteLength())) {
+						presentPieces = new BitField (presentPiecesBytes, this.storage.getDescriptor().getNumberOfPieces());
+						this.verifiedPieces.not();
+						this.verifiedPieceCount = this.storage.getDescriptor().getNumberOfPieces();
+					}
+				}
+			}
+		} catch (InvalidEncodingException e) {
+			// Resume metadata is corrupt. Leave the database unverified
+		}
+
+		this.presentPieces = presentPieces;
+
+		this.metadata.put ("resume", null);
+
+	}
 
 
 	/**
@@ -1264,112 +1375,28 @@ public class PieceDatabase {
 		this.publicKey = publicKey;
 		this.storage = storage;
 		this.metadata = metadata;
-
-		this.workQueue = new WorkQueue ("PieceDatabase WorkQueue - " + CharsetUtil.hexencode (info.getHash().getBytes()));
-
-		BitField presentPieces = new BitField (storage.getDescriptor().getNumberOfPieces());
-		byte[] elasticImmutableHashes = null;
-		byte[] elasticViewHashes = null;
+		this.pieceHashes = this.info.getPieces();
+		this.elasticTree = null;
 
 		// Resume previous state from metadata if possible
-		if (metadata != null ) {
+		if (this.metadata != null ) {
 
-			if (this.info.getPieceStyle() == PieceStyle.MERKLE) {
-				elasticImmutableHashes = metadata.get ("elasticImmutable");
-				elasticViewHashes = metadata.get ("elasticView");
-				if ((elasticImmutableHashes != null) && (elasticViewHashes != null)) {
-					this.elasticTree = ElasticTree.withNodeHashes (storage.getDescriptor().getPieceSize(), storage.getDescriptor().getLength(), elasticImmutableHashes);
-					this.elasticTree.addView (ElasticTreeView.withMutableHashes (this.elasticTree, storage.getDescriptor().getLength(), elasticViewHashes));
-				} else {
-					this.elasticTree = ElasticTree.emptyTree (storage.getDescriptor().getPieceSize(), storage.getDescriptor().getLength(), ByteBuffer.wrap (info.getRootHash()));
-				}
-			} else if (this.info.getPieceStyle() == PieceStyle.ELASTIC) {
-				elasticImmutableHashes = metadata.get ("elasticImmutable");
-				byte[] viewsBytes = metadata.get ("elasticViews");
-				byte[] viewSignaturesBytes = metadata.get ("elasticViewSignatures");
-				if ((elasticImmutableHashes != null) && (viewsBytes != null) && (viewSignaturesBytes != null)) {
-					this.elasticTree = ElasticTree.withNodeHashes (storage.getDescriptor().getPieceSize(), storage.getDescriptor().getLength(), elasticImmutableHashes);
-				} else {
-					this.elasticTree = ElasticTree.emptyTree (storage.getDescriptor().getPieceSize(), storage.getDescriptor().getLength(), ByteBuffer.wrap (info.getRootHash()));
-				}
-				try {
-					if ((viewsBytes != null) && (viewSignaturesBytes != null)) {
-						BDictionary viewsDictionary = (BDictionary)BDecoder.decode (viewsBytes);
-						BDictionary viewSignaturesDictionary = (BDictionary)BDecoder.decode (viewSignaturesBytes);
-						// elasticViews
-						long length = this.info.getStorageDescriptor().getLength();
-						for (BBinary viewLengthBinary : viewsDictionary.keySet()) {
-							byte[] viewMutableHashes = viewsDictionary.getBytes (viewLengthBinary.stringValue());
-							this.elasticTree.addView (ElasticTreeView.withMutableHashes(this.elasticTree, new Long (viewLengthBinary.stringValue()), viewMutableHashes));
-							length = new Long (viewLengthBinary.stringValue());
-						}
-						// elasticViewSignatures
-						for (BBinary viewLengthBinary : viewSignaturesDictionary.keySet()) {
-							BList signatureList = (BList)viewSignaturesDictionary.get (viewLengthBinary);
-							Long viewLength = new Long (viewLengthBinary.stringValue());
-							ViewSignature viewSignature = new ViewSignature (
-									viewLength,
-									ByteBuffer.wrap (((BBinary)signatureList.get(0)).value()),
-									ByteBuffer.wrap (((BBinary)signatureList.get(1)).value())
-							);
-							this.viewSignatures.put (viewLength, viewSignature);
-						}
-
-						this.storage.extend (length);
-
-					}
-				} catch (InvalidEncodingException e) {
-					// TODO Test - test behaviour on failure
-				}
-
-			} else {
-				this.elasticTree = null;
-			}
-
-			presentPieces = new BitField (storage.getDescriptor().getNumberOfPieces());
-			this.verifiedPieces = new BitField (storage.getDescriptor().getNumberOfPieces());
-			this.verifiedPieceCount = 0;
-
-			try {
-				byte[] resumeBytes = metadata.get ("resume");
-				if (resumeBytes != null) {
-					BDictionary resumeDictionary = new BDecoder (resumeBytes).decodeDictionary();
-					byte[] storageCookie = resumeDictionary.getBytes ("storageCookie");
-					byte[] presentPiecesBytes = resumeDictionary.getBytes ("presentPieces");
-					if (storage.validate (ByteBuffer.wrap (storageCookie))) {
-						if ((presentPiecesBytes != null) && (presentPiecesBytes.length == presentPieces.byteLength())) {
-							presentPieces = new BitField (presentPiecesBytes, storage.getDescriptor().getNumberOfPieces());
-							this.verifiedPieces.not();
-							this.verifiedPieceCount = storage.getDescriptor().getNumberOfPieces();
-						}
-					}
-				}
-			} catch (InvalidEncodingException e) {
-				// Resume metadata is corrupt. Leave the database unverified
-			}
-
-			metadata.put ("resume", null);
+			resume();
 
 		} else {
 
-			this.verifiedPieces = new BitField (storage.getDescriptor().getNumberOfPieces());
+			this.verifiedPieces = new BitField (this.storage.getDescriptor().getNumberOfPieces());
 			this.verifiedPieceCount = 0;
+			this.presentPieces = new BitField (this.storage.getDescriptor().getNumberOfPieces());
 
-			if (info.getRootHash() == null) {
-				this.elasticTree = null;
-			} else {
-				this.elasticTree = ElasticTree.emptyTree (storage.getDescriptor().getPieceSize(), storage.getDescriptor().getLength(), ByteBuffer.wrap (info.getRootHash()));
+			if ((this.info.getPieceStyle() == PieceStyle.MERKLE) || (this.info.getPieceStyle() == PieceStyle.ELASTIC)) {
+				this.elasticTree = ElasticTree.emptyTree (
+						this.storage.getDescriptor().getPieceSize(),
+						this.storage.getDescriptor().getLength(),
+						ByteBuffer.wrap (this.info.getRootHash())
+				);
 			}
 
-		}
-
-		this.presentPieces = presentPieces;
-
-		byte[] pieceHashes = info.getPieces();
-		if (pieceHashes != null) {
-			this.pieceHashes = info.getPieces();
-		} else {
-			this.pieceHashes = null;
 		}
 
 		try {
@@ -1378,6 +1405,8 @@ public class PieceDatabase {
 			// Shouldn't happen
 			throw new InternalError (e.getMessage());
 		}
+
+		this.workQueue = new WorkQueue ("PieceDatabase WorkQueue - " + CharsetUtil.hexencode (info.getHash().getBytes()));
 
 	}
 
