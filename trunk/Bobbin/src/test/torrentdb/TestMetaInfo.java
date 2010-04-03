@@ -23,6 +23,7 @@ import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.bencode.BList;
 import org.itadaki.bobbin.bencode.BValue;
 import org.itadaki.bobbin.bencode.InvalidEncodingException;
+import org.itadaki.bobbin.torrentdb.Filespec;
 import org.itadaki.bobbin.torrentdb.Info;
 import org.itadaki.bobbin.torrentdb.MetaInfo;
 import org.itadaki.bobbin.util.DSAUtil;
@@ -116,14 +117,11 @@ public class TestMetaInfo {
 
 		MetaInfo metaInfo = new MetaInfo (dictionary);
 
-		List<List<String>> files = metaInfo.getInfo().getFilePaths();
+		List<Filespec> files = metaInfo.getInfo().getFiles();
 		assertEquals (1, files.size());
-		assertEquals (1, files.get(0).size());
-		assertEquals ("TestTorrent.txt", files.get(0).get(0));
-
-		List<Long> lengths = metaInfo.getInfo().getFileLengths();
-		assertEquals (1, lengths.size());
-		assertEquals (new Long (1024), lengths.get(0));
+		assertEquals (1, files.get(0).name.size());
+		assertEquals ("TestTorrent.txt", files.get(0).name.get(0));
+		assertEquals (new Long (1024), files.get(0).length);
 
 		assertEquals ("http://te.st:6666/announce", metaInfo.getAnnounceURL());
 		assertArrayEquals (new byte[] {-17, 25, -10, 77, 107, -18, 22, 120, -117, -11, 0, 43, -15, 94, 67, -74, -36, -66, -63, -73},
@@ -143,18 +141,15 @@ public class TestMetaInfo {
 		BDictionary dictionary = standardMultiFileMetaInfo();
 		MetaInfo metaInfo = new MetaInfo (dictionary);
 
-		List<List<String>> files = metaInfo.getInfo().getFilePaths();
+		List<Filespec> files = metaInfo.getInfo().getFiles();
 		assertEquals (2, files.size());
-		assertEquals (2, files.get(0).size());
-		assertEquals ("dir1", files.get(0).get(0));
-		assertEquals ("file1.txt", files.get(0).get(1));
-		assertEquals (1, files.get(1).size());
-		assertEquals ("file2.txt", files.get(1).get(0));
-
-		List<Long> lengths = metaInfo.getInfo().getFileLengths();
-		assertEquals (2, lengths.size());
-		assertEquals (new Long (123), lengths.get(0));
-		assertEquals (new Long (456), lengths.get(1));
+		assertEquals (2, files.get(0).name.size());
+		assertEquals ("dir1", files.get(0).name.get(0));
+		assertEquals ("file1.txt", files.get(0).name.get(1));
+		assertEquals (new Long (123), files.get(0).length);
+		assertEquals (1, files.get(1).name.size());
+		assertEquals ("file2.txt", files.get(1).name.get(0));
+		assertEquals (new Long (456), files.get(1).length);
 
 		assertEquals ("http://te.st:6666/announce", metaInfo.getAnnounceURL());
 		assertArrayEquals (new byte[] {94, 97, -78, 84, 43, -31, 33, 55, 91, -103, 83, 98, -112, -75, -106, -23, -120, 90, 81, 7},
@@ -854,14 +849,11 @@ public class TestMetaInfo {
 		assertEquals (1, metaInfo.getAnnounceURLs().get(0).size());
 		assertEquals (announceURL, metaInfo.getAnnounceURLs().get(0).get (0));
 
-		List<List<String>> filePaths = metaInfo.getInfo().getFilePaths();
-		assertEquals (1, filePaths.size());
-		assertEquals (1, filePaths.get(0).size());
-		assertEquals (name, filePaths.get(0).get(0));
-
-		List<Long> fileLengths = metaInfo.getInfo().getFileLengths();
-		assertEquals (1, fileLengths.size());
-		assertEquals (new Long (length), fileLengths.get (0));
+		List<Filespec> files = metaInfo.getInfo().getFiles();
+		assertEquals (1, files.size());
+		assertEquals (1, files.get(0).name.size());
+		assertEquals (name, files.get(0).name.get(0));
+		assertEquals (new Long (length), files.get(0).length);
 
 		assertEquals (pieceSize, metaInfo.getInfo().getPieceLength());
 		assertArrayEquals (pieces, metaInfo.getInfo().getPieces());
@@ -897,14 +889,11 @@ public class TestMetaInfo {
 		assertEquals (1, metaInfo.getAnnounceURLs().get(0).size());
 		assertEquals (announceURL, metaInfo.getAnnounceURLs().get(0).get (0));
 
-		List<List<String>> filePaths = metaInfo.getInfo().getFilePaths();
-		assertEquals (1, filePaths.size());
-		assertEquals (1, filePaths.get(0).size());
-		assertEquals (name, filePaths.get(0).get(0));
-
-		List<Long> fileLengths = metaInfo.getInfo().getFileLengths();
-		assertEquals (1, fileLengths.size());
-		assertEquals (new Long (length), fileLengths.get (0));
+		List<Filespec> files = metaInfo.getInfo().getFiles();
+		assertEquals (1, files.size());
+		assertEquals (1, files.get(0).name.size());
+		assertEquals (name, files.get(0).name.get(0));
+		assertEquals (new Long (length), files.get(0).length);
 
 		assertEquals (pieceSize, metaInfo.getInfo().getPieceLength());
 		assertNull (metaInfo.getInfo().getPieces());
@@ -982,15 +971,13 @@ public class TestMetaInfo {
 		assertEquals (1, metaInfo.getAnnounceURLs().get(0).size());
 		assertEquals (announceURL, metaInfo.getAnnounceURLs().get(0).get (0));
 
-		List<List<String>> metaFilePaths = metaInfo.getInfo().getFilePaths();
+		List<Filespec> metaFiles = metaInfo.getInfo().getFiles();
 		for (int i = 0; i < filePaths.size(); i++) {
 			List<String> filePath = filePaths.get (i);
-			List<String> metaFilePath = metaFilePaths.get (i);
+			List<String> metaFilePath = metaFiles.get(i).name;
 			assertArrayEquals (filePath.toArray(), metaFilePath.toArray());
+			assertEquals (lengths.get (i), metaFiles.get(i).length);
 		}
-
-		List<Long> fileLengths = metaInfo.getInfo().getFileLengths();
-		assertArrayEquals (lengths.toArray(), fileLengths.toArray());
 
 		assertEquals (pieceSize, metaInfo.getInfo().getPieceLength());
 		assertArrayEquals (pieces, metaInfo.getInfo().getPieces());
@@ -1032,15 +1019,13 @@ public class TestMetaInfo {
 		assertEquals (1, metaInfo.getAnnounceURLs().get(0).size());
 		assertEquals (announceURL, metaInfo.getAnnounceURLs().get(0).get (0));
 
-		List<List<String>> metaFilePaths = metaInfo.getInfo().getFilePaths();
+		List<Filespec> metaFiles = metaInfo.getInfo().getFiles();
 		for (int i = 0; i < filePaths.size(); i++) {
 			List<String> filePath = filePaths.get (i);
-			List<String> metaFilePath = metaFilePaths.get (i);
+			List<String> metaFilePath = metaFiles.get(i).name;
 			assertArrayEquals (filePath.toArray(), metaFilePath.toArray());
+			assertEquals (lengths.get (i), metaFiles.get(i).length);
 		}
-
-		List<Long> fileLengths = metaInfo.getInfo().getFileLengths();
-		assertArrayEquals (lengths.toArray(), fileLengths.toArray());
 
 		assertEquals (pieceSize, metaInfo.getInfo().getPieceLength());
 		assertNull (metaInfo.getInfo().getPieces());

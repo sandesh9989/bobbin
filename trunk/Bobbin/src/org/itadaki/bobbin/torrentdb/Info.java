@@ -8,6 +8,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.itadaki.bobbin.bencode.BBinary;
@@ -40,15 +41,9 @@ public final class Info {
 
 	/**
 	 * Cached value calculated from the dictionary:<br>
-	 * A list of file paths, each encoded as a list of path elements
+	 * The list of files
 	 */
-	private final List<List<String>> filePaths;
-
-	/**
-	 * Cached value calculated from the dictionary:<br>
-	 * A list of file lengths
-	 */
-	private final List<Long> fileLengths;
+	private final List<Filespec> files;
 
 	/**
 	 * Cached value calculated from the dictionary:<br>
@@ -182,30 +177,11 @@ public final class Info {
 
 
 	/**
-	 * @return A list of the files contained in the torrent, represented as a
-	 *         list of path elements
+	 * @return The list of files contained in the torrent
 	 */
-	public List<List<String>> getFilePaths() {
+	public List<Filespec> getFiles() {
 
-		List<List<String>> filePathsCopy = new ArrayList<List<String>>();
-
-		for (List<String> filePath : this.filePaths) {
-			filePathsCopy.add (new ArrayList<String> (filePath));
-		}
-
-		return filePathsCopy;
-
-	}
-
-
-	/**
-	 * @return A list of the lengths of the files contained in the torrent
-	 */
-	public List<Long> getFileLengths() {
-		
-		List<Long> lengthsCopy = new ArrayList<Long> (this.fileLengths);
-
-		return lengthsCopy;
+		return this.files;
 
 	}
 
@@ -328,8 +304,7 @@ public final class Info {
 		BValue lengthValue = this.dictionary.get ("length");
 		BValue filesValue = this.dictionary.get ("files");
 		String baseDirectoryName;
-		List<List<String>> filePaths = new ArrayList<List<String>>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		List<Filespec> files = new ArrayList<Filespec>();
 
 		if (lengthValue != null) {
 
@@ -345,8 +320,7 @@ public final class Info {
 			baseDirectoryName = null;
 			List<String> file = new ArrayList<String>();
 			file.add (this.dictionary.getString ("name"));
-			filePaths.add (file);
-			fileLengths.add (((BInteger)lengthValue).value().longValue());
+			files.add (new Filespec (file, ((BInteger)lengthValue).value().longValue()));
 
 		} else {
 
@@ -386,16 +360,15 @@ public final class Info {
 					filePathStrings.add (((BBinary)pathElement).stringValue());
 				}
 
-				filePaths.add (filePathStrings);
-				fileLengths.add (((BInteger)fileLengthValue).value().longValue());
+				files.add (new Filespec (filePathStrings, ((BInteger)fileLengthValue).value().longValue()));
 
 			}
 
 		}
 
 		long totalLength = 0;
-		for (Long length : fileLengths) {
-			totalLength += length;
+		for (Filespec file : files) {
+			totalLength += file.length;
 		}
 
 		// Check: '/info/pieces' or '/info/root hash' must be of the correct length
@@ -430,8 +403,7 @@ public final class Info {
 
 
 		this.baseDirectoryName = baseDirectoryName;
-		this.filePaths = filePaths;
-		this.fileLengths = fileLengths;
+		this.files = Collections.unmodifiableList (files);
 		this.totalLength = totalLength;
 
 		// Calculate info hash

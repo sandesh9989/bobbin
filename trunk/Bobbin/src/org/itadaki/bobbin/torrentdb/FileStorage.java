@@ -589,14 +589,15 @@ public class FileStorage implements Storage {
 
 		// Create list of files to include in the torrent
 		List<File> files = new ArrayList<File>();
-		for (List<String> fileParts : info.getFilePaths()) {
-			int length = fileParts.size();
+		List<Long> fileLengths = new ArrayList<Long>();
+		for (Filespec filespec : info.getFiles()) {
+			int numParts = filespec.name.size();
 			StringBuilder fileBuilder = new StringBuilder();
-			for (int i = 0; i < length; i++) {
-				String filePart = fileParts.get (i);
+			for (int i = 0; i < numParts; i++) {
+				String filePart = filespec.name.get (i);
 				checkFilePartIsValid (filePart);
 				fileBuilder.append (filePart);
-				if (i < (length - 1)) {
+				if (i < (numParts - 1)) {
 					fileBuilder.append (File.separator);
 				}
 			}
@@ -604,9 +605,10 @@ public class FileStorage implements Storage {
 			checkFileIsValid (assembledFile);
 			checkIsChild (effectiveParentDirectory, assembledFile);
 			files.add (assembledFile);
+			fileLengths.add (filespec.length);
 		}
 
-		return new FileStorage (files, info.getFileLengths(), info.getPieceLength());
+		return new FileStorage (files, fileLengths, info.getPieceLength());
 
 	}
 
