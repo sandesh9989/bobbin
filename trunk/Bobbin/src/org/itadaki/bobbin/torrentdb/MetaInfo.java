@@ -65,8 +65,6 @@ public final class MetaInfo {
 
 
 	/**
-	 * Returns a copy of the dictionary representation of the MetaInfo
-	 *
 	 * @return A copy of the dictionary representation of the MetaInfo
 	 */
 	public BDictionary getDictionary() {
@@ -77,9 +75,7 @@ public final class MetaInfo {
 
 
 	/**
-	 * Gets the announce URL string of this torrent's tracker
-	 *
-	 * @return the announce URL string of this torrent's tracker
+	 * @return The announce URL string of this torrent's tracker
 	 */
 	public String getAnnounceURL() {
 
@@ -122,9 +118,7 @@ public final class MetaInfo {
 
 
 	/**
-	 * Gets the torrent's Info
-	 *
-	 * @return the torrent's Info
+	 * @return The torrent's Info
 	 */
 	public Info getInfo() {
 
@@ -134,9 +128,7 @@ public final class MetaInfo {
 
 
 	/**
-	 * Gets the torrent's creation date in seconds since the epoch, if known
-	 *
-	 * @return the torrent's creation date, if known, or null
+	 * @return The torrent's creation date in seconds since the epoch, if known, or {@code null}
 	 */
 	public Long getCreationDate() {
 
@@ -260,7 +252,7 @@ public final class MetaInfo {
 		dictionary.put ("announce", firstAnnounceURL);
 		dictionary.put ("announce-list", announceList);
 		dictionary.put ("creation date", System.currentTimeMillis() / 1000);
-		dictionary.put ("info", info.getDictionary());
+		dictionary.put ("info", info.getPrivateDictionary());
 
 		if (keyPair != null) {
 			Signature dsa;

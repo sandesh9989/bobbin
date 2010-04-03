@@ -14,6 +14,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.Signature;
 import java.util.Random;
 
@@ -70,6 +71,27 @@ public class Util {
 		}
 
 		return DSAUtil.derSignatureToP1363Signature (derSignature);
+
+	}
+
+
+	/**
+	 * Verifies an SHA1 hash and DSA signature against a public key
+	 * @param publicKey The public key
+	 * @param hash The hash
+	 * @param signature The signature
+	 * @return {@code true} if the signature verified, otherwise {@code false}
+	 */
+	public static boolean dsaVerify (PublicKey publicKey, byte[] hash, byte[] signature) {
+
+		try {
+			Signature verify = Signature.getInstance ("NONEwithDSA", "SUN");
+			verify.initVerify (publicKey);
+			verify.update (hash);
+			return verify.verify (DSAUtil.p1363SignatureToDerSignature (ByteBuffer.wrap (signature)).array());
+		} catch (GeneralSecurityException e) {
+			throw new InternalError();
+		}
 
 	}
 
