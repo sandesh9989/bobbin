@@ -243,24 +243,34 @@ public final class Info {
 
 
 	/**
-	 * @return The suggested base directory name of the torrent file path, if present, or null 
-	 */
-	public String getBaseDirectoryName() {
-
-		return this.baseDirectoryName;
-
-	}
-
-
-	/**
 	 * Package local: Gets the info dictionary. Used by MetaInfo in order that it and Info may
 	 * share one (immutable) info dictionary
 	 *
 	 * @return The info dictionary
 	 */
-	BDictionary getDictionary() {
+	BDictionary getPrivateDictionary() {
 
 		return this.dictionary;
+
+	}
+
+
+	/**
+	 * @return A copy of the info dictionary
+	 */
+	public BDictionary getDictionary() {
+
+		return this.dictionary.clone();
+
+	}
+
+
+	/**
+	 * @return The suggested base directory name of the torrent file path, if present, or null 
+	 */
+	public String getBaseDirectoryName() {
+
+		return this.baseDirectoryName;
 
 	}
 
@@ -499,7 +509,7 @@ public final class Info {
 			byte[] rootHash, byte[] rootSignature) throws InvalidEncodingException
 	{
 
-		return new Info (name, null, filePaths, fileLengths, pieceSize, null, rootHash, null, true);
+		return new Info (name, null, filePaths, fileLengths, pieceSize, null, rootHash, rootSignature, true);
 
 	}
 

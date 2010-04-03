@@ -88,31 +88,6 @@ public class FileStorage implements Storage {
 
 
 	/**
-	 * @return An opaque cookie representing the current state of the {@code FileStorage}
-	 */
-	private ByteBuffer buildValidationCookie() {
-
-		ByteBuffer cookieBuffer = ByteBuffer.allocate (VALIDATION_COOKIE_HEADER.length + (this.files.size() * 8 * 2));
-		cookieBuffer.put (VALIDATION_COOKIE_HEADER);
-		LongBuffer longBuffer = cookieBuffer.asLongBuffer();
-		for (File file : this.files) {
-			if (file.exists()) {
-				longBuffer.put (file.lastModified());
-				longBuffer.put (file.length());
-			} else {
-				longBuffer.put (0L);
-				longBuffer.put (0L);
-			}
-		}
-
-		cookieBuffer.rewind();
-
-		return cookieBuffer;
-
-	}
-
-
-	/**
 	 * Checks that a given File is either
 	 * <ul>
 	 *   <li>Nonexistent, or</li>
@@ -213,6 +188,31 @@ public class FileStorage implements Storage {
 		{
 			throw new IncompatibleLocationException ("Invalid path element '" + pathElement + "'");
 		}
+
+	}
+
+
+	/**
+	 * @return An opaque cookie representing the current state of the {@code FileStorage}
+	 */
+	private ByteBuffer buildValidationCookie() {
+
+		ByteBuffer cookieBuffer = ByteBuffer.allocate (VALIDATION_COOKIE_HEADER.length + (this.files.size() * 8 * 2));
+		cookieBuffer.put (VALIDATION_COOKIE_HEADER);
+		LongBuffer longBuffer = cookieBuffer.asLongBuffer();
+		for (File file : this.files) {
+			if (file.exists()) {
+				longBuffer.put (file.lastModified());
+				longBuffer.put (file.length());
+			} else {
+				longBuffer.put (0L);
+				longBuffer.put (0L);
+			}
+		}
+
+		cookieBuffer.rewind();
+
+		return cookieBuffer;
 
 	}
 
