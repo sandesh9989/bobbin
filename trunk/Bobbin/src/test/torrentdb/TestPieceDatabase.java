@@ -17,7 +17,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.itadaki.bobbin.torrentdb.FileMetadata;
 import org.itadaki.bobbin.torrentdb.FileStorage;
+import org.itadaki.bobbin.torrentdb.Filespec;
 import org.itadaki.bobbin.torrentdb.Info;
+import org.itadaki.bobbin.torrentdb.InfoFileset;
 import org.itadaki.bobbin.torrentdb.MemoryStorage;
 import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
@@ -348,7 +350,6 @@ public class TestPieceDatabase {
 
 	/**
 	 * Check readPiece() - > range
-	 *
 	 * @throws Exception 
 	 */
 	@Test(expected=IndexOutOfBoundsException.class)
@@ -365,7 +366,6 @@ public class TestPieceDatabase {
 	/**
 	 * Check verifyAndWritePiece - bad
 	 * @throws Exception 
-	 *
 	 */
 	@Test
 	public void testVerifyAndWritePieceBad() throws Exception {
@@ -390,7 +390,6 @@ public class TestPieceDatabase {
 	/**
 	 * Check verifyAndWritePiece - good
 	 * @throws Exception 
-	 *
 	 */
 	@Test
 	public void testVerifyAndWritePieceGood() throws Exception {
@@ -411,7 +410,6 @@ public class TestPieceDatabase {
 	/**
 	 * Check verifyAndWritePiece - good (small final piece)
 	 * @throws Exception 
-	 *
 	 */
 	@Test
 	public void testVerifyAndWritePieceSmallGood() throws Exception {
@@ -420,7 +418,7 @@ public class TestPieceDatabase {
 
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 65537);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.createSingleFile (testFile.getName(), 65537, 16384, pieceHashes);
+		Info info = Info.create (new InfoFileset (new Filespec (testFile.getName(), 65537L)), 16384, pieceHashes);
 
 		PieceDatabase pieceDatabase = new PieceDatabase (info, null, FileStorage.create (testFile.getParentFile(), info), null);
 		pieceDatabase.start (true);
@@ -476,7 +474,7 @@ public class TestPieceDatabase {
 	@Test
 	public void testErrorDuringVerification() throws Exception {
 
-		Info info = Info.createSingleFile ("test", 1024, 1024, new byte[20]);
+		Info info = Info.create (new InfoFileset (new Filespec ("test", 1024L)), 1024, new byte[20]);
 		Storage storage = new MemoryStorage (new StorageDescriptor (1024, 1024)) {
 			@Override
 			public ByteBuffer read (int pieceNumber) throws IOException {
@@ -509,7 +507,7 @@ public class TestPieceDatabase {
 	@Test
 	public void testStopDuringVerification() throws Exception {
 
-		Info info = Info.createSingleFile ("test", 2048, 1024, new byte[40]);
+		Info info = Info.create (new InfoFileset (new Filespec ("test", 2048L)), 1024, new byte[40]);
 		final CountDownLatch latch1 = new CountDownLatch (1);
 		final CountDownLatch latch2 = new CountDownLatch (1);
 		Storage storage = new MemoryStorage (new StorageDescriptor (1024, 2048)) {
@@ -549,7 +547,7 @@ public class TestPieceDatabase {
 	@Test
 	public void testErrorDuringRead() throws Exception {
 
-		Info info = Info.createSingleFile ("test", 1024, 1024, Util.flatten2DArray (Util.pseudoRandomBlockHashes (1024, 1024)));
+		Info info = Info.create (new InfoFileset (new Filespec ("test", 1024L)), 1024, Util.flatten2DArray (Util.pseudoRandomBlockHashes (1024, 1024)));
 		Storage storage = new MemoryStorage (new StorageDescriptor (1024, 1024)) {
 			private int count = 0;
 			@Override
@@ -594,7 +592,7 @@ public class TestPieceDatabase {
 	@Test
 	public void testErrorDuringWrite() throws Exception {
 
-		Info info = Info.createSingleFile ("test", 1024, 1024, Util.flatten2DArray (Util.pseudoRandomBlockHashes (1024, 1024)));
+		Info info = Info.create (new InfoFileset (new Filespec ("test", 1024L)), 1024, Util.flatten2DArray (Util.pseudoRandomBlockHashes (1024, 1024)));
 		Storage storage = new MemoryStorage (new StorageDescriptor (1024, 1024)) {
 			@Override
 			public ByteBuffer read (int pieceNumber) throws IOException {
@@ -639,7 +637,7 @@ public class TestPieceDatabase {
 	@Test
 	public void testErrorForcesVerification() throws Exception {
 
-		Info info = Info.createSingleFile ("test", 4096, 1024, Util.flatten2DArray (Util.pseudoRandomBlockHashes (1024, 4096)));
+		Info info = Info.create (new InfoFileset (new Filespec ("test", 4096L)), 1024, Util.flatten2DArray (Util.pseudoRandomBlockHashes (1024, 4096)));
 		Storage storage = new MemoryStorage (new StorageDescriptor (1024, 4096)) {
 			@Override
 			public ByteBuffer read (int pieceNumber) throws IOException {
@@ -680,7 +678,7 @@ public class TestPieceDatabase {
 
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 16384);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.createSingleFile (testFile.getName(), 16384, 16384, pieceHashes);
+		Info info = Info.create (new InfoFileset (new Filespec (testFile.getName(), 16384L)), 16384, pieceHashes);
 		Storage storage = FileStorage.create (testFile.getParentFile(), info);
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384)));
 
@@ -702,7 +700,7 @@ public class TestPieceDatabase {
 
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 16384);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.createSingleFile (testFile.getName(), 16384, 16384, pieceHashes);
+		Info info = Info.create (new InfoFileset (new Filespec (testFile.getName(), 16384L)), 16384, pieceHashes);
 		Storage storage = FileStorage.create (testFile.getParentFile(), info);
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384)));
 
@@ -899,7 +897,8 @@ public class TestPieceDatabase {
 		File testFile = Util.createNonExistentTemporaryFile();
 
 		ElasticTree tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
-		Info info = Info.createSingleFileMerkle (testFile.getName(), totalLength, pieceSize, tree.getView(totalLength).getRootHash());
+		Info info = Info.createMerkle (new InfoFileset (new Filespec (testFile.getName(), (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash());
+
 		Storage storage = FileStorage.create (testFile.getParentFile(), info);
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, pieceSize, pieceSize)));
 
@@ -922,7 +921,7 @@ public class TestPieceDatabase {
 		File metadataDirectory = Util.createTemporaryDirectory();
 
 		ElasticTree tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
-		Info info = Info.createSingleFileMerkle (testFile.getName(), totalLength, pieceSize, tree.getView(totalLength).getRootHash());
+		Info info = Info.createMerkle (new InfoFileset (new Filespec (testFile.getName(), (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash());
 		Storage storage = FileStorage.create (testFile.getParentFile(), info);
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384)));
 
@@ -972,8 +971,9 @@ public class TestPieceDatabase {
 		}
 
 
-		Info info = Info.createSingleFileElastic ("blah", totalLength, pieceSize, tree.getView(totalLength).getRootHash(),
+		Info info = Info.createElastic (new InfoFileset (new Filespec ("blah", (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash(),
 				DSAUtil.derSignatureToP1363Signature (derSignature));
+
 		Storage storage = new MemoryStorage (new StorageDescriptor (pieceSize, totalLength));
 
 		PieceDatabase pieceDatabase = new PieceDatabase (info, MockPieceDatabase.mockPublicKey, storage, null);
@@ -984,15 +984,10 @@ public class TestPieceDatabase {
 		totalLength += pieceSize;
 		tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
 
-		try {
-			Signature dsa = Signature.getInstance ("SHAwithDSA", "SUN");
-			dsa.initSign (MockPieceDatabase.mockPrivateKey);
-			dsa.update (tree.getView(totalLength).getRootHash());
-			derSignature = dsa.sign();
-		} catch (GeneralSecurityException e) {
-			throw new InternalError (e.getMessage());
-		}
-
+		Signature dsa = Signature.getInstance ("SHAwithDSA", "SUN");
+		dsa.initSign (MockPieceDatabase.mockPrivateKey);
+		dsa.update (tree.getView(totalLength).getRootHash());
+		derSignature = dsa.sign();
 
 		pieceDatabase.extend (
 				new ViewSignature (
@@ -1034,7 +1029,7 @@ public class TestPieceDatabase {
 		}
 
 
-		Info info = Info.createSingleFileElastic ("blah", totalLength, pieceSize, tree.getView(totalLength).getRootHash(),
+		Info info = Info.createElastic (new InfoFileset (new Filespec ("blah", (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash(),
 				DSAUtil.derSignatureToP1363Signature (derSignature));
 		Storage storage = new MemoryStorage (new StorageDescriptor (pieceSize, totalLength));
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384)));
@@ -1047,15 +1042,10 @@ public class TestPieceDatabase {
 		totalLength += pieceSize;
 		tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
 
-		try {
-			Signature dsa = Signature.getInstance ("SHAwithDSA", "SUN");
-			dsa.initSign (MockPieceDatabase.mockPrivateKey);
-			dsa.update (tree.getView(totalLength).getRootHash());
-			derSignature = dsa.sign();
-		} catch (GeneralSecurityException e) {
-			throw new InternalError (e.getMessage());
-		}
-
+		Signature dsa = Signature.getInstance ("SHAwithDSA", "SUN");
+		dsa.initSign (MockPieceDatabase.mockPrivateKey);
+		dsa.update (tree.getView(totalLength).getRootHash());
+		derSignature = dsa.sign();
 
 		pieceDatabase.extend (
 				new ViewSignature (
@@ -1087,7 +1077,7 @@ public class TestPieceDatabase {
 
 		ElasticTree tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
 		byte[] originalSignature = Util.dsaSign (MockPieceDatabase.mockPrivateKey, tree.getView(totalLength).getRootHash());
-		Info info = Info.createSingleFileElastic ("blah", totalLength, pieceSize, tree.getView(totalLength).getRootHash(), originalSignature);
+		Info info = Info.createElastic (new InfoFileset (new Filespec ("blah", (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash(), originalSignature);
 		Storage storage = new MemoryStorage (new StorageDescriptor (pieceSize, totalLength));
 		PieceDatabase pieceDatabase = new PieceDatabase (info, MockPieceDatabase.mockPublicKey, storage, null);
 		pieceDatabase.start (true);
@@ -1144,7 +1134,7 @@ public class TestPieceDatabase {
 		}
 
 
-		Info info = Info.createSingleFileElastic ("blah", totalLength, pieceSize, tree.getView(totalLength).getRootHash(),
+		Info info = Info.createElastic (new InfoFileset (new Filespec ("blah", (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash(),
 				DSAUtil.derSignatureToP1363Signature (derSignature));
 		Storage storage = new MemoryStorage (new StorageDescriptor (pieceSize, totalLength));
 
@@ -1188,7 +1178,7 @@ public class TestPieceDatabase {
 			throw new InternalError (e.getMessage());
 		}
 
-		Info info = Info.createSingleFileElastic ("blah", totalLength, pieceSize, tree.getView(totalLength).getRootHash(),
+		Info info = Info.createElastic (new InfoFileset (new Filespec ("blah", (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash(),
 				DSAUtil.derSignatureToP1363Signature (derSignature));
 		Storage storage = new MemoryStorage (new StorageDescriptor (pieceSize, totalLength));
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384)));

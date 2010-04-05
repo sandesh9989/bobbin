@@ -15,7 +15,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.itadaki.bobbin.torrentdb.FileStorage;
+import org.itadaki.bobbin.torrentdb.Filespec;
 import org.itadaki.bobbin.torrentdb.Info;
+import org.itadaki.bobbin.torrentdb.InfoFileset;
 import org.itadaki.bobbin.torrentdb.StorageDescriptor;
 import org.itadaki.bobbin.util.BitField;
 import org.junit.Test;
@@ -1051,10 +1053,13 @@ public class TestFileStorage {
 	public void testParentDirectoryNotDirectory() throws Exception {
 
 		File testFile = File.createTempFile ("tcf", "tmp");
+		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
+				new Filespec (Arrays.asList (new String[] {"A"}), 65536L)
+		});
 
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 65536);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.createSingleFile ("blah", 65536, 16384, pieceHashes);
+		Info info = Info.create (new InfoFileset ("blah", filespecs), 16384, pieceHashes);
 
 		FileStorage.create (testFile, info);
 
@@ -1070,10 +1075,13 @@ public class TestFileStorage {
 	public void testBaseDirectoryDot() throws Exception {
 
 		File testFile = Util.createNonExistentTemporaryFile();
+		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
+				new Filespec (Arrays.asList (new String[] {"A"}), 65536L)
+		});
 
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 65536);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.createSingleFile (".", 65536, 16384, pieceHashes);
+		Info info = Info.create (new InfoFileset (".", filespecs), 16384, pieceHashes);
 
 		FileStorage.create (testFile, info);
 
@@ -1089,10 +1097,13 @@ public class TestFileStorage {
 	public void testBaseDirectoryDotDot() throws Exception {
 
 		File testFile = Util.createNonExistentTemporaryFile();
+		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
+				new Filespec (Arrays.asList (new String[] {"A"}), 65536L)
+		});
 
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 65536);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.createSingleFile ("..", 65536, 16384, pieceHashes);
+		Info info = Info.create (new InfoFileset ("..", filespecs), 16384, pieceHashes);
 
 		FileStorage.create (testFile, info);
 
@@ -1108,10 +1119,13 @@ public class TestFileStorage {
 	public void testBaseDirectorySeparator() throws Exception {
 
 		File testFile = Util.createNonExistentTemporaryFile();
+		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
+				new Filespec (Arrays.asList (new String[] {"A"}), 65536L)
+		});
 
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 65536);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.createSingleFile (File.separator, 65536, 16384, pieceHashes);
+		Info info = Info.create (new InfoFileset (File.separator, filespecs), 16384, pieceHashes);
 
 		FileStorage.create (testFile, info);
 
@@ -1127,14 +1141,13 @@ public class TestFileStorage {
 	public void testFilePartDot() throws Exception {
 
 		File testFile = Util.createNonExistentTemporaryFile();
-		List<List<String>> filePaths = new ArrayList<List<String>>();
-		filePaths.add (Arrays.asList (new String[] {"."}));
-		List<Long> fileLengths = new ArrayList<Long>();
-		fileLengths.add (32768L);
+		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
+				new Filespec (Arrays.asList (new String[] {"."}), 32768L)
+		});
 
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 32768);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.createMultiFile (testFile.getName(), filePaths, fileLengths, 16384, pieceHashes);
+		Info info = Info.create (new InfoFileset (testFile.getName(), filespecs), 16384, pieceHashes);
 
 		FileStorage.create (testFile, info);
 
@@ -1150,14 +1163,13 @@ public class TestFileStorage {
 	public void testFilePartDotDot() throws Exception {
 
 		File testFile = Util.createNonExistentTemporaryFile();
-		List<List<String>> filePaths = new ArrayList<List<String>>();
-		filePaths.add (Arrays.asList (new String[] {".."}));
-		List<Long> fileLengths = new ArrayList<Long>();
-		fileLengths.add (32768L);
+		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
+				new Filespec (Arrays.asList (new String[] {".."}), 32768L)
+		});
 
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 32768);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.createMultiFile (testFile.getName(), filePaths, fileLengths, 16384, pieceHashes);
+		Info info = Info.create (new InfoFileset (testFile.getName(), filespecs), 16384, pieceHashes);
 
 		FileStorage.create (testFile, info);
 
@@ -1173,14 +1185,13 @@ public class TestFileStorage {
 	public void testFilePartSeparator() throws Exception {
 
 		File testFile = Util.createNonExistentTemporaryFile();
-		List<List<String>> filePaths = new ArrayList<List<String>>();
-		filePaths.add (Arrays.asList (new String[] {File.separator}));
-		List<Long> fileLengths = new ArrayList<Long>();
-		fileLengths.add (32768L);
+		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
+				new Filespec (Arrays.asList (new String[] {File.separator}), 32768L)
+		});
 
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 32768);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.createMultiFile (testFile.getName(), filePaths, fileLengths, 16384, pieceHashes);
+		Info info = Info.create (new InfoFileset (testFile.getName(), filespecs), 16384, pieceHashes);
 
 		FileStorage.create (testFile, info);
 
@@ -1195,17 +1206,15 @@ public class TestFileStorage {
 	public void testExistingSubdirectory() throws Exception {
 
 		File testFile = Util.createNonExistentTemporaryFile();
-
-		List<List<String>> filePaths = new ArrayList<List<String>>();
-		filePaths.add (Arrays.asList (new String[] {"test1"}));
-		filePaths.add (Arrays.asList (new String[] {"test2"}));
-		List<Long> fileLengths = new ArrayList<Long>();
-		fileLengths.add (32768L);
-		fileLengths.add (32768L);
+		testFile.mkdir();
+		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
+				new Filespec (Arrays.asList (new String[] {"test1"}), 32768L),
+				new Filespec (Arrays.asList (new String[] {"test2"}), 32768L)
+		});
 
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 65536);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.createMultiFile (testFile.getName(), filePaths, fileLengths, 16384, pieceHashes);
+		Info info = Info.create (new InfoFileset (testFile.getName(), filespecs), 16384, pieceHashes);
 
 		FileStorage storage = FileStorage.create (testFile.getParentFile(), info);
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384)));

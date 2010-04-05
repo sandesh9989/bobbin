@@ -23,7 +23,6 @@ import org.itadaki.bobbin.util.DSAUtil;
 import org.itadaki.bobbin.util.elastictree.ElasticTree;
 
 
-
 /**
  * Builds an Info based on existing files on disk
  */
@@ -54,7 +53,6 @@ public class InfoBuilder {
 	 * The private key used to sign the root hash of an Elastic Info, or {@code null}
 	 */
 	private final PrivateKey privateKey;
-
 
 
 	/**
@@ -174,38 +172,13 @@ public class InfoBuilder {
 		// Create piece hashes
 		byte[] pieceHashes = calculatePiecesHashes (storage);
 
-		// Create Info from the file list
-		Info info;
+		// Create fileset
+		InfoFileset fileset;
 		if (this.baseFile.isFile()) {
-
-			if (this.merkleTorrent) {
-				ElasticTree elasticTree = ElasticTree.buildFromLeaves (this.pieceSize, this.baseFile.length(), pieceHashes);
-				byte[] rootHash = elasticTree.getView(this.baseFile.length()).getRootHash();
-				if (!this.elasticTorrent) {
-					info = Info.createSingleFileMerkle (this.baseFile.getName(), this.baseFile.length(), this.pieceSize, rootHash);
-				} else {
-					byte[] rootSignature = null;
-					try {
-						Signature signature = Signature.getInstance ("NONEwithDSA", "SUN");
-						signature.initSign (this.privateKey);
-						signature.update (rootHash);
-						byte[] derSignature = signature.sign();
-						rootSignature = DSAUtil.derSignatureToP1363Signature (derSignature);
-					} catch (Exception e) {
-						throw new IOException (e);
-					}
-					info = Info.createSingleFileElastic (this.baseFile.getName(), this.baseFile.length(), this.pieceSize, rootHash, rootSignature);
-				}
-			} else {
-				info = Info.createSingleFile (this.baseFile.getName(), this.baseFile.length(), this.pieceSize, pieceHashes);
-			}
-
+			fileset = new InfoFileset (new Filespec (this.baseFile.getName(), this.baseFile.length()));
 		} else {
-
+			List<Filespec> filespecs = new ArrayList<Filespec>();
 			int baseLength = this.baseFile.getPath().length();
-			List<List<String>> filePaths = new ArrayList<List<String>>();
-			List<Long> fileLengths = new ArrayList<Long>();
-			long totalLength = 0;
 			for (File file : files) {
 				List<String> pathElements = new ArrayList<String>();
 				String filePath = file.getPath().substring (baseLength);
@@ -213,33 +186,33 @@ public class InfoBuilder {
 				while (tokeniser.hasMoreElements()) {
 					pathElements.add (tokeniser.nextToken());
 				}
-				filePaths.add (pathElements);
-				fileLengths.add (file.length());
-				totalLength += file.length();
+				filespecs.add (new Filespec (pathElements, file.length()));
 			}
+			fileset = new InfoFileset (this.baseFile.getName(), filespecs);
+		}
 
-			if (this.merkleTorrent) {
-				ElasticTree elasticTree = ElasticTree.buildFromLeaves (this.pieceSize, totalLength, pieceHashes);
-				byte[] rootHash = elasticTree.getView(totalLength).getRootHash();
-				if (!this.elasticTorrent) {
-					info = Info.createMultiFileMerkle (this.baseFile.getName(), filePaths, fileLengths, this.pieceSize, rootHash);
-				} else {
-					byte[] rootSignature = null;
-					try {
-						Signature signature = Signature.getInstance ("NONEwithDSA", "SUN");
-						signature.initSign (this.privateKey);
-						signature.update (rootHash);
-						byte[] derSignature = signature.sign();
-						rootSignature = DSAUtil.derSignatureToP1363Signature (derSignature);
-					} catch (Exception e) {
-						throw new IOException (e);
-					}
-					info = Info.createMultiFileElastic (this.baseFile.getName(), filePaths, fileLengths, this.pieceSize, rootHash, rootSignature);
-				}
+		// Create Info
+		Info info;
+		if (this.merkleTorrent) {
+			ElasticTree elasticTree = ElasticTree.buildFromLeaves (this.pieceSize, this.baseFile.length(), pieceHashes);
+			byte[] rootHash = elasticTree.getView(this.baseFile.length()).getRootHash();
+			if (!this.elasticTorrent) {
+				info = Info.createMerkle (fileset, this.pieceSize, rootHash);
 			} else {
-				info = Info.createMultiFile (this.baseFile.getName(), filePaths, fileLengths, this.pieceSize, pieceHashes);
+				byte[] rootSignature = null;
+				try {
+					Signature signature = Signature.getInstance ("NONEwithDSA", "SUN");
+					signature.initSign (this.privateKey);
+					signature.update (rootHash);
+					byte[] derSignature = signature.sign();
+					rootSignature = DSAUtil.derSignatureToP1363Signature (derSignature);
+				} catch (Exception e) {
+					throw new IOException (e);
+				}
+				info = Info.createElastic (fileset, this.pieceSize, rootHash, rootSignature);
 			}
-
+		} else {
+			info = Info.create (fileset, this.pieceSize, pieceHashes);
 		}
 
 		return info;

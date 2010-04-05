@@ -33,8 +33,11 @@ import test.torrentdb.TestBlockDescriptor;
 import test.torrentdb.TestFileMetadata;
 import test.torrentdb.TestFileMetadataProvider;
 import test.torrentdb.TestFileStorage;
+import test.torrentdb.TestFilesetDelta;
+import test.torrentdb.TestFilespec;
 import test.torrentdb.TestInfoBuilder;
 import test.torrentdb.TestMemoryStorage;
+import test.torrentdb.TestMutableFileset;
 import test.torrentdb.TestPiece;
 import test.torrentdb.TestPieceDatabase;
 import test.torrentdb.TestInfoHash;
@@ -106,7 +109,10 @@ import test.util.elastictree.TestElasticTree;
 	TestElasticTree.class,
 	TestDSAUtil.class,
 	TestStorageDescriptor.class,
-	TestPeerProtocolNegotiator.class
+	TestPeerProtocolNegotiator.class,
+	TestFilespec.class,
+	TestFilesetDelta.class,
+	TestMutableFileset.class
 })
 public class AllTests {
 	// This space left blank
