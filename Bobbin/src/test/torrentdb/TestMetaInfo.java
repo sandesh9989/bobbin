@@ -25,6 +25,7 @@ import org.itadaki.bobbin.bencode.BValue;
 import org.itadaki.bobbin.bencode.InvalidEncodingException;
 import org.itadaki.bobbin.torrentdb.Filespec;
 import org.itadaki.bobbin.torrentdb.Info;
+import org.itadaki.bobbin.torrentdb.InfoFileset;
 import org.itadaki.bobbin.torrentdb.MetaInfo;
 import org.itadaki.bobbin.util.DSAUtil;
 import org.junit.Test;
@@ -117,11 +118,11 @@ public class TestMetaInfo {
 
 		MetaInfo metaInfo = new MetaInfo (dictionary);
 
-		List<Filespec> files = metaInfo.getInfo().getFiles();
+		List<Filespec> files = metaInfo.getInfo().getFileset().getFiles();
 		assertEquals (1, files.size());
-		assertEquals (1, files.get(0).name.size());
-		assertEquals ("TestTorrent.txt", files.get(0).name.get(0));
-		assertEquals (new Long (1024), files.get(0).length);
+		assertEquals (1, files.get(0).getName().size());
+		assertEquals ("TestTorrent.txt", files.get(0).getName().get(0));
+		assertEquals (new Long (1024), files.get(0).getLength());
 
 		assertEquals ("http://te.st:6666/announce", metaInfo.getAnnounceURL());
 		assertArrayEquals (new byte[] {-17, 25, -10, 77, 107, -18, 22, 120, -117, -11, 0, 43, -15, 94, 67, -74, -36, -66, -63, -73},
@@ -141,15 +142,15 @@ public class TestMetaInfo {
 		BDictionary dictionary = standardMultiFileMetaInfo();
 		MetaInfo metaInfo = new MetaInfo (dictionary);
 
-		List<Filespec> files = metaInfo.getInfo().getFiles();
+		List<Filespec> files = metaInfo.getInfo().getFileset().getFiles();
 		assertEquals (2, files.size());
-		assertEquals (2, files.get(0).name.size());
-		assertEquals ("dir1", files.get(0).name.get(0));
-		assertEquals ("file1.txt", files.get(0).name.get(1));
-		assertEquals (new Long (123), files.get(0).length);
-		assertEquals (1, files.get(1).name.size());
-		assertEquals ("file2.txt", files.get(1).name.get(0));
-		assertEquals (new Long (456), files.get(1).length);
+		assertEquals (2, files.get(0).getName().size());
+		assertEquals ("dir1", files.get(0).getName().get(0));
+		assertEquals ("file1.txt", files.get(0).getName().get(1));
+		assertEquals (new Long (123), files.get(0).getLength());
+		assertEquals (1, files.get(1).getName().size());
+		assertEquals ("file2.txt", files.get(1).getName().get(0));
+		assertEquals (new Long (456), files.get(1).getLength());
 
 		assertEquals ("http://te.st:6666/announce", metaInfo.getAnnounceURL());
 		assertArrayEquals (new byte[] {94, 97, -78, 84, 43, -31, 33, 55, 91, -103, 83, 98, -112, -75, -106, -23, -120, 90, 81, 7},
@@ -842,18 +843,19 @@ public class TestMetaInfo {
 		int pieceSize = 262144;
 		byte[] pieces = "01234567890123456789".getBytes();
 
-		MetaInfo metaInfo = new MetaInfo (announceURLs, Info.createSingleFile (name, length, pieceSize, pieces), null);
+		Info info = Info.create (new InfoFileset (new Filespec (name, length)), pieceSize, pieces);
+		MetaInfo metaInfo = new MetaInfo (announceURLs, info, null);
 
 		assertEquals (announceURL, metaInfo.getAnnounceURL());
 		assertEquals (1, metaInfo.getAnnounceURLs().size());
 		assertEquals (1, metaInfo.getAnnounceURLs().get(0).size());
 		assertEquals (announceURL, metaInfo.getAnnounceURLs().get(0).get (0));
 
-		List<Filespec> files = metaInfo.getInfo().getFiles();
+		List<Filespec> files = metaInfo.getInfo().getFileset().getFiles();
 		assertEquals (1, files.size());
-		assertEquals (1, files.get(0).name.size());
-		assertEquals (name, files.get(0).name.get(0));
-		assertEquals (new Long (length), files.get(0).length);
+		assertEquals (1, files.get(0).getName().size());
+		assertEquals (name, files.get(0).getName().get(0));
+		assertEquals (new Long (length), files.get(0).getLength());
 
 		assertEquals (pieceSize, metaInfo.getInfo().getPieceLength());
 		assertArrayEquals (pieces, metaInfo.getInfo().getPieces());
@@ -882,18 +884,19 @@ public class TestMetaInfo {
 		int pieceSize = 262144;
 		byte[] rootHash = "01234567890123456789".getBytes();
 
-		MetaInfo metaInfo = new MetaInfo (announceURLs, Info.createSingleFileMerkle (name, length, pieceSize, rootHash), null);
+		Info info = Info.createMerkle (new InfoFileset (new Filespec (name, length)), pieceSize, rootHash);
+		MetaInfo metaInfo = new MetaInfo (announceURLs, info, null);
 
 		assertEquals (announceURL, metaInfo.getAnnounceURL());
 		assertEquals (1, metaInfo.getAnnounceURLs().size());
 		assertEquals (1, metaInfo.getAnnounceURLs().get(0).size());
 		assertEquals (announceURL, metaInfo.getAnnounceURLs().get(0).get (0));
 
-		List<Filespec> files = metaInfo.getInfo().getFiles();
+		List<Filespec> files = metaInfo.getInfo().getFileset().getFiles();
 		assertEquals (1, files.size());
-		assertEquals (1, files.get(0).name.size());
-		assertEquals (name, files.get(0).name.get(0));
-		assertEquals (new Long (length), files.get(0).length);
+		assertEquals (1, files.get(0).getName().size());
+		assertEquals (name, files.get(0).getName().get(0));
+		assertEquals (new Long (length), files.get(0).getLength());
 
 		assertEquals (pieceSize, metaInfo.getInfo().getPieceLength());
 		assertNull (metaInfo.getInfo().getPieces());
@@ -933,7 +936,8 @@ public class TestMetaInfo {
 		sign.update (rootHash);
 		byte[] rootSignature = DSAUtil.derSignatureToP1363Signature (sign.sign());
 
-		MetaInfo metaInfo = new MetaInfo (announceURLs, Info.createSingleFileElastic (name, length, pieceSize, rootHash, rootSignature), new KeyPair (publicKey, privateKey));
+		Info info = Info.createElastic (new InfoFileset (new Filespec (name, length)), pieceSize, rootHash, rootSignature);
+		MetaInfo metaInfo = new MetaInfo (announceURLs, info, new KeyPair (publicKey, privateKey));
 
 		// Would throw exception if the signatures didn't match the key
 		new MetaInfo (metaInfo.getDictionary());
@@ -954,29 +958,25 @@ public class TestMetaInfo {
 		List<List<String>> announceURLs = new ArrayList<List<String>>();
 		announceURLs.add (tier);
 		String name = "dir1";
-		List<List<String>> filePaths = new ArrayList<List<String>>();
-		filePaths.add (Arrays.asList (new String[] { "file1.txt" }));
-		filePaths.add (Arrays.asList (new String[] { "dir2", "file2.txt" }));
-		List<Long> lengths = Arrays.asList (
-				(long)1234,
-				(long)5678
-		);
+		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
+				new Filespec (Arrays.asList (new String[] { "file1.txt" }), 1234L),
+				new Filespec (Arrays.asList (new String[] { "dir2", "file2.txt" }), 5678L),
+		});
 		int pieceSize = 262144;
 		byte[] pieces = "01234567890123456789".getBytes();
 
-		MetaInfo metaInfo = new MetaInfo (announceURLs, Info.createMultiFile (name, filePaths, lengths, pieceSize, pieces), null);
+		Info info = Info.create (new InfoFileset (name, filespecs), pieceSize, pieces);
+		MetaInfo metaInfo = new MetaInfo (announceURLs, info, null);
 
 		assertEquals (announceURL, metaInfo.getAnnounceURL());
 		assertEquals (1, metaInfo.getAnnounceURLs().size());
 		assertEquals (1, metaInfo.getAnnounceURLs().get(0).size());
 		assertEquals (announceURL, metaInfo.getAnnounceURLs().get(0).get (0));
 
-		List<Filespec> metaFiles = metaInfo.getInfo().getFiles();
-		for (int i = 0; i < filePaths.size(); i++) {
-			List<String> filePath = filePaths.get (i);
-			List<String> metaFilePath = metaFiles.get(i).name;
-			assertArrayEquals (filePath.toArray(), metaFilePath.toArray());
-			assertEquals (lengths.get (i), metaFiles.get(i).length);
+		List<Filespec> metaFiles = metaInfo.getInfo().getFileset().getFiles();
+		assertEquals (filespecs.size(), metaFiles.size());
+		for (int i = 0; i < filespecs.size(); i++) {
+			assertEquals (filespecs.get (i), metaFiles.get(i));
 		}
 
 		assertEquals (pieceSize, metaInfo.getInfo().getPieceLength());
@@ -1002,29 +1002,25 @@ public class TestMetaInfo {
 		List<List<String>> announceURLs = new ArrayList<List<String>>();
 		announceURLs.add (tier);
 		String name = "dir1";
-		List<List<String>> filePaths = new ArrayList<List<String>>();
-		filePaths.add (Arrays.asList (new String[] { "file1.txt" }));
-		filePaths.add (Arrays.asList (new String[] { "dir2", "file2.txt" }));
-		List<Long> lengths = Arrays.asList (
-				(long)1234,
-				(long)5678
-		);
+		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
+				new Filespec (Arrays.asList (new String[] { "file1.txt" }), 1234L),
+				new Filespec (Arrays.asList (new String[] { "dir2", "file2.txt" }), 5678L),
+		});
 		int pieceSize = 262144;
 		byte[] rootHash = "01234567890123456789".getBytes();
 
-		MetaInfo metaInfo = new MetaInfo (announceURLs, Info.createMultiFileMerkle (name, filePaths, lengths, pieceSize, rootHash), null);
+		Info info = Info.createMerkle (new InfoFileset (name, filespecs), pieceSize, rootHash);
+		MetaInfo metaInfo = new MetaInfo (announceURLs, info, null);
 
 		assertEquals (announceURL, metaInfo.getAnnounceURL());
 		assertEquals (1, metaInfo.getAnnounceURLs().size());
 		assertEquals (1, metaInfo.getAnnounceURLs().get(0).size());
 		assertEquals (announceURL, metaInfo.getAnnounceURLs().get(0).get (0));
 
-		List<Filespec> metaFiles = metaInfo.getInfo().getFiles();
-		for (int i = 0; i < filePaths.size(); i++) {
-			List<String> filePath = filePaths.get (i);
-			List<String> metaFilePath = metaFiles.get(i).name;
-			assertArrayEquals (filePath.toArray(), metaFilePath.toArray());
-			assertEquals (lengths.get (i), metaFiles.get(i).length);
+		List<Filespec> metaFiles = metaInfo.getInfo().getFileset().getFiles();
+		assertEquals (filespecs.size(), metaFiles.size());
+		for (int i = 0; i < filespecs.size(); i++) {
+			assertEquals (filespecs.get (i), metaFiles.get(i));
 		}
 
 		assertEquals (pieceSize, metaInfo.getInfo().getPieceLength());

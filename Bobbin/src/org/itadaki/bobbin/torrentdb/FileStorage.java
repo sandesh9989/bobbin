@@ -88,11 +88,7 @@ public class FileStorage implements Storage {
 
 
 	/**
-	 * Checks that a given File is either
-	 * <ul>
-	 *   <li>Nonexistent, or</li>
-	 *   <li>An existing, readable directory</li>
-	 * </ul>
+	 * Checks that a given File is an existing, readable directory
 	 *
 	 * @param directory The file to test
 	 * @throws IncompatibleLocationException if the file is not a valid directory
@@ -100,8 +96,9 @@ public class FileStorage implements Storage {
 	private static void checkDirectoryIsValid (File directory) throws IncompatibleLocationException {
 
 		if (
-				   directory.exists()
-				&& !(directory.isDirectory() && directory.canRead())
+				   !directory.exists()
+				|| !directory.isDirectory()
+				|| !directory.canRead()
 		   )
 		{
 			throw new IncompatibleLocationException ("Invalid directory name: " + directory.getAbsolutePath());
@@ -580,9 +577,9 @@ public class FileStorage implements Storage {
 		parentDirectory = parentDirectory.getAbsoluteFile();
 
 		File effectiveParentDirectory = parentDirectory;
-		if (info.getBaseDirectoryName() != null) {
-			checkFilePartIsValid (info.getBaseDirectoryName());
-			effectiveParentDirectory = new File (effectiveParentDirectory, info.getBaseDirectoryName());
+		if (!info.getFileset().isSingleFile()) {
+			checkFilePartIsValid (info.getFileset().getBaseDirectoryName());
+			effectiveParentDirectory = new File (effectiveParentDirectory, info.getFileset().getBaseDirectoryName());
 			checkIsChild (parentDirectory, effectiveParentDirectory);
 		}
 		checkDirectoryIsValid (effectiveParentDirectory);
@@ -590,11 +587,11 @@ public class FileStorage implements Storage {
 		// Create list of files to include in the torrent
 		List<File> files = new ArrayList<File>();
 		List<Long> fileLengths = new ArrayList<Long>();
-		for (Filespec filespec : info.getFiles()) {
-			int numParts = filespec.name.size();
+		for (Filespec filespec : info.getFileset().getFiles()) {
+			int numParts = filespec.getName().size();
 			StringBuilder fileBuilder = new StringBuilder();
 			for (int i = 0; i < numParts; i++) {
-				String filePart = filespec.name.get (i);
+				String filePart = filespec.getName().get (i);
 				checkFilePartIsValid (filePart);
 				fileBuilder.append (filePart);
 				if (i < (numParts - 1)) {
@@ -605,7 +602,7 @@ public class FileStorage implements Storage {
 			checkFileIsValid (assembledFile);
 			checkIsChild (effectiveParentDirectory, assembledFile);
 			files.add (assembledFile);
-			fileLengths.add (filespec.length);
+			fileLengths.add (filespec.getLength());
 		}
 
 		return new FileStorage (files, fileLengths, info.getPieceLength());

@@ -14,7 +14,9 @@ import java.security.Signature;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 
+import org.itadaki.bobbin.torrentdb.Filespec;
 import org.itadaki.bobbin.torrentdb.Info;
+import org.itadaki.bobbin.torrentdb.InfoFileset;
 import org.itadaki.bobbin.torrentdb.MemoryStorage;
 import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
@@ -114,7 +116,7 @@ public class MockPieceDatabase {
 
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (pieceSize, numPieces * pieceSize);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.createSingleFile ("test", numPieces * pieceSize, pieceSize, pieceHashes);
+		Info info = Info.create (new InfoFileset (new Filespec ("test", (long)(numPieces * pieceSize))), pieceSize, pieceHashes);
 
 		PieceDatabase pieceDatabase = new PieceDatabase (info, null, storage, null);
 
@@ -135,7 +137,7 @@ public class MockPieceDatabase {
 	public static PieceDatabase createEmptyMerkle (int pieceSize, int totalLength, byte[] rootHash) throws Exception {
 
 		MemoryStorage storage = new MemoryStorage (new StorageDescriptor (pieceSize, totalLength));
-		Info info = Info.createSingleFileMerkle ("test", totalLength, pieceSize, rootHash);
+		Info info = Info.createMerkle (new InfoFileset (new Filespec ("test", (long)totalLength)), pieceSize, rootHash);
 		PieceDatabase pieceDatabase = new PieceDatabase (info, null, storage, null);
 
 		return pieceDatabase;
@@ -160,7 +162,9 @@ public class MockPieceDatabase {
 		MemoryStorage storage = pseudoRandomStorage (piecesPresent, pieceSize);
 		ElasticTree tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
 
-		Info info = Info.createSingleFileMerkle ("test", numPieces * pieceSize, pieceSize, tree.getView (totalLength).getRootHash());
+		Info info = Info.createMerkle (
+				new InfoFileset (new Filespec ("test", (long)totalLength)), pieceSize, tree.getView (totalLength).getRootHash()
+		);
 
 		PieceDatabase pieceDatabase = new PieceDatabase (info, null, storage, null);
 
@@ -196,11 +200,10 @@ public class MockPieceDatabase {
 			throw new InternalError (e.getMessage());
 		}
 
-		Info info = Info.createSingleFileElastic (
-				"test",
-				numPieces * pieceSize,
+		Info info = Info.createElastic (
+				new InfoFileset (new Filespec ("test", (long)totalLength)),
 				pieceSize,
-				tree.getView(totalLength).getRootHash(),
+				tree.getView (totalLength).getRootHash(),
 				DSAUtil.derSignatureToP1363Signature (derSignature)
 		);
 

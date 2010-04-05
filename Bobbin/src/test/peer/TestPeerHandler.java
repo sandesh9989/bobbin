@@ -26,7 +26,9 @@ import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConstants;
 import org.itadaki.bobbin.peer.requestmanager.RequestManager;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
+import org.itadaki.bobbin.torrentdb.Filespec;
 import org.itadaki.bobbin.torrentdb.Info;
+import org.itadaki.bobbin.torrentdb.InfoFileset;
 import org.itadaki.bobbin.torrentdb.MemoryStorage;
 import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
@@ -1832,7 +1834,12 @@ public class TestPeerHandler {
 		int totalLength = 16384 + 8192;
 		ElasticTree tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
 		byte[] originalSignature = Util.dsaSign (MockPieceDatabase.mockPrivateKey, tree.getView(totalLength).getRootHash());
-		Info info = Info.createSingleFileElastic ("pieceDatabase", totalLength, pieceSize, tree.getView(totalLength).getRootHash(), originalSignature);
+		Info info = Info.createElastic (
+				new InfoFileset (new Filespec ("pieceDatabase", (long)totalLength)),
+				pieceSize,
+				tree.getView(totalLength).getRootHash(),
+				originalSignature
+		);
 		Storage storage = new MemoryStorage (new StorageDescriptor (pieceSize, totalLength));
 		PieceDatabase pieceDatabase = new PieceDatabase (info, MockPieceDatabase.mockPublicKey, storage, null);
 		pieceDatabase.start (true);

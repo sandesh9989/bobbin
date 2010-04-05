@@ -8,7 +8,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import org.itadaki.bobbin.bencode.BBinary;
@@ -18,7 +17,6 @@ import org.itadaki.bobbin.bencode.BInteger;
 import org.itadaki.bobbin.bencode.BList;
 import org.itadaki.bobbin.bencode.BValue;
 import org.itadaki.bobbin.bencode.InvalidEncodingException;
-
 
 
 /**
@@ -35,15 +33,9 @@ public final class Info {
 
 	/**
 	 * Cached value calculated from the dictionary:<br>
-	 * The recommended base directory of the torrent file path, if any
+	 * The fileset
 	 */
-	private final String baseDirectoryName;
-
-	/**
-	 * Cached value calculated from the dictionary:<br>
-	 * The list of files
-	 */
-	private final List<Filespec> files;
+	private final InfoFileset fileset;
 
 	/**
 	 * Cached value calculated from the dictionary:<br>
@@ -84,11 +76,7 @@ public final class Info {
 	/**
 	 * Constructs an Info dictionary
 	 *
-	 * @param name The filename (single file) or suggested base directory name (multiple file)
-	 * @param length The file's length (single file)
-	 * @param filePaths The filenames (relative to the base directory), each
-	 *                  represented as a list of path elements
-	 * @param fileLengths The file lengths
+	 * @param fileset The fileset
 	 * @param pieceSize The piece size
 	 * @param pieceHashes The concatenated piece hashes
 	 * @param rootHash The Merkle tree root hash
@@ -97,12 +85,32 @@ public final class Info {
 	 * @return The constructed Info dictionary
 	 * @throws InvalidEncodingException On any validation error
 	 */
-	private static BDictionary buildDictionary (String name, Long length, List<List<String>> filePaths, List<Long> fileLengths, int pieceSize, byte[] pieceHashes,
-			byte[] rootHash, byte[] rootSignature, boolean elastic) throws InvalidEncodingException
+	private static BDictionary buildDictionary (InfoFileset fileset, int pieceSize, byte[] pieceHashes, byte[] rootHash, byte[] rootSignature, boolean elastic)
+			throws InvalidEncodingException
 	{
 
 		BDictionary dictionary = new BDictionary();
-		dictionary.put ("name", name);
+
+		if (fileset.isSingleFile()) {
+			dictionary.put ("name", fileset.getFiles().get(0).getName().get (0));
+			dictionary.put ("length", fileset.getLength());
+		} else {
+			dictionary.put ("name", fileset.getBaseDirectoryName());
+
+			BList filesList = new BList();
+			for (int i = 0; i < fileset.getFiles().size(); i++) {
+				BDictionary fileDictionary = new BDictionary();
+				BList filePath = new BList();
+				for (String pathElement : fileset.getFiles().get(i).getName()) {
+					filePath.add (pathElement);
+				}
+				fileDictionary.put ("path", filePath);
+				fileDictionary.put ("length", fileset.getFiles().get(i).getLength());
+				filesList.add (fileDictionary);
+			}
+			dictionary.put ("files", filesList);
+		}
+
 		dictionary.put ("piece length", pieceSize);
 
 		if (pieceHashes != null) {
@@ -115,27 +123,6 @@ public final class Info {
 					dictionary.put ("elastic", new byte[] { 1 });
 				}
 			}
-		}
-
-		if (length != null) {
-			dictionary.put ("length", length);
-		} else {
-			if (filePaths.size() != fileLengths.size()) {
-				throw new InvalidEncodingException ("Different number of file paths and file lengths");
-			}
-	
-			BList filesList = new BList();
-			for (int i = 0; i < filePaths.size(); i++) {
-				BDictionary fileDictionary = new BDictionary();
-				BList filePath = new BList();
-				for (String pathElement : filePaths.get (i)) {
-					filePath.add (pathElement);
-				}
-				fileDictionary.put ("path", filePath);
-				fileDictionary.put ("length", fileLengths.get(i));
-				filesList.add (fileDictionary);
-			}
-			dictionary.put ("files", filesList);
 		}
 
 		return dictionary;
@@ -167,21 +154,11 @@ public final class Info {
 
 
 	/**
-	 * @return The suggested base directory name of the torrent file path, if present, or null 
+	 * @return The fileset
 	 */
-	public String getBaseDirectoryName() {
+	public InfoFileset getFileset() {
 
-		return this.baseDirectoryName;
-
-	}
-
-
-	/**
-	 * @return The list of files contained in the torrent
-	 */
-	public List<Filespec> getFiles() {
-
-		return this.files;
+		return this.fileset;
 
 	}
 
@@ -274,7 +251,7 @@ public final class Info {
 
 	/**
 	 * Creates an Info from the given dictionary
-	 * 
+	 *
 	 * @param dictionary The dictionary to use
 	 * @throws InvalidEncodingException if the dictionary is not a valid Info dictionary
 	 */
@@ -368,7 +345,7 @@ public final class Info {
 
 		long totalLength = 0;
 		for (Filespec file : files) {
-			totalLength += file.length;
+			totalLength += file.getLength();
 		}
 
 		// Check: '/info/pieces' or '/info/root hash' must be of the correct length
@@ -401,9 +378,12 @@ public final class Info {
 			assertTrue (rootSignatureValue != null, "'root signature' missing");
 		}
 
+		if (baseDirectoryName == null) {
+			this.fileset = new InfoFileset (files.get (0));
+		} else {
+			this.fileset = new InfoFileset (baseDirectoryName, files);
+		}
 
-		this.baseDirectoryName = baseDirectoryName;
-		this.files = Collections.unmodifiableList (files);
 		this.totalLength = totalLength;
 
 		// Calculate info hash
@@ -426,11 +406,7 @@ public final class Info {
 
 
 	/**
-	 * @param name The filename (single file) or suggested base directory name (multiple file)
-	 * @param length The file's length (single file)
-	 * @param filePaths The filenames (relative to the base directory), each
-	 *                  represented as a list of path elements
-	 * @param fileLengths The file lengths
+	 * @param fileset The fileset
 	 * @param pieceSize The piece size
 	 * @param pieceHashes The concatenated piece hashes
 	 * @param rootHash The Merkle tree root hash
@@ -438,129 +414,61 @@ public final class Info {
 	 * @param elastic If {@code true}, an Elastic info is created
 	 * @throws InvalidEncodingException On any validation error
 	 */
-	private Info (String name, Long length, List<List<String>> filePaths, List<Long> fileLengths, int pieceSize, byte[] pieceHashes,
-			byte[] rootHash, byte[] rootSignature, boolean elastic) throws InvalidEncodingException
+	private Info (InfoFileset fileset, int pieceSize, byte[] pieceHashes, byte[] rootHash, byte[] rootSignature, boolean elastic) throws InvalidEncodingException
 	{
 
-		this (buildDictionary (name, length, filePaths, fileLengths, pieceSize, pieceHashes, rootHash, rootSignature, elastic));
+		this (buildDictionary (fileset, pieceSize, pieceHashes, rootHash, rootSignature, elastic));
 
 	}
 
 
 	/**
-	 * Create a multi-file piece array Info from the given parameters
+	 * Create a piece array Info from the given parameters
 	 *
-	 * @param name The suggested base directory name
-	 * @param filePaths The filenames (relative to the base directory), each
-	 *                  represented as a list of path elements
-	 * @param fileLengths The file lengths
+	 * @param fileset The fileset
 	 * @param pieceSize The piece size
 	 * @param pieceHashes The concatenated piece hashes
 	 * @return The created Info
-	 * @throws InvalidEncodingException if any of the passed arguments fail validation 
+	 * @throws InvalidEncodingException if any of the passed arguments fail validation
 	 */
-	public static Info createMultiFile (String name, List<List<String>> filePaths, List<Long> fileLengths, int pieceSize, byte[] pieceHashes)
-			throws InvalidEncodingException
-	{
+	public static Info create (InfoFileset fileset, int pieceSize, byte[] pieceHashes) throws InvalidEncodingException {
 
-		return new Info (name, null, filePaths, fileLengths, pieceSize, pieceHashes, null, null, false);
+		return new Info (fileset, pieceSize, pieceHashes, null, null, false);
 
 	}
 
 
 	/**
-	 * Create a multi-file Merkle tree Info from the given parameters
+	 * Create a Merkle tree Info from the given parameters
 	 *
-	 * @param name The suggested base directory name
-	 * @param filePaths The filenames (relative to the base directory), each
-	 *                  represented as a list of path elements
-	 * @param fileLengths The file lengths
+	 * @param fileset The fileset
 	 * @param pieceSize The piece size
 	 * @param rootHash The Merkle tree root hash
 	 * @return The created Info
-	 * @throws InvalidEncodingException if any of the passed arguments fail validation 
+	 * @throws InvalidEncodingException if any of the passed arguments fail validation
 	 */
-	public static Info createMultiFileMerkle (String name, List<List<String>> filePaths, List<Long> fileLengths, int pieceSize, byte[] rootHash)
-			throws InvalidEncodingException
-	{
+	public static Info createMerkle (InfoFileset fileset, int pieceSize, byte[] rootHash) throws InvalidEncodingException {
 
-		return new Info (name, null, filePaths, fileLengths, pieceSize, null, rootHash, null, false);
+		return new Info (fileset, pieceSize, null, rootHash, null, false);
 
 	}
 
 
 	/**
-	 * Create a multi-file Elastic Info from the given parameters
+	 * Create an Elastic Info from the given parameters
 	 *
-	 * @param name The suggested base directory name
-	 * @param filePaths The filenames (relative to the base directory), each
-	 *                  represented as a list of path elements
-	 * @param fileLengths The file lengths
+	 * @param fileset The fileset
 	 * @param pieceSize The piece size
 	 * @param rootHash The Merkle tree root hash
 	 * @param rootSignature The 40-byte, P1363 encoded DSA signature of the root hash
 	 * @return The created Info
-	 * @throws InvalidEncodingException if any of the passed arguments fail validation 
+	 * @throws InvalidEncodingException if any of the passed arguments fail validation
 	 */
-	public static Info createMultiFileElastic (String name, List<List<String>> filePaths, List<Long> fileLengths, int pieceSize,
-			byte[] rootHash, byte[] rootSignature) throws InvalidEncodingException
-	{
-
-		return new Info (name, null, filePaths, fileLengths, pieceSize, null, rootHash, rootSignature, true);
-
-	}
-
-
-	/**
-	 * Create a single file piece array Info from the given parameters
-	 *
-	 * @param name The filename
-	 * @param length The file's length
-	 * @param pieceSize The piece size
-	 * @param pieceHashes The concatenated piece hashes
-	 * @return The created Info
-	 * @throws InvalidEncodingException if any of the passed arguments fail validation 
-	 */
-	public static Info createSingleFile (String name, long length, int pieceSize, byte[] pieceHashes) throws InvalidEncodingException {
-
-		return new Info (name, length, null, null, pieceSize, pieceHashes, null, null, false);
-
-	}
-
-
-	/**
-	 * Create a single file Merkle tree Info from the given parameters
-	 *
-	 * @param name The filename
-	 * @param length The file's length
-	 * @param pieceSize The piece size
-	 * @param rootHash The Merkle tree root hash
-	 * @return The created Info
-	 * @throws InvalidEncodingException if any of the passed arguments fail validation 
-	 */
-	public static Info createSingleFileMerkle (String name, long length, int pieceSize, byte[] rootHash) throws InvalidEncodingException {
-
-		return new Info (name, length, null, null, pieceSize, null, rootHash, null, false);
-
-	}
-
-
-	/**
-	 * Create a single file ELastic Info from the given parameters
-	 *
-	 * @param name The filename
-	 * @param length The file's length
-	 * @param pieceSize The piece size
-	 * @param rootHash The Merkle tree root hash
-	 * @param rootSignature The 40-byte, P1363 encoded DSA signature of the root hash
-	 * @return The created Info
-	 * @throws InvalidEncodingException if any of the passed arguments fail validation 
-	 */
-	public static Info createSingleFileElastic (String name, long length, int pieceSize, byte[] rootHash, byte[] rootSignature)
+	public static Info createElastic (InfoFileset fileset, int pieceSize, byte[] rootHash, byte[] rootSignature)
 			throws InvalidEncodingException
 	{
 
-		return new Info (name, length, null, null, pieceSize, null, rootHash, rootSignature, true);
+		return new Info (fileset, pieceSize, null, rootHash, rootSignature, true);
 
 	}
 
