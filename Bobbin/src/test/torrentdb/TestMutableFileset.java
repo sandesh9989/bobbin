@@ -46,6 +46,7 @@ public class TestMutableFileset {
 		Filespec filespec = new Filespec (Arrays.asList (new String[] { " A " }), 1234L);
 		InfoFileset infoFileset = new InfoFileset (filespec);
 		MutableFileset mutableFileset = new MutableFileset();
+		Long length = 1234L;
 
 		// When
 		mutableFileset.setInfoFileset (infoFileset);
@@ -53,7 +54,7 @@ public class TestMutableFileset {
 		// Then
 		List<Filespec> files = mutableFileset.getFiles();
 		assertEquals (1, files.size());
-		assertEquals ((Long)1234L, files.get(0).getLength());
+		assertEquals (length, files.get(0).getLength());
 		assertNull (mutableFileset.getBaseDirectoryName());
 		assertTrue (mutableFileset.canExtendData());
 		assertFalse (mutableFileset.canExtendFiles());
@@ -71,6 +72,7 @@ public class TestMutableFileset {
 		List<Filespec> infoFiles = Arrays.asList (new Filespec[] { new Filespec (Arrays.asList (new String[] { " A " }), 1234L) });
 		InfoFileset infoFileset = new InfoFileset ("base", infoFiles);
 		MutableFileset mutableFileset = new MutableFileset();
+		Long length = 1234L;
 
 		// When
 		mutableFileset.setInfoFileset (infoFileset);
@@ -78,7 +80,7 @@ public class TestMutableFileset {
 		// Then
 		List<Filespec> files = mutableFileset.getFiles();
 		assertEquals (1, files.size());
-		assertEquals ((Long)1234L, files.get(0).getLength());
+		assertEquals (length, files.get(0).getLength());
 		assertEquals ("base", mutableFileset.getBaseDirectoryName());
 		assertTrue (mutableFileset.canExtendData());
 		assertTrue (mutableFileset.canExtendFiles());
@@ -96,7 +98,8 @@ public class TestMutableFileset {
 		Filespec filespec = new Filespec (Arrays.asList (new String[] { " A " }), 1234L);
 		InfoFileset infoFileset = new InfoFileset (filespec);
 		MutableFileset mutableFileset = new MutableFileset (infoFileset);
-		FilesetDelta delta = new FilesetDelta (4567L, new ArrayList<Filespec>(), false, false);
+		Long length = 4567L;
+		FilesetDelta delta = new FilesetDelta (length, new ArrayList<Filespec>(), false, false);
 
 		// When
 		mutableFileset.applyDelta (delta);
@@ -104,7 +107,7 @@ public class TestMutableFileset {
 		// Then
 		List<Filespec> updatedFiles = mutableFileset.getFiles();
 		assertEquals (1, updatedFiles.size());
-		assertEquals ((Long)4567L, updatedFiles.get(0).getLength());
+		assertEquals (length, updatedFiles.get(0).getLength());
 		assertNull (mutableFileset.getBaseDirectoryName());
 		assertTrue (mutableFileset.canExtendData());
 		assertFalse (mutableFileset.canExtendFiles());
@@ -123,7 +126,8 @@ public class TestMutableFileset {
 		InfoFileset infoFileset = new InfoFileset ("base", infoFiles);
 		MutableFileset mutableFileset = new MutableFileset (infoFileset);
 		List<Filespec> additionalFiles = Arrays.asList (new Filespec[] { new Filespec (Arrays.asList (new String[] { " B " }), 1234L) });
-		FilesetDelta delta = new FilesetDelta (4567L, additionalFiles, false, false);
+		Long length = 4567L;
+		FilesetDelta delta = new FilesetDelta (length, additionalFiles, false, false);
 
 		// When
 		mutableFileset.applyDelta (delta);
@@ -131,7 +135,7 @@ public class TestMutableFileset {
 		// Then
 		List<Filespec> updatedFiles = mutableFileset.getFiles();
 		assertEquals (2, updatedFiles.size());
-		assertEquals ((Long)4567L, updatedFiles.get(0).getLength());
+		assertEquals (length, updatedFiles.get(0).getLength());
 		assertEquals ("base", mutableFileset.getBaseDirectoryName());
 		assertTrue (mutableFileset.canExtendData());
 		assertTrue (mutableFileset.canExtendFiles());
@@ -150,7 +154,8 @@ public class TestMutableFileset {
 		InfoFileset infoFileset = new InfoFileset ("base", infoFiles);
 		MutableFileset mutableFileset = new MutableFileset (infoFileset);
 		List<Filespec> additionalFiles = Arrays.asList (new Filespec[] { new Filespec (Arrays.asList (new String[] { " B " }), 1234L) });
-		FilesetDelta delta = new FilesetDelta (4567L, additionalFiles, true, false);
+		Long length = 4567L;
+		FilesetDelta delta = new FilesetDelta (length, additionalFiles, true, false);
 
 		// When
 		mutableFileset.applyDelta (delta);
@@ -158,7 +163,7 @@ public class TestMutableFileset {
 		// Then
 		List<Filespec> updatedFiles = mutableFileset.getFiles();
 		assertEquals (2, updatedFiles.size());
-		assertEquals ((Long)4567L, updatedFiles.get(0).getLength());
+		assertEquals (length, updatedFiles.get(0).getLength());
 		assertEquals ("base", mutableFileset.getBaseDirectoryName());
 		assertTrue (mutableFileset.canExtendData());
 		assertFalse (mutableFileset.canExtendFiles());
@@ -177,7 +182,8 @@ public class TestMutableFileset {
 		InfoFileset infoFileset = new InfoFileset ("base", infoFiles);
 		MutableFileset mutableFileset = new MutableFileset (infoFileset);
 		List<Filespec> additionalFiles = Arrays.asList (new Filespec[] { new Filespec (Arrays.asList (new String[] { " B " }), 1234L) });
-		FilesetDelta delta = new FilesetDelta (4567L, additionalFiles, false, true);
+		Long length = 4567L;
+		FilesetDelta delta = new FilesetDelta (length, additionalFiles, false, true);
 
 		// When
 		mutableFileset.applyDelta (delta);
@@ -185,7 +191,7 @@ public class TestMutableFileset {
 		// Then
 		List<Filespec> updatedFiles = mutableFileset.getFiles();
 		assertEquals (2, updatedFiles.size());
-		assertEquals ((Long)4567L, updatedFiles.get(0).getLength());
+		assertEquals (length, updatedFiles.get(0).getLength());
 		assertEquals ("base", mutableFileset.getBaseDirectoryName());
 		assertFalse (mutableFileset.canExtendData());
 		assertFalse (mutableFileset.canExtendFiles());
