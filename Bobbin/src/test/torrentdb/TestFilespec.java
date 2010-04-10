@@ -21,7 +21,7 @@ public class TestFilespec {
 
 		// Given
 		List<String> name = Arrays.asList (new String[] { "A" });
-		long length = 1234L;
+		Long length = 1234L;
 
 		// When
 		Filespec filespec = new Filespec (name, length);
@@ -41,7 +41,7 @@ public class TestFilespec {
 
 		// Given
 		List<String> name = Arrays.asList (new String[] { "A", "B" });
-		long length = 1234L;
+		Long length = 1234L;
 
 		// When
 		Filespec filespec = new Filespec (name, length);
