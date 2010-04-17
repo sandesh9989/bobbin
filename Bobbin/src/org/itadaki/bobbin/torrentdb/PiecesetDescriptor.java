@@ -6,9 +6,9 @@ package org.itadaki.bobbin.torrentdb;
 
 
 /**
- * Describes the characteristics of a Storage
+ * Describes the piece set characteristics of a Storage
  */
-public final class StorageDescriptor {
+public final class PiecesetDescriptor {
 
 	/**
 	 * The standard piece size of the Storage
@@ -32,7 +32,7 @@ public final class StorageDescriptor {
 	@Override
 	public String toString() {
 
-		return "StorageDescriptor:{" + this.pieceSize + ":" + this.length + "," + this.numberOfPieces + "}";
+		return "PiecesetDescriptor:{" + this.pieceSize + ":" + this.length + "," + this.numberOfPieces + "}";
 
 	}
 
@@ -62,7 +62,7 @@ public final class StorageDescriptor {
 		if ((this == other) || (other == null) || (getClass() != other.getClass())) {
 			return false;
 		}
-		StorageDescriptor otherDescriptor = (StorageDescriptor) other;
+		PiecesetDescriptor otherDescriptor = (PiecesetDescriptor) other;
 		if ((this.pieceSize != otherDescriptor.pieceSize) || (this.length != otherDescriptor.length)) {
 			return false;
 		}
@@ -152,7 +152,7 @@ public final class StorageDescriptor {
 	 * @param pieceSize The standard piece size of the Storage
 	 * @param length The total byte length of the Storage
 	 */
-	public StorageDescriptor (int pieceSize, long length) {
+	public PiecesetDescriptor (int pieceSize, long length) {
 
 		this.pieceSize = pieceSize;
 		this.length = length;

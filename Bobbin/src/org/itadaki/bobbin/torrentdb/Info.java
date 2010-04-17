@@ -232,10 +232,12 @@ public final class Info {
 
 
 	/**
-	 * @return A StorageDescriptor appropriate for the Info
+	 * @return A PiecesetDescriptor appropriate for the Info
 	 */
-	public StorageDescriptor getStorageDescriptor() {
-		return new StorageDescriptor (this.getPieceLength(), this.totalLength);
+	public PiecesetDescriptor getPiecesetDescriptor() {
+
+		return new PiecesetDescriptor (this.getPieceLength(), this.totalLength);
+
 	}
 
 

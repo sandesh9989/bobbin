@@ -255,7 +255,7 @@ public class TorrentManager {
 								TorrentManager.this.peerCoordinator.getStatistics().getCounter (PeerStatistics.Type.BLOCK_BYTES_SENT).getTotal(),
 								TorrentManager.this.peerCoordinator.getStatistics().getCounter (PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW).getTotal(),
 								TorrentManager.this.peerCoordinator.getNeededPieceCount() *
-										TorrentManager.this.pieceDatabase.getStorageDescriptor().getPieceSize()
+										TorrentManager.this.pieceDatabase.getPiecesetDescriptor().getPieceSize()
 						);
 
 					}
@@ -674,7 +674,7 @@ public class TorrentManager {
 	 */
 	public int getNumberOfPieces() {
 
-		return this.pieceDatabase.getStorageDescriptor().getNumberOfPieces();
+		return this.pieceDatabase.getPiecesetDescriptor().getNumberOfPieces();
 
 	}
 

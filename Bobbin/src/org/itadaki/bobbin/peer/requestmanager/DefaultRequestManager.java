@@ -22,7 +22,7 @@ import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConstants;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.Piece;
-import org.itadaki.bobbin.torrentdb.StorageDescriptor;
+import org.itadaki.bobbin.torrentdb.PiecesetDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.elastictree.HashChain;
@@ -35,9 +35,9 @@ import org.itadaki.bobbin.util.elastictree.HashChain;
 public class DefaultRequestManager implements RequestManager {
 
 	/**
-	 * The {@code StorageDescriptor} for the managed torrent
+	 * The {@code PiecesetDescriptor} for the managed torrent
 	 */
-	private StorageDescriptor storageDescriptor;
+	private PiecesetDescriptor piecesetDescriptor;
 
 	/**
 	 * The listener to inform of events
@@ -122,8 +122,8 @@ public class DefaultRequestManager implements RequestManager {
 			    && peerBitField.get (pieceNumber)
 			    && (
 			               (pieceNumber < (peerBitField.length() - 1))
-			            || (peerViewLength == DefaultRequestManager.this.storageDescriptor.getLength())
-			            || (peerViewLength % DefaultRequestManager.this.storageDescriptor.getPieceSize() == 0)
+			            || (peerViewLength == DefaultRequestManager.this.piecesetDescriptor.getLength())
+			            || (peerViewLength % DefaultRequestManager.this.piecesetDescriptor.getPieceSize() == 0)
 			       );
 
 		}
@@ -155,7 +155,7 @@ public class DefaultRequestManager implements RequestManager {
 						// Check for orphaned pieces first
 						Piece piece = DefaultRequestManager.this.orphanedPieces.remove (pieceNumber);
 						if (piece == null) {
-							piece = new Piece (pieceNumber, DefaultRequestManager.this.storageDescriptor.getPieceLength (pieceNumber),
+							piece = new Piece (pieceNumber, DefaultRequestManager.this.piecesetDescriptor.getPieceLength (pieceNumber),
 									PeerProtocolConstants.BLOCK_LENGTH);
 						}
 						this.pieces.put (pieceNumber, piece);
@@ -516,28 +516,28 @@ public class DefaultRequestManager implements RequestManager {
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.requestmanager.RequestManager#extend(org.itadaki.bobbin.torrentdb.StorageDescriptor)
+	 * @see org.itadaki.bobbin.peer.requestmanager.RequestManager#extend(org.itadaki.bobbin.torrentdb.PiecesetDescriptor)
 	 */
-	public void extend (StorageDescriptor storageDescriptor) {
+	public void extend (PiecesetDescriptor piecesetDescriptor) {
 
-		if (storageDescriptor.getLength() < this.storageDescriptor.getLength()) {
+		if (piecesetDescriptor.getLength() < this.piecesetDescriptor.getLength()) {
 			throw new IllegalArgumentException ("Cannot extend to shorter length");
 		}
 
-		if (storageDescriptor.getPieceSize () != this.storageDescriptor.getPieceSize()) {
+		if (piecesetDescriptor.getPieceSize () != this.piecesetDescriptor.getPieceSize()) {
 			throw new IllegalArgumentException ("Cannot change piece size");
 		}
 
-		if (!this.storageDescriptor.isRegular()) {
+		if (!this.piecesetDescriptor.isRegular()) {
 			// TODO Optimisation - If there is a piece in progress, we could theoretically recycle its blocks
-			int lastPieceNumber = this.storageDescriptor.getNumberOfPieces() - 1;
+			int lastPieceNumber = this.piecesetDescriptor.getNumberOfPieces() - 1;
 			cancelRequestsForPiece (lastPieceNumber);
 			this.orphanedPieces.remove (lastPieceNumber);
 		}
 
-		this.pieceAvailability = Arrays.copyOf (this.pieceAvailability, storageDescriptor.getNumberOfPieces());
-		this.neededPieces.extend (storageDescriptor.getNumberOfPieces());
-		this.storageDescriptor = storageDescriptor;
+		this.pieceAvailability = Arrays.copyOf (this.pieceAvailability, piecesetDescriptor.getNumberOfPieces());
+		this.neededPieces.extend (piecesetDescriptor.getNumberOfPieces());
+		this.piecesetDescriptor = piecesetDescriptor;
 
 	}
 
@@ -583,15 +583,15 @@ public class DefaultRequestManager implements RequestManager {
 
 
 	/**
-	 * @param storageDescriptor The {@code StorageDescriptor} for the managed torrent
+	 * @param piecesetDescriptor The {@code PiecesetDescriptor} for the managed torrent
 	 * @param listener The listener to inform of events
 	 */
-	public DefaultRequestManager (StorageDescriptor storageDescriptor, RequestManagerListener listener) {
+	public DefaultRequestManager (PiecesetDescriptor piecesetDescriptor, RequestManagerListener listener) {
 
-		this.storageDescriptor = storageDescriptor;
+		this.piecesetDescriptor = piecesetDescriptor;
 		this.listener = listener;
-		this.pieceAvailability = new short [storageDescriptor.getNumberOfPieces()];
-		this.neededPieces = new BitField (storageDescriptor.getNumberOfPieces());
+		this.pieceAvailability = new short [piecesetDescriptor.getNumberOfPieces()];
+		this.neededPieces = new BitField (piecesetDescriptor.getNumberOfPieces());
 		this.neededPieceCount = 0;
 
 	}

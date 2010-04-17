@@ -19,9 +19,9 @@ import org.itadaki.bobbin.util.BitField;
 public interface Storage {
 
 	/**
-	 * @return A descriptor of the {@code Storage}'s characteristics
+	 * @return A descriptor of the {@code Storage}'s piece set characteristics
 	 */
-	public StorageDescriptor getDescriptor();
+	public PiecesetDescriptor getPiecesetDescriptor();
 
 	/**
 	 * @return A bitfield containing containing a {@code true} at every piece index that is fully
@@ -45,7 +45,27 @@ public interface Storage {
 	 *         {@link #close()}, otherwise {@code false}
 	 * @throws IOException If an error occurs validating the underlying storage
 	 */
-	public boolean validate (ByteBuffer cookie) throws IOException;
+	public boolean open (ByteBuffer cookie) throws IOException;
+
+	/**
+	 * Extends the total length of the storage
+	 *
+	 * @param length The new length of the storage, which must be strictly greater than the previous
+	 *        length
+	 * @throws IOException if an error occurred extending the underlying storage
+	 */
+	public void extend (long length) throws IOException;
+
+	/**
+	 * Closes the storage. All associated system resources will be released.
+	 * Reading from or writing to the {@code Storage} after closure will result in an exception.
+	 * 
+	 * @return An opaque cookie that can be passed to {@link #open(ByteBuffer)} on a subsequent
+	 *         identically constructed {@code Storage}, or {@code null} if validation is
+	 *         unsupported
+	 * @throws IOException if an error occurred closing the storage
+	 */
+	public ByteBuffer close() throws IOException;
 
 	/**
 	 * Reads a piece from storage.
@@ -81,25 +101,5 @@ public interface Storage {
 	 * @throws IndexOutOfBoundsException if the requested index or offset is out of bounds
 	 */
 	public WritableByteChannel openOutputChannel (int pieceNumber, int offset) throws IOException;
-
-	/**
-	 * Extends the total length of the storage
-	 *
-	 * @param length The new length of the storage, which must be strictly greater than the previous
-	 *        length
-	 * @throws IOException if an error occurred extending the underlying storage
-	 */
-	public void extend (long length) throws IOException;
-
-	/**
-	 * Closes the storage. All associated system resources will be released.
-	 * Reading from or writing to the {@code Storage} after closure will result in an exception.
-	 * 
-	 * @return An opaque cookie that can be passed to {@link #validate(ByteBuffer)} on a subsequent
-	 *         identically constructed {@code Storage}, or {@code null} if validation is
-	 *         unsupported
-	 * @throws IOException if an error occurred closing the storage
-	 */
-	public ByteBuffer close() throws IOException;
 
 }

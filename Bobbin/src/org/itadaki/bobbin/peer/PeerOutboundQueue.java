@@ -817,7 +817,7 @@ public class PeerOutboundQueue {
 					case ELASTIC:
 						long viewLength = piece.getHashChain().getViewLength();
 						ArrayList<ByteBuffer> bufferList = new ArrayList<ByteBuffer>();
-						if (!this.remotePeerViews.contains (viewLength) && (viewLength > this.pieceDatabase.getInfo().getStorageDescriptor().getLength())) {
+						if (!this.remotePeerViews.contains (viewLength) && (viewLength > this.pieceDatabase.getInfo().getPiecesetDescriptor().getLength())) {
 							ViewSignature viewSignature = this.pieceDatabase.getViewSignature (viewLength);
 							bufferList.addAll (Arrays.asList (PeerProtocolBuilder.elasticSignatureMessage (viewSignature)));
 							if (this.remotePeerViews.size() > 1) {

@@ -20,9 +20,9 @@ import org.itadaki.bobbin.util.BitField;
 public class MemoryStorage implements Storage {
 
 	/**
-	 * The descriptor of the {@code Storage}'s characteristics
+	 * The descriptor of the {@code Storage}'s piece set characteristics
 	 */
-	private StorageDescriptor descriptor;
+	private PiecesetDescriptor descriptor;
 
 	/**
 	 * The bytes of the stored data
@@ -33,7 +33,7 @@ public class MemoryStorage implements Storage {
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.torrentdb.Storage#getDescriptor()
 	 */
-	public StorageDescriptor getDescriptor() {
+	public PiecesetDescriptor getPiecesetDescriptor() {
 
 		return this.descriptor;
 
@@ -50,11 +50,41 @@ public class MemoryStorage implements Storage {
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.torrentdb.Storage#validate(java.nio.ByteBuffer)
+	 * @see org.itadaki.bobbin.torrentdb.Storage#open(java.nio.ByteBuffer)
 	 */
-	public boolean validate (ByteBuffer cookie) {
+	public boolean open (ByteBuffer cookie) {
 
 		return false;
+
+	}
+
+
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.torrentdb.Storage#extend(long)
+	 */
+	public void extend (long length) throws IOException {
+
+		if (length <= this.descriptor.getLength()) {
+			throw new IllegalArgumentException ("New length must be greater than existing length");
+		}
+		if (length > Integer.MAX_VALUE) {
+			throw new IllegalArgumentException ("Requested storage is too large");
+		}
+
+		this.descriptor = new PiecesetDescriptor (this.descriptor.getPieceSize(), length);
+		this.data = Arrays.copyOf (this.data, (int)length);
+
+	}
+
+
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.torrentdb.Storage#close()
+	 */
+	public ByteBuffer close() throws IOException {
+
+		this.data = null;
+
+		return null;
 
 	}
 
@@ -119,40 +149,10 @@ public class MemoryStorage implements Storage {
 	}
 
 
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.torrentdb.Storage#extend(long)
-	 */
-	public void extend (long length) throws IOException {
-
-		if (length <= this.descriptor.getLength()) {
-			throw new IllegalArgumentException ("New length must be greater than existing length");
-		}
-		if (length > Integer.MAX_VALUE) {
-			throw new IllegalArgumentException ("Requested storage is too large");
-		}
-
-		this.descriptor = new StorageDescriptor (this.descriptor.getPieceSize(), length);
-		this.data = Arrays.copyOf (this.data, (int)length);
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.torrentdb.Storage#close()
-	 */
-	public ByteBuffer close() throws IOException {
-
-		this.data = null;
-
-		return null;
-
-	}
-
-
 	/**
 	 * @param descriptor The descriptor to create a {@code MemoryStorage} for
 	 */
-	public MemoryStorage (StorageDescriptor descriptor) {
+	public MemoryStorage (PiecesetDescriptor descriptor) {
 
 		if (descriptor.getLength() > Integer.MAX_VALUE) {
 			throw new IllegalArgumentException ("Requested storage is too large");

@@ -11,7 +11,7 @@ import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 
 import org.itadaki.bobbin.torrentdb.MemoryStorage;
-import org.itadaki.bobbin.torrentdb.StorageDescriptor;
+import org.itadaki.bobbin.torrentdb.PiecesetDescriptor;
 import org.junit.Test;
 
 import test.Util;
@@ -28,7 +28,7 @@ public class TestMemoryStorage {
 	@Test(expected=IllegalArgumentException.class)
 	public void testTooLarge() {
 
-		new MemoryStorage (new StorageDescriptor (262144, (long)Integer.MAX_VALUE + 1));
+		new MemoryStorage (new PiecesetDescriptor (262144, (long)Integer.MAX_VALUE + 1));
 
 	}
 
@@ -42,7 +42,7 @@ public class TestMemoryStorage {
 
 		ByteBuffer expectedPiece = ByteBuffer.wrap (new byte[] { 1 });
 
-		MemoryStorage storage = new MemoryStorage (new StorageDescriptor (1024, 1025));
+		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1025));
 
 		byte[] writtenPiece = new byte[1024];
 		Arrays.fill (writtenPiece, (byte)1);
@@ -64,7 +64,7 @@ public class TestMemoryStorage {
 
 		ByteBuffer expectedPiece = ByteBuffer.wrap (new byte[] { 1 });
 
-		MemoryStorage storage = new MemoryStorage (new StorageDescriptor (1024, 1025));
+		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1025));
 
 		ByteBuffer writtenPiece = ByteBuffer.wrap (new byte[] { 1 });
 		storage.write (1, writtenPiece);
@@ -83,7 +83,7 @@ public class TestMemoryStorage {
 	@Test
 	public void testOutputChannel1() throws Exception {
 
-		MemoryStorage storage = new MemoryStorage (new StorageDescriptor (1024, 1024));
+		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1024));
 		WritableByteChannel outputChannel = storage.openOutputChannel (0, 0);
 
 		ByteBuffer data = ByteBuffer.wrap (Util.pseudoRandomBlock (0, 1024, 1024));
@@ -102,7 +102,7 @@ public class TestMemoryStorage {
 	@Test
 	public void testOutputChannel1p5() throws Exception {
 
-		MemoryStorage storage = new MemoryStorage (new StorageDescriptor (1024, 1524));
+		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1524));
 		WritableByteChannel outputChannel = storage.openOutputChannel (0, 0);
 
 		ByteBuffer data = ByteBuffer.wrap (Util.pseudoRandomBlock (0, 1524, 1524));
@@ -122,7 +122,7 @@ public class TestMemoryStorage {
 	@Test
 	public void testOutputChannel0p5x1p5() throws Exception {
 
-		MemoryStorage storage = new MemoryStorage (new StorageDescriptor (1024, 1524));
+		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1524));
 		WritableByteChannel outputChannel = storage.openOutputChannel (0, 500);
 
 		ByteBuffer data = ByteBuffer.allocate (1524);
@@ -146,18 +146,18 @@ public class TestMemoryStorage {
 	@Test
 	public void testExtend() throws Exception {
 
-		StorageDescriptor expectedDescriptor1 = new StorageDescriptor (1024, 1024);
-		StorageDescriptor expectedDescriptor2 = new StorageDescriptor (1024, 2048);
-		MemoryStorage storage = new MemoryStorage (new StorageDescriptor (1024, 1024));
+		PiecesetDescriptor expectedDescriptor1 = new PiecesetDescriptor (1024, 1024);
+		PiecesetDescriptor expectedDescriptor2 = new PiecesetDescriptor (1024, 2048);
+		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1024));
 
-		assertEquals (expectedDescriptor1, storage.getDescriptor());
+		assertEquals (expectedDescriptor1, storage.getPiecesetDescriptor());
 
 		storage.extend (2048);
 
 		ByteBuffer piece = ByteBuffer.wrap (Util.pseudoRandomBlock (1, 1024, 1024));
 		storage.write (1, piece);
 
-		assertEquals (expectedDescriptor2, storage.getDescriptor());
+		assertEquals (expectedDescriptor2, storage.getPiecesetDescriptor());
 
 	}
 

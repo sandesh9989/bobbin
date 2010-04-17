@@ -18,7 +18,7 @@ import org.itadaki.bobbin.torrentdb.FileStorage;
 import org.itadaki.bobbin.torrentdb.Filespec;
 import org.itadaki.bobbin.torrentdb.Info;
 import org.itadaki.bobbin.torrentdb.InfoFileset;
-import org.itadaki.bobbin.torrentdb.StorageDescriptor;
+import org.itadaki.bobbin.torrentdb.PiecesetDescriptor;
 import org.itadaki.bobbin.util.BitField;
 import org.junit.Test;
 
@@ -709,7 +709,7 @@ public class TestFileStorage {
 
 		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
 
-		fileStorage.getDescriptor().getPieceLength (0);
+		fileStorage.getPiecesetDescriptor().getPieceLength (0);
 
 	}
 
@@ -733,7 +733,7 @@ public class TestFileStorage {
 
 		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
 
-		assertEquals (1, fileStorage.getDescriptor().getPieceLength (0));
+		assertEquals (1, fileStorage.getPiecesetDescriptor().getPieceLength (0));
 
 	}
 
@@ -757,7 +757,7 @@ public class TestFileStorage {
 
 		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
 
-		assertEquals (1023, fileStorage.getDescriptor().getPieceLength (0));
+		assertEquals (1023, fileStorage.getPiecesetDescriptor().getPieceLength (0));
 
 	}
 
@@ -781,7 +781,7 @@ public class TestFileStorage {
 
 		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
 
-		assertEquals (1024, fileStorage.getDescriptor().getPieceLength (0));
+		assertEquals (1024, fileStorage.getPiecesetDescriptor().getPieceLength (0));
 
 	}
 
@@ -805,8 +805,8 @@ public class TestFileStorage {
 
 		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
 
-		assertEquals (1024, fileStorage.getDescriptor().getPieceLength (0));
-		assertEquals (1, fileStorage.getDescriptor().getPieceLength (1));
+		assertEquals (1024, fileStorage.getPiecesetDescriptor().getPieceLength (0));
+		assertEquals (1, fileStorage.getPiecesetDescriptor().getPieceLength (1));
 
 	}
 
@@ -830,8 +830,8 @@ public class TestFileStorage {
 
 		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
 
-		assertEquals (1024, fileStorage.getDescriptor().getPieceLength (0));
-		assertEquals (1024, fileStorage.getDescriptor().getPieceLength (1));
+		assertEquals (1024, fileStorage.getPiecesetDescriptor().getPieceLength (0));
+		assertEquals (1024, fileStorage.getPiecesetDescriptor().getPieceLength (1));
 
 	}
 
@@ -1244,7 +1244,7 @@ public class TestFileStorage {
 
 		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
 
-		assertFalse (fileStorage.validate (null));
+		assertFalse (fileStorage.open (null));
 
 	}
 
@@ -1268,7 +1268,7 @@ public class TestFileStorage {
 		ByteBuffer cookie = fileStorage.close();
 		FileStorage fileStorage2 = new FileStorage (files, fileLengths, pieceSize);
 
-		assertTrue (fileStorage2.validate (cookie));
+		assertTrue (fileStorage2.open (cookie));
 
 	}
 
@@ -1293,7 +1293,7 @@ public class TestFileStorage {
 		ByteBuffer cookie = fileStorage.close();
 		FileStorage fileStorage2 = new FileStorage (files, fileLengths, pieceSize);
 
-		assertTrue (fileStorage2.validate (cookie));
+		assertTrue (fileStorage2.open (cookie));
 
 	}
 
@@ -1318,7 +1318,7 @@ public class TestFileStorage {
 		file.setLastModified (file.lastModified() + 1000);
 		FileStorage fileStorage2 = new FileStorage (files, fileLengths, pieceSize);
 
-		assertFalse (fileStorage2.validate (cookie));
+		assertFalse (fileStorage2.open (cookie));
 
 	}
 
@@ -1348,7 +1348,7 @@ public class TestFileStorage {
 		file.setLastModified (lastModified);
 		FileStorage fileStorage2 = new FileStorage (files, fileLengths, pieceSize);
 
-		assertFalse (fileStorage2.validate (cookie));
+		assertFalse (fileStorage2.open (cookie));
 
 	}
 
@@ -1363,8 +1363,8 @@ public class TestFileStorage {
 
 		int pieceSize = 1024;
 
-		StorageDescriptor expectedDescriptor1 = new StorageDescriptor (1024, 1024);
-		StorageDescriptor expectedDescriptor2 = new StorageDescriptor (1024, 2048);
+		PiecesetDescriptor expectedDescriptor1 = new PiecesetDescriptor (1024, 1024);
+		PiecesetDescriptor expectedDescriptor2 = new PiecesetDescriptor (1024, 2048);
 
 		List<File> files = new ArrayList<File>();
 		List<Long> fileLengths = new ArrayList<Long>();
@@ -1373,14 +1373,14 @@ public class TestFileStorage {
 
 		FileStorage storage = new FileStorage (files, fileLengths, pieceSize);
 
-		assertEquals (expectedDescriptor1, storage.getDescriptor());
+		assertEquals (expectedDescriptor1, storage.getPiecesetDescriptor());
 
 		storage.extend (2 * pieceSize);
 
 		ByteBuffer piece = ByteBuffer.wrap (Util.pseudoRandomBlock (1, pieceSize, pieceSize));
 		storage.openOutputChannel (1, 0).write (piece);
 
-		assertEquals (expectedDescriptor2, storage.getDescriptor());
+		assertEquals (expectedDescriptor2, storage.getPiecesetDescriptor());
 		assertEquals (ByteBuffer.wrap (Util.pseudoRandomBlock (1, pieceSize, pieceSize)), storage.read (1));
 
 	}
