@@ -135,7 +135,7 @@ public class InfoBuilder {
 			throw new InternalError (e.getMessage());
 		}
 
-		int numPieces = storage.getDescriptor().getNumberOfPieces();
+		int numPieces = storage.getPiecesetDescriptor().getNumberOfPieces();
 
 		// Create hashes
 		byte[] pieceHashes = new byte[20 * numPieces];

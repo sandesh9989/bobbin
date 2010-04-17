@@ -888,7 +888,7 @@ public class TestPeerCoordinator {
 		extensionsMap.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
 		BDictionary extra = new BDictionary();
 		extra.put ("reqq", 250);
-		assertEquals (totalLength, pieceDatabase.getStorageDescriptor().getLength());
+		assertEquals (totalLength, pieceDatabase.getPiecesetDescriptor().getLength());
 		assertEquals (2, peerCoordinator.getWantedPieces().cardinality());
 		connection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
 		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensionsMap, new BDictionary()));

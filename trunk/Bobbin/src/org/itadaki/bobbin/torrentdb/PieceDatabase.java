@@ -365,7 +365,7 @@ public class PieceDatabase {
 		// {@code Storage} closed normally
 		if (this.metadata != null) {
 
-			if ((storageCookie != null) && (this.verifiedPieceCount == this.storage.getDescriptor().getNumberOfPieces())) {
+			if ((storageCookie != null) && (this.verifiedPieceCount == this.storage.getPiecesetDescriptor().getNumberOfPieces())) {
 				try {
 					if (this.elasticTree != null) {
 						ByteBuffer elasticImmutableHashes = this.elasticTree.getImmutableHashes();
@@ -491,7 +491,7 @@ public class PieceDatabase {
 		 */
 		private boolean verifyDataInterruptibly() throws IOException {
 
-			int numPieces = PieceDatabase.this.storage.getDescriptor().getNumberOfPieces();
+			int numPieces = PieceDatabase.this.storage.getPiecesetDescriptor().getNumberOfPieces();
 			byte[] storedPieceHash = new byte[20];
 
 			BitField fileBackedPieces = PieceDatabase.this.storage.getStorageBackedPieces();
@@ -537,13 +537,13 @@ public class PieceDatabase {
 				}
 
 				ElasticTree verificationTree = ElasticTree.buildFromLeaves (
-						PieceDatabase.this.storage.getDescriptor().getPieceSize(),
-						PieceDatabase.this.storage.getDescriptor().getLength(),
+						PieceDatabase.this.storage.getPiecesetDescriptor().getPieceSize(),
+						PieceDatabase.this.storage.getPiecesetDescriptor().getLength(),
 						leafHashes
 				);
 
-				ElasticTreeView verificationView = verificationTree.getView (PieceDatabase.this.storage.getDescriptor().getLength());
-				ElasticTreeView databaseView = PieceDatabase.this.elasticTree.getView (PieceDatabase.this.storage.getDescriptor().getLength());
+				ElasticTreeView verificationView = verificationTree.getView (PieceDatabase.this.storage.getPiecesetDescriptor().getLength());
+				ElasticTreeView databaseView = PieceDatabase.this.elasticTree.getView (PieceDatabase.this.storage.getPiecesetDescriptor().getLength());
 				if (ByteBuffer.wrap(verificationView.getRootHash()).equals (ByteBuffer.wrap (databaseView.getRootHash()))) {
 					// TODO Inefficient
 					for (int i = 0; i < numPieces; i++) {
@@ -590,7 +590,7 @@ public class PieceDatabase {
 						} else {
 							// Hash tree verification
 							ElasticTreeView view = PieceDatabase.this.elasticTree.getCeilingView (
-									(i * PieceDatabase.this.storage.getDescriptor().getPieceSize()) + PieceDatabase.this.storage.getDescriptor().getPieceLength(i)
+									(i * PieceDatabase.this.storage.getPiecesetDescriptor().getPieceSize()) + PieceDatabase.this.storage.getPiecesetDescriptor().getPieceLength(i)
 							);
 							storedPieceOK = view.verifyLeafHash (i, storedPieceHash);
 						}
@@ -637,15 +637,15 @@ public class PieceDatabase {
 				elasticViewHashes = this.metadata.get ("elasticView");
 				if ((elasticImmutableHashes != null) && (elasticViewHashes != null)) {
 					this.elasticTree = ElasticTree.withNodeHashes (
-							this.storage.getDescriptor().getPieceSize(),
-							this.storage.getDescriptor().getLength(),
+							this.storage.getPiecesetDescriptor().getPieceSize(),
+							this.storage.getPiecesetDescriptor().getLength(),
 							elasticImmutableHashes
 					);
-					this.elasticTree.addView (ElasticTreeView.withMutableHashes (this.elasticTree, this.storage.getDescriptor().getLength(), elasticViewHashes));
+					this.elasticTree.addView (ElasticTreeView.withMutableHashes (this.elasticTree, this.storage.getPiecesetDescriptor().getLength(), elasticViewHashes));
 				} else {
 					this.elasticTree = ElasticTree.emptyTree (
-							this.storage.getDescriptor().getPieceSize(),
-							this.storage.getDescriptor().getLength(),
+							this.storage.getPiecesetDescriptor().getPieceSize(),
+							this.storage.getPiecesetDescriptor().getLength(),
 							ByteBuffer.wrap (this.info.getRootHash())
 					);
 				}
@@ -657,14 +657,14 @@ public class PieceDatabase {
 				byte[] viewSignaturesBytes = this.metadata.get ("elasticViewSignatures");
 				if ((elasticImmutableHashes != null) && (viewsBytes != null) && (viewSignaturesBytes != null)) {
 					this.elasticTree = ElasticTree.withNodeHashes (
-							this.storage.getDescriptor().getPieceSize(),
-							this.storage.getDescriptor().getLength(),
+							this.storage.getPiecesetDescriptor().getPieceSize(),
+							this.storage.getPiecesetDescriptor().getLength(),
 							elasticImmutableHashes
 					);
 				} else {
 					this.elasticTree = ElasticTree.emptyTree (
-							this.storage.getDescriptor().getPieceSize(),
-							this.storage.getDescriptor().getLength(),
+							this.storage.getPiecesetDescriptor().getPieceSize(),
+							this.storage.getPiecesetDescriptor().getLength(),
 							ByteBuffer.wrap (this.info.getRootHash())
 					);
 				}
@@ -673,7 +673,7 @@ public class PieceDatabase {
 						BDictionary viewsDictionary = (BDictionary)BDecoder.decode (viewsBytes);
 						BDictionary viewSignaturesDictionary = (BDictionary)BDecoder.decode (viewSignaturesBytes);
 						// elasticViews
-						long length = this.info.getStorageDescriptor().getLength();
+						long length = this.info.getPiecesetDescriptor().getLength();
 						for (BBinary viewLengthBinary : viewsDictionary.keySet()) {
 							byte[] viewMutableHashes = viewsDictionary.getBytes (viewLengthBinary.stringValue());
 							this.elasticTree.addView (ElasticTreeView.withMutableHashes (this.elasticTree, new Long (viewLengthBinary.stringValue()), viewMutableHashes));
@@ -701,8 +701,8 @@ public class PieceDatabase {
 
 		}
 
-		presentPieces = new BitField (this.storage.getDescriptor().getNumberOfPieces());
-		this.verifiedPieces = new BitField (this.storage.getDescriptor().getNumberOfPieces());
+		presentPieces = new BitField (this.storage.getPiecesetDescriptor().getNumberOfPieces());
+		this.verifiedPieces = new BitField (this.storage.getPiecesetDescriptor().getNumberOfPieces());
 		this.verifiedPieceCount = 0;
 
 		try {
@@ -711,11 +711,11 @@ public class PieceDatabase {
 				BDictionary resumeDictionary = new BDecoder (resumeBytes).decodeDictionary();
 				byte[] storageCookie = resumeDictionary.getBytes ("storageCookie");
 				byte[] presentPiecesBytes = resumeDictionary.getBytes ("presentPieces");
-				if (this.storage.validate (ByteBuffer.wrap (storageCookie))) {
+				if (this.storage.open (ByteBuffer.wrap (storageCookie))) {
 					if ((presentPiecesBytes != null) && (presentPiecesBytes.length == presentPieces.byteLength())) {
-						presentPieces = new BitField (presentPiecesBytes, this.storage.getDescriptor().getNumberOfPieces());
+						presentPieces = new BitField (presentPiecesBytes, this.storage.getPiecesetDescriptor().getNumberOfPieces());
 						this.verifiedPieces.not();
-						this.verifiedPieceCount = this.storage.getDescriptor().getNumberOfPieces();
+						this.verifiedPieceCount = this.storage.getPiecesetDescriptor().getNumberOfPieces();
 					}
 				}
 			}
@@ -794,11 +794,11 @@ public class PieceDatabase {
 	/**
 	 * @return The descriptor for the underlying {@link Storage}
 	 */
-	public StorageDescriptor getStorageDescriptor() {
+	public PiecesetDescriptor getPiecesetDescriptor() {
 
 		synchronized (this.stateMachine) {
 
-			return this.storage.getDescriptor();
+			return this.storage.getPiecesetDescriptor();
 
 		}
 
@@ -832,7 +832,7 @@ public class PieceDatabase {
 
 		synchronized (this.stateMachine) {
 
-			if (viewSignature.getViewLength() == this.info.getStorageDescriptor().getLength()) {
+			if (viewSignature.getViewLength() == this.info.getPiecesetDescriptor().getLength()) {
 				return true;
 			}
 
@@ -879,13 +879,13 @@ public class PieceDatabase {
 				throw new IllegalStateException();
 			}
 
-			StorageDescriptor originalDescriptor = this.storage.getDescriptor();
+			PiecesetDescriptor originalDescriptor = this.storage.getPiecesetDescriptor();
 
 			// Extend the database
 			try {
 				this.storage.extend (viewSignature.getViewLength());
-				this.presentPieces.extend (this.storage.getDescriptor().getNumberOfPieces());
-				this.verifiedPieces.extend (this.storage.getDescriptor().getNumberOfPieces());
+				this.presentPieces.extend (this.storage.getPiecesetDescriptor().getNumberOfPieces());
+				this.verifiedPieces.extend (this.storage.getPiecesetDescriptor().getNumberOfPieces());
 			} catch (IOException e) {
 				this.workQueue.execute (new Runnable() {
 					public void run() {
@@ -896,10 +896,10 @@ public class PieceDatabase {
 			}
 
 			// Create a new view
-			int additionalPieces = this.storage.getDescriptor().getNumberOfPieces()- originalDescriptor.getNumberOfPieces();
+			int additionalPieces = this.storage.getPiecesetDescriptor().getNumberOfPieces()- originalDescriptor.getNumberOfPieces();
 			int additionalHashes = additionalPieces + (originalDescriptor.isRegular() ? 0 : 1);
 			for (int i = 0; i < additionalHashes; i++) {
-				int pieceNumber = this.storage.getDescriptor().getNumberOfPieces() - additionalHashes + i;
+				int pieceNumber = this.storage.getPiecesetDescriptor().getNumberOfPieces() - additionalHashes + i;
 				this.presentPieces.clear (pieceNumber);
 				this.verifiedPieces.set (pieceNumber);
 			}
@@ -935,13 +935,13 @@ public class PieceDatabase {
 				throw new IllegalStateException();
 			}
 
-			StorageDescriptor originalDescriptor = this.storage.getDescriptor();
+			PiecesetDescriptor originalDescriptor = this.storage.getPiecesetDescriptor();
 
 			// Extend the database and write the additional data
 			try {
 				this.storage.extend (length);
-				this.presentPieces.extend (this.storage.getDescriptor().getNumberOfPieces());
-				this.verifiedPieces.extend (this.storage.getDescriptor().getNumberOfPieces());
+				this.presentPieces.extend (this.storage.getPiecesetDescriptor().getNumberOfPieces());
+				this.verifiedPieces.extend (this.storage.getPiecesetDescriptor().getNumberOfPieces());
 			} catch (IOException e) {
 				this.workQueue.execute (new Runnable() {
 					public void run() {
@@ -952,11 +952,11 @@ public class PieceDatabase {
 			}
 
 			// Create a new view
-			int additionalPieces = this.storage.getDescriptor().getNumberOfPieces() - originalDescriptor.getNumberOfPieces();
+			int additionalPieces = this.storage.getPiecesetDescriptor().getNumberOfPieces() - originalDescriptor.getNumberOfPieces();
 			int additionalHashes = additionalPieces + (originalDescriptor.isRegular() ? 0 : 1);
 			byte[][] leafHashes = new byte[additionalHashes][];
 			for (int i = 0; i < additionalHashes; i++) {
-				int pieceNumber = this.storage.getDescriptor().getNumberOfPieces() - additionalHashes + i;
+				int pieceNumber = this.storage.getPiecesetDescriptor().getNumberOfPieces() - additionalHashes + i;
 				ByteBuffer storedPiece = PieceDatabase.this.storage.read (pieceNumber);
 				leafHashes[i] = new byte[20];
 				this.digest.reset();
@@ -1024,15 +1024,15 @@ public class PieceDatabase {
 				throw new IllegalStateException();
 			}
 
-			StorageDescriptor originalDescriptor = this.storage.getDescriptor();
+			PiecesetDescriptor originalDescriptor = this.storage.getPiecesetDescriptor();
 			int originalLastPiece = (originalDescriptor.getLength() == 0) ? 0 : originalDescriptor.getNumberOfPieces () - 1;
 			long length = originalDescriptor.getLength() + additionalData.remaining();
 
 			// Extend the database and write the additional data
 			try {
 				this.storage.extend (length);
-				this.presentPieces.extend (this.storage.getDescriptor().getNumberOfPieces());
-				this.verifiedPieces.extend (this.storage.getDescriptor().getNumberOfPieces());
+				this.presentPieces.extend (this.storage.getPiecesetDescriptor().getNumberOfPieces());
+				this.verifiedPieces.extend (this.storage.getPiecesetDescriptor().getNumberOfPieces());
 				WritableByteChannel channel = this.storage.openOutputChannel (originalLastPiece, originalDescriptor.getLastPieceLength());
 				channel.write (additionalData);
 			} catch (IOException e) {
@@ -1045,11 +1045,11 @@ public class PieceDatabase {
 			}
 
 			// Create a new view
-			int additionalPieces = this.storage.getDescriptor().getNumberOfPieces() - originalDescriptor.getNumberOfPieces();
+			int additionalPieces = this.storage.getPiecesetDescriptor().getNumberOfPieces() - originalDescriptor.getNumberOfPieces();
 			int additionalHashes = additionalPieces + (originalDescriptor.isRegular() ? 0 : 1);
 			byte[][] leafHashes = new byte[additionalHashes][];
 			for (int i = 0; i < additionalHashes; i++) {
-				int pieceNumber = this.storage.getDescriptor().getNumberOfPieces() - additionalHashes + i;
+				int pieceNumber = this.storage.getPiecesetDescriptor().getNumberOfPieces() - additionalHashes + i;
 				ByteBuffer storedPiece = PieceDatabase.this.storage.read (pieceNumber);
 				leafHashes[i] = new byte[20];
 				this.digest.reset();
@@ -1123,7 +1123,7 @@ public class PieceDatabase {
 				ByteBuffer content = this.storage.read (pieceNumber);
 				HashChain hashChain = null;
 				if (this.elasticTree != null) {
-					hashChain = this.elasticTree.getHashChain (pieceNumber, this.storage.getDescriptor().getPieceLength (pieceNumber));
+					hashChain = this.elasticTree.getHashChain (pieceNumber, this.storage.getPiecesetDescriptor().getPieceLength (pieceNumber));
 				}
 				return new Piece (pieceNumber, content, hashChain);
 			} catch (IOException e) {
@@ -1385,14 +1385,14 @@ public class PieceDatabase {
 
 		} else {
 
-			this.verifiedPieces = new BitField (this.storage.getDescriptor().getNumberOfPieces());
+			this.verifiedPieces = new BitField (this.storage.getPiecesetDescriptor().getNumberOfPieces());
 			this.verifiedPieceCount = 0;
-			this.presentPieces = new BitField (this.storage.getDescriptor().getNumberOfPieces());
+			this.presentPieces = new BitField (this.storage.getPiecesetDescriptor().getNumberOfPieces());
 
 			if ((this.info.getPieceStyle() == PieceStyle.MERKLE) || (this.info.getPieceStyle() == PieceStyle.ELASTIC)) {
 				this.elasticTree = ElasticTree.emptyTree (
-						this.storage.getDescriptor().getPieceSize(),
-						this.storage.getDescriptor().getLength(),
+						this.storage.getPiecesetDescriptor().getPieceSize(),
+						this.storage.getPiecesetDescriptor().getLength(),
 						ByteBuffer.wrap (this.info.getRootHash())
 				);
 			}

@@ -33,7 +33,7 @@ import org.itadaki.bobbin.peer.requestmanager.RequestManagerListener;
 import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.PieceStyle;
-import org.itadaki.bobbin.torrentdb.StorageDescriptor;
+import org.itadaki.bobbin.torrentdb.PiecesetDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.trackerclient.PeerIdentifier;
 import org.itadaki.bobbin.util.BitField;
@@ -356,11 +356,11 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 		}
 
 		// If the signed view is longer than our view, extend our view
-		if (viewSignature.getViewLength() > this.peerSetContext.pieceDatabase.getStorageDescriptor().getLength()) {
+		if (viewSignature.getViewLength() > this.peerSetContext.pieceDatabase.getPiecesetDescriptor().getLength()) {
 
 			// If the last piece is irregular, reject peers' requests for blocks within it
-			if (!this.peerSetContext.pieceDatabase.getStorageDescriptor().isRegular()) {
-				int rejectPieceNumber = this.peerSetContext.pieceDatabase.getStorageDescriptor().getNumberOfPieces() - 1;
+			if (!this.peerSetContext.pieceDatabase.getPiecesetDescriptor().isRegular()) {
+				int rejectPieceNumber = this.peerSetContext.pieceDatabase.getPiecesetDescriptor().getNumberOfPieces() - 1;
 				for (ManageablePeer peer : this.connectedPeers) {
 					peer.rejectPiece (rejectPieceNumber);
 				}
@@ -478,8 +478,8 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 	 */
 	private void extendServices (ViewSignature viewSignature) {
 
-		this.peerSetContext.requestManager.extend (this.peerSetContext.pieceDatabase.getStorageDescriptor());
-		this.wantedPieces.extend (this.peerSetContext.pieceDatabase.getStorageDescriptor().getNumberOfPieces());
+		this.peerSetContext.requestManager.extend (this.peerSetContext.pieceDatabase.getPiecesetDescriptor());
+		this.wantedPieces.extend (this.peerSetContext.pieceDatabase.getPiecesetDescriptor().getNumberOfPieces());
 
 		for (ManageablePeer peer : this.connectedPeers) {
 			peer.sendViewSignature (viewSignature);
@@ -728,10 +728,10 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 		try {
 
-			StorageDescriptor oldDescriptor = this.peerSetContext.pieceDatabase.getStorageDescriptor();
+			PiecesetDescriptor oldDescriptor = this.peerSetContext.pieceDatabase.getPiecesetDescriptor();
 			ViewSignature viewSignature = this.peerSetContext.pieceDatabase.extendData (privateKey, additionalData);
 			extendServices (viewSignature);
-			StorageDescriptor newDescriptor = this.peerSetContext.pieceDatabase.getStorageDescriptor();
+			PiecesetDescriptor newDescriptor = this.peerSetContext.pieceDatabase.getPiecesetDescriptor();
 
 			int fromHavePiece = oldDescriptor.getNumberOfPieces() - (oldDescriptor.isRegular() ? 0 : 1);
 			int toHavePiece = newDescriptor.getNumberOfPieces() - 1;
@@ -766,10 +766,10 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 		try {
 
-			StorageDescriptor oldDescriptor = this.peerSetContext.pieceDatabase.getStorageDescriptor();
+			PiecesetDescriptor oldDescriptor = this.peerSetContext.pieceDatabase.getPiecesetDescriptor();
 			ViewSignature viewSignature = this.peerSetContext.pieceDatabase.extendDataInPlace (privateKey, length);
 			extendServices (viewSignature);
-			StorageDescriptor newDescriptor = this.peerSetContext.pieceDatabase.getStorageDescriptor();
+			PiecesetDescriptor newDescriptor = this.peerSetContext.pieceDatabase.getPiecesetDescriptor();
 
 			int fromHavePiece = oldDescriptor.getNumberOfPieces() - (oldDescriptor.isRegular() ? 0 : 1);
 			int toHavePiece = newDescriptor.getNumberOfPieces() - 1;
@@ -881,7 +881,7 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 		this.peerSetContext = new PeerSetContext (
 				this,
 				pieceDatabase,
-				new DefaultRequestManager (pieceDatabase.getStorageDescriptor(), this),
+				new DefaultRequestManager (pieceDatabase.getPiecesetDescriptor(), this),
 				new ExtensionManager()
 		);
 

@@ -10,7 +10,7 @@ import java.util.List;
 import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerCoordinatorListener;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
-import org.itadaki.bobbin.torrentdb.StorageDescriptor;
+import org.itadaki.bobbin.torrentdb.PiecesetDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.elastictree.HashChain;
@@ -109,8 +109,8 @@ public interface RequestManager extends PeerCoordinatorListener {
 	/**
 	 * Updates the RequestManager's view of the storage on an extension
 	 *
-	 * @param storageDescriptor The new StorageDescriptor
+	 * @param piecesetDescriptor The new PiecesetDescriptor
 	 */
-	public void extend (StorageDescriptor storageDescriptor);
+	public void extend (PiecesetDescriptor piecesetDescriptor);
 
 }

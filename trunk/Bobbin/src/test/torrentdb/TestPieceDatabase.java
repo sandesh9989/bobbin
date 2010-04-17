@@ -25,7 +25,7 @@ import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.PieceDatabaseListener;
 import org.itadaki.bobbin.torrentdb.Storage;
-import org.itadaki.bobbin.torrentdb.StorageDescriptor;
+import org.itadaki.bobbin.torrentdb.PiecesetDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.DSAUtil;
@@ -475,7 +475,7 @@ public class TestPieceDatabase {
 	public void testErrorDuringVerification() throws Exception {
 
 		Info info = Info.create (new InfoFileset (new Filespec ("test", 1024L)), 1024, new byte[20]);
-		Storage storage = new MemoryStorage (new StorageDescriptor (1024, 1024)) {
+		Storage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1024)) {
 			@Override
 			public ByteBuffer read (int pieceNumber) throws IOException {
 				throw new IOException();
@@ -510,7 +510,7 @@ public class TestPieceDatabase {
 		Info info = Info.create (new InfoFileset (new Filespec ("test", 2048L)), 1024, new byte[40]);
 		final CountDownLatch latch1 = new CountDownLatch (1);
 		final CountDownLatch latch2 = new CountDownLatch (1);
-		Storage storage = new MemoryStorage (new StorageDescriptor (1024, 2048)) {
+		Storage storage = new MemoryStorage (new PiecesetDescriptor (1024, 2048)) {
 			@Override
 			public ByteBuffer read (int pieceNumber) throws IOException {
 				if (pieceNumber == 0) {
@@ -548,7 +548,7 @@ public class TestPieceDatabase {
 	public void testErrorDuringRead() throws Exception {
 
 		Info info = Info.create (new InfoFileset (new Filespec ("test", 1024L)), 1024, Util.flatten2DArray (Util.pseudoRandomBlockHashes (1024, 1024)));
-		Storage storage = new MemoryStorage (new StorageDescriptor (1024, 1024)) {
+		Storage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1024)) {
 			private int count = 0;
 			@Override
 			public ByteBuffer read (int pieceNumber) throws IOException {
@@ -593,7 +593,7 @@ public class TestPieceDatabase {
 	public void testErrorDuringWrite() throws Exception {
 
 		Info info = Info.create (new InfoFileset (new Filespec ("test", 1024L)), 1024, Util.flatten2DArray (Util.pseudoRandomBlockHashes (1024, 1024)));
-		Storage storage = new MemoryStorage (new StorageDescriptor (1024, 1024)) {
+		Storage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1024)) {
 			@Override
 			public ByteBuffer read (int pieceNumber) throws IOException {
 				return ByteBuffer.wrap (Util.pseudoRandomBlock (0, 1024, 1024));
@@ -638,7 +638,7 @@ public class TestPieceDatabase {
 	public void testErrorForcesVerification() throws Exception {
 
 		Info info = Info.create (new InfoFileset (new Filespec ("test", 4096L)), 1024, Util.flatten2DArray (Util.pseudoRandomBlockHashes (1024, 4096)));
-		Storage storage = new MemoryStorage (new StorageDescriptor (1024, 4096)) {
+		Storage storage = new MemoryStorage (new PiecesetDescriptor (1024, 4096)) {
 			@Override
 			public ByteBuffer read (int pieceNumber) throws IOException {
 				if (pieceNumber == 3) {
@@ -974,7 +974,7 @@ public class TestPieceDatabase {
 		Info info = Info.createElastic (new InfoFileset (new Filespec ("blah", (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash(),
 				DSAUtil.derSignatureToP1363Signature (derSignature));
 
-		Storage storage = new MemoryStorage (new StorageDescriptor (pieceSize, totalLength));
+		Storage storage = new MemoryStorage (new PiecesetDescriptor (pieceSize, totalLength));
 
 		PieceDatabase pieceDatabase = new PieceDatabase (info, MockPieceDatabase.mockPublicKey, storage, null);
 		pieceDatabase.start (true);
@@ -997,7 +997,7 @@ public class TestPieceDatabase {
 				)
 		);
 
-		assertEquals (totalLength, pieceDatabase.getStorageDescriptor().getLength());
+		assertEquals (totalLength, pieceDatabase.getPiecesetDescriptor().getLength());
 		assertEquals (1, pieceDatabase.getVerifiedPieceCount());
 		assertFalse (pieceDatabase.getPresentPieces().get (0));
 
@@ -1031,7 +1031,7 @@ public class TestPieceDatabase {
 
 		Info info = Info.createElastic (new InfoFileset (new Filespec ("blah", (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash(),
 				DSAUtil.derSignatureToP1363Signature (derSignature));
-		Storage storage = new MemoryStorage (new StorageDescriptor (pieceSize, totalLength));
+		Storage storage = new MemoryStorage (new PiecesetDescriptor (pieceSize, totalLength));
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384)));
 
 		PieceDatabase pieceDatabase = new PieceDatabase (info, MockPieceDatabase.mockPublicKey, storage, null);
@@ -1055,7 +1055,7 @@ public class TestPieceDatabase {
 				)
 		);
 
-		assertEquals (totalLength, pieceDatabase.getStorageDescriptor().getLength());
+		assertEquals (totalLength, pieceDatabase.getPiecesetDescriptor().getLength());
 		assertEquals (2, pieceDatabase.getVerifiedPieceCount());
 		assertTrue (pieceDatabase.getPresentPieces().get (0));
 		assertFalse (pieceDatabase.getPresentPieces().get (1));
@@ -1078,7 +1078,7 @@ public class TestPieceDatabase {
 		ElasticTree tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
 		byte[] originalSignature = Util.dsaSign (MockPieceDatabase.mockPrivateKey, tree.getView(totalLength).getRootHash());
 		Info info = Info.createElastic (new InfoFileset (new Filespec ("blah", (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash(), originalSignature);
-		Storage storage = new MemoryStorage (new StorageDescriptor (pieceSize, totalLength));
+		Storage storage = new MemoryStorage (new PiecesetDescriptor (pieceSize, totalLength));
 		PieceDatabase pieceDatabase = new PieceDatabase (info, MockPieceDatabase.mockPublicKey, storage, null);
 		pieceDatabase.start (true);
 
@@ -1100,7 +1100,7 @@ public class TestPieceDatabase {
 				)
 		);
 
-		assertEquals (totalLength, pieceDatabase.getStorageDescriptor().getLength());
+		assertEquals (totalLength, pieceDatabase.getPiecesetDescriptor().getLength());
 		assertEquals (3, pieceDatabase.getVerifiedPieceCount());
 		assertTrue (pieceDatabase.getPresentPieces().get (0));
 		assertFalse (pieceDatabase.getPresentPieces().get (1));
@@ -1136,7 +1136,7 @@ public class TestPieceDatabase {
 
 		Info info = Info.createElastic (new InfoFileset (new Filespec ("blah", (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash(),
 				DSAUtil.derSignatureToP1363Signature (derSignature));
-		Storage storage = new MemoryStorage (new StorageDescriptor (pieceSize, totalLength));
+		Storage storage = new MemoryStorage (new PiecesetDescriptor (pieceSize, totalLength));
 
 		PieceDatabase pieceDatabase = new PieceDatabase (info, MockPieceDatabase.mockPublicKey, storage, null);
 		pieceDatabase.start (true);
@@ -1146,7 +1146,7 @@ public class TestPieceDatabase {
 		totalLength += pieceSize;
 		pieceDatabase.extendData (MockPieceDatabase.mockPrivateKey, ByteBuffer.wrap (Util.pseudoRandomBlock (0, pieceSize, pieceSize)));
 
-		assertEquals (totalLength, pieceDatabase.getStorageDescriptor().getLength());
+		assertEquals (totalLength, pieceDatabase.getPiecesetDescriptor().getLength());
 		assertEquals (ByteBuffer.wrap (Util.pseudoRandomBlock (0, pieceSize, pieceSize)), storage.read (0));
 		assertEquals (1, pieceDatabase.getVerifiedPieceCount());
 		assertTrue (pieceDatabase.getPresentPieces().get (0));
@@ -1180,7 +1180,7 @@ public class TestPieceDatabase {
 
 		Info info = Info.createElastic (new InfoFileset (new Filespec ("blah", (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash(),
 				DSAUtil.derSignatureToP1363Signature (derSignature));
-		Storage storage = new MemoryStorage (new StorageDescriptor (pieceSize, totalLength));
+		Storage storage = new MemoryStorage (new PiecesetDescriptor (pieceSize, totalLength));
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384)));
 
 		PieceDatabase pieceDatabase = new PieceDatabase (info, MockPieceDatabase.mockPublicKey, storage, null);
@@ -1192,7 +1192,7 @@ public class TestPieceDatabase {
 		totalLength += pieceSize;
 		pieceDatabase.extendData (MockPieceDatabase.mockPrivateKey, ByteBuffer.wrap (Util.pseudoRandomBlock (1, pieceSize, pieceSize)));
 
-		assertEquals (totalLength, pieceDatabase.getStorageDescriptor().getLength());
+		assertEquals (totalLength, pieceDatabase.getPiecesetDescriptor().getLength());
 		assertEquals (ByteBuffer.wrap (Util.pseudoRandomBlock (1, pieceSize, pieceSize)), storage.read (1));
 		assertEquals (2, pieceDatabase.getVerifiedPieceCount());
 		assertTrue (pieceDatabase.getPresentPieces().get (0));

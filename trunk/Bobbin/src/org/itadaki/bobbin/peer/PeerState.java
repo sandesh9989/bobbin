@@ -5,7 +5,7 @@ import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
 
-import org.itadaki.bobbin.torrentdb.StorageDescriptor;
+import org.itadaki.bobbin.torrentdb.PiecesetDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
 
@@ -42,7 +42,7 @@ public class PeerState {
 	/**
 	 * The remote peer's view
 	 */
-	StorageDescriptor remoteView = null;
+	PiecesetDescriptor remoteView = null;
 
 	/**
 	 * The set of signatures implicitly valid from the remote peer
@@ -128,7 +128,7 @@ public class PeerState {
 	/**
 	 * @return The remote peer's view
 	 */
-	public StorageDescriptor getRemoteView() {
+	public PiecesetDescriptor getRemoteView() {
 
 		return this.remoteView;
 

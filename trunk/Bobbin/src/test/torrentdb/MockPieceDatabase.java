@@ -20,7 +20,7 @@ import org.itadaki.bobbin.torrentdb.InfoFileset;
 import org.itadaki.bobbin.torrentdb.MemoryStorage;
 import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
-import org.itadaki.bobbin.torrentdb.StorageDescriptor;
+import org.itadaki.bobbin.torrentdb.PiecesetDescriptor;
 import org.itadaki.bobbin.util.DSAUtil;
 import org.itadaki.bobbin.util.elastictree.ElasticTree;
 import org.itadaki.bobbin.util.elastictree.HashChain;
@@ -76,7 +76,7 @@ public class MockPieceDatabase {
 
 		int numPieces = piecesPresent.length();
 
-		MemoryStorage storage = new MemoryStorage (new StorageDescriptor (pieceSize, numPieces * pieceSize));
+		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (pieceSize, numPieces * pieceSize));
 
 		long position = 0;
 		int index = 0;
@@ -136,7 +136,7 @@ public class MockPieceDatabase {
 	 */
 	public static PieceDatabase createEmptyMerkle (int pieceSize, int totalLength, byte[] rootHash) throws Exception {
 
-		MemoryStorage storage = new MemoryStorage (new StorageDescriptor (pieceSize, totalLength));
+		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (pieceSize, totalLength));
 		Info info = Info.createMerkle (new InfoFileset (new Filespec ("test", (long)totalLength)), pieceSize, rootHash);
 		PieceDatabase pieceDatabase = new PieceDatabase (info, null, storage, null);
 

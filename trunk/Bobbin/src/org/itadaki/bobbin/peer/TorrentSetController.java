@@ -385,7 +385,7 @@ public class TorrentSetController {
 				metadata = this.metadataProvider.metadataFor (info.getHash());
 			}
 			PieceDatabase pieceDatabase = new PieceDatabase (info, metaInfo.getPublicKey(), FileStorage.create (baseDirectory, info), metadata);
-			BitField wantedPieces = new BitField (pieceDatabase.getStorageDescriptor().getNumberOfPieces());
+			BitField wantedPieces = new BitField (pieceDatabase.getPiecesetDescriptor().getNumberOfPieces());
 			wantedPieces.not();
 
 			TorrentManager torrentManager = new TorrentManager (this.localPeerID, this.localPort, metaInfo, this.connectionManager, pieceDatabase, wantedPieces);
@@ -433,7 +433,7 @@ public class TorrentSetController {
 				metadata = this.metadataProvider.metadataFor (info.getHash());
 			}
 			PieceDatabase pieceDatabase = new PieceDatabase (info, metaInfo.getPublicKey(), FileStorage.create (baseDirectory, info), metadata);
-			BitField wantedPieces = new BitField (pieceDatabase.getStorageDescriptor().getNumberOfPieces()).not();
+			BitField wantedPieces = new BitField (pieceDatabase.getPiecesetDescriptor().getNumberOfPieces()).not();
 
 			TorrentManager torrentManager = new TorrentManager (this.localPeerID, this.localPort, metaInfo, this.connectionManager, pieceDatabase, wantedPieces);
 

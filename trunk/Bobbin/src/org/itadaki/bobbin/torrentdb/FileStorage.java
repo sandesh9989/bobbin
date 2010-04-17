@@ -43,15 +43,15 @@ import org.itadaki.bobbin.util.CharsetUtil;
 public class FileStorage implements Storage {
 
 	/**
-	 * The header of a FileStorage validation cookie, as used by {@link #validate(byte[])} and
+	 * The header of a FileStorage validation cookie, as used by {@link #open(byte[])} and
 	 * {@link #close()}
 	 */
 	private static final byte[] VALIDATION_COOKIE_HEADER = "\0FileStorage\0".getBytes (CharsetUtil.UTF8);
 
 	/**
-	 * The descriptor of the {@code Storage}'s characteristics
+	 * The descriptor of the {@code Storage}'s piece set characteristics
 	 */
-	private StorageDescriptor descriptor;
+	private PiecesetDescriptor descriptor;
 
 	/**
 	 * The underlying files
@@ -269,7 +269,7 @@ public class FileStorage implements Storage {
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.torrentdb.Storage#getDescriptor()
 	 */
-	public StorageDescriptor getDescriptor() {
+	public PiecesetDescriptor getPiecesetDescriptor() {
 
 		return this.descriptor;
 
@@ -325,9 +325,9 @@ public class FileStorage implements Storage {
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.torrentdb.Storage#validate(java.nio.ByteBuffer)
+	 * @see org.itadaki.bobbin.torrentdb.Storage#open(java.nio.ByteBuffer)
 	 */
-	public boolean validate (ByteBuffer cookie) throws IOException {
+	public boolean open (ByteBuffer cookie) throws IOException {
 
 		if (cookie == null) {
 			return false;
@@ -335,6 +335,47 @@ public class FileStorage implements Storage {
 
 		return buildValidationCookie().equals (cookie);
 
+	}
+
+
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.torrentdb.Storage#extend(long)
+	 */
+	public void extend (long length) throws IOException {
+	
+		if (length < this.totalByteLength) {
+			throw new IllegalArgumentException ("Cannot extend to shorter length");
+		}
+	
+		int lastFileIndex = this.files.size() - 1;
+		this.fileLengths.set (lastFileIndex, this.fileLengths.get (lastFileIndex) + (length - this.totalByteLength));
+		this.totalByteLength = length;
+		this.descriptor = new PiecesetDescriptor (this.descriptor.getPieceSize(), length);
+	
+	}
+
+
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.torrentdb.Storage#close()
+	 */
+	public ByteBuffer close() throws IOException {
+	
+		for (RandomAccessFile randomAccessFile : this.randomAccessFiles) {
+			if (randomAccessFile != null) randomAccessFile.close();
+		}
+	
+		// Create validation cookie
+		ByteBuffer cookie = null;
+		if (this.files.size() > 0) {
+			cookie = buildValidationCookie();
+		}
+	
+		this.files.clear();
+		this.fileLengths.clear();
+		this.randomAccessFiles = null;
+	
+		return cookie;
+	
 	}
 
 
@@ -439,7 +480,7 @@ public class FileStorage implements Storage {
 			long fileByteIndex;
 
 			{
-				long[] indices = getFileByteIndexForLinearByteIndex ((pieceNumber * getDescriptor().getPieceSize()) + offset);
+				long[] indices = getFileByteIndexForLinearByteIndex ((pieceNumber * getPiecesetDescriptor().getPieceSize()) + offset);
 				this.fileIndex = (int)indices[0];
 				this.fileByteIndex = indices[1];
 			}
@@ -490,47 +531,6 @@ public class FileStorage implements Storage {
 	}
 
 
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.torrentdb.Storage#extend(long)
-	 */
-	public void extend (long length) throws IOException {
-
-		if (length < this.totalByteLength) {
-			throw new IllegalArgumentException ("Cannot extend to shorter length");
-		}
-
-		int lastFileIndex = this.files.size() - 1;
-		this.fileLengths.set (lastFileIndex, this.fileLengths.get (lastFileIndex) + (length - this.totalByteLength));
-		this.totalByteLength = length;
-		this.descriptor = new StorageDescriptor (this.descriptor.getPieceSize(), length);
-
-	}
-
-
-	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.torrentdb.Storage#close()
-	 */
-	public ByteBuffer close() throws IOException {
-
-		for (RandomAccessFile randomAccessFile : this.randomAccessFiles) {
-			if (randomAccessFile != null) randomAccessFile.close();
-		}
-
-		// Create validation cookie
-		ByteBuffer cookie = null;
-		if (this.files.size() > 0) {
-			cookie = buildValidationCookie();
-		}
-
-		this.files.clear();
-		this.fileLengths.clear();
-		this.randomAccessFiles = null;
-
-		return cookie;
-
-	}
-
-
 	/**
 	 * Creates a FileStorage for a list of possibly nonexistent files
 	 * 
@@ -552,7 +552,7 @@ public class FileStorage implements Storage {
 			totalByteLength += thisFileLength;
 		}
 
-		this.descriptor = new StorageDescriptor (pieceSize, totalByteLength);
+		this.descriptor = new PiecesetDescriptor (pieceSize, totalByteLength);
 		this.totalByteLength = totalByteLength;
 		this.pieceSize = pieceSize;
 		this.randomAccessFiles.addAll (Arrays.asList (new RandomAccessFile[files.size()]));

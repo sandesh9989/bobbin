@@ -6,13 +6,13 @@ package test.torrentdb;
 
 import static org.junit.Assert.*;
 
-import org.itadaki.bobbin.torrentdb.StorageDescriptor;
+import org.itadaki.bobbin.torrentdb.PiecesetDescriptor;
 import org.junit.Test;
 
 
 
 /**
- * Tests StorageDescriptor
+ * Tests PiecesetDescriptor
  */
 public class TestStorageDescriptor {
 
@@ -22,7 +22,7 @@ public class TestStorageDescriptor {
 	@Test
 	public void test0() {
 
-		StorageDescriptor descriptor = new StorageDescriptor (1024, 0);
+		PiecesetDescriptor descriptor = new PiecesetDescriptor (1024, 0);
 
 		assertEquals (0, descriptor.getLength());
 		assertEquals (1024, descriptor.getPieceSize());
@@ -39,7 +39,7 @@ public class TestStorageDescriptor {
 	@Test
 	public void test1() {
 
-		StorageDescriptor descriptor = new StorageDescriptor (1024, 1024);
+		PiecesetDescriptor descriptor = new PiecesetDescriptor (1024, 1024);
 
 		assertEquals (1024, descriptor.getLength());
 		assertEquals (1024, descriptor.getPieceSize());
@@ -57,7 +57,7 @@ public class TestStorageDescriptor {
 	@Test
 	public void test1x5() {
 
-		StorageDescriptor descriptor = new StorageDescriptor (1024, 1524);
+		PiecesetDescriptor descriptor = new PiecesetDescriptor (1024, 1524);
 
 		assertEquals (1524, descriptor.getLength());
 		assertEquals (1024, descriptor.getPieceSize());
