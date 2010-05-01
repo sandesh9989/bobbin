@@ -33,16 +33,16 @@ public class TestFileStorage {
 	/**
 	 * Reads a block from a FileStorage and checks that an IndexOutOfBoundsException is thrown
 	 *
-	 * @param fileStorage The FileStorage to read from
+	 * @param storage The FileStorage to read from
 	 * @param index The index of the block to read
 	 * @throws IOException
 	 */
-	private void expectReadOutOfBounds (FileStorage fileStorage, int index) throws IOException {
+	private void expectReadOutOfBounds (FileStorage storage, int index) throws IOException {
 
 		boolean exceptionCaught;
 		exceptionCaught = false;
 		try {
-			fileStorage.read (index);
+			storage.read (index);
 		} catch (IndexOutOfBoundsException e) {
 			exceptionCaught = true;
 		}
@@ -54,17 +54,17 @@ public class TestFileStorage {
 	/**
 	 * Writes a block to a FileStorage and checks that an IndexOutOfBoundsException is thrown
 	 *
-	 * @param fileStorage The FileStorage to write to
+	 * @param storage The FileStorage to write to
 	 * @param index The index of the block to write
 	 * @param buffer A buffer containing the data to attempt to write
 	 * @throws IOException
 	 */
-	private void expectWriteOutOfBounds (FileStorage fileStorage, int index, ByteBuffer buffer) throws IOException {
+	private void expectWriteOutOfBounds (FileStorage storage, int index, ByteBuffer buffer) throws IOException {
 
 		boolean exceptionCaught;
 		exceptionCaught = false;
 		try {
-			fileStorage.write (index, buffer);
+			storage.write (index, buffer);
 		} catch (IndexOutOfBoundsException e) {
 			exceptionCaught = true;
 		}
@@ -81,51 +81,54 @@ public class TestFileStorage {
 	 * @throws Exception
 	 */
 	private void standardLinearWriteReadTestDelegate (List<Long> fileLengths, int pieceSize) throws Exception {
-		
-		List<File> files = new ArrayList<File>();
+
+		List<Filespec> files = new ArrayList<Filespec>();
 		long totalByteLength = 0;
 		for (int i = 0; i < fileLengths.size (); i++) {
-			files.add (Util.createNonExistentTemporaryFile());
-			totalByteLength += fileLengths.get(i);
+			files.add (new Filespec ("test" + i + ".tmp", fileLengths.get (i)));
+			totalByteLength += fileLengths.get (i);
 		}
 		int numPieces = (int)Math.ceil ((double)totalByteLength / pieceSize);
 		int numWholePieces = (int)Math.floor ((double)totalByteLength / pieceSize);
 		int finalPieceLength = (int)(totalByteLength % pieceSize);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		File baseDirectory = Util.createNonExistentTemporaryFile();
+		InfoFileset infoFileset = new InfoFileset (baseDirectory.getName(), files);
+		FileStorage storage = new FileStorage (baseDirectory.getParentFile());
+		storage.open (pieceSize, infoFileset);
 
 		ByteBuffer buffer = ByteBuffer.allocate (pieceSize);
 
 
 		// Check that reads / writes below and above the bounds of the FileStorage are rejected
-		expectReadOutOfBounds (fileStorage, -1);
-		expectReadOutOfBounds (fileStorage, numPieces);
-		expectWriteOutOfBounds (fileStorage, -1, buffer);
-		expectWriteOutOfBounds (fileStorage, numPieces, buffer);
+		expectReadOutOfBounds (storage, -1);
+		expectReadOutOfBounds (storage, numPieces);
+		expectWriteOutOfBounds (storage, -1, buffer);
+		expectWriteOutOfBounds (storage, numPieces, buffer);
 
 		// Write whole pieces to the end of the FileStorage
 		ByteBuffer[] wholePieces = new ByteBuffer[numPieces];
 		for (int i = 0; i < numPieces; i++) {
 			wholePieces[i] = ByteBuffer.wrap (Util.pseudoRandomBlock (i, pieceSize, pieceSize));
-			fileStorage.write (i, wholePieces[i]);
+			storage.write (i, wholePieces[i]);
 			wholePieces[i].rewind();
 		}
 
 		// Check the file sizes after all writes are complete
 		for (int i = 0; i < fileLengths.size (); i++) {
-			assertEquals (fileLengths.get(i).longValue(), files.get(i).length());
+			assertEquals (fileLengths.get(i).longValue(), files.get(i).getLength().longValue());
 		}
 
 		// Check that the whole pieces have been written correctly
 		for (int i = 0; i < numWholePieces; i++) {
-			ByteBuffer readPiece = fileStorage.read (i);
+			ByteBuffer readPiece = storage.read (i);
 			assertEquals (wholePieces[i], readPiece);
 		}
 
 		// Check that the final short piece, if present, has been written correctly
 		if (finalPieceLength > 0) {
 			ByteBuffer partialFinalPiece = ByteBuffer.wrap (Util.pseudoRandomBlock (numPieces - 1, finalPieceLength, finalPieceLength));
-			ByteBuffer readPiece = fileStorage.read (numPieces - 1);
+			ByteBuffer readPiece = storage.read (numPieces - 1);
 			assertEquals (partialFinalPiece, readPiece);
 		}
 
@@ -142,20 +145,20 @@ public class TestFileStorage {
 	@Test
 	public void testNewFile0() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
 		int pieceSize = 1024;
+		InfoFileset fileset = new InfoFileset ("test", new ArrayList<Filespec>());
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (Util.createTemporaryDirectory());
+		storage.open (pieceSize, fileset);
 
 		ByteBuffer buffer = ByteBuffer.allocate (1024);
 
-		expectReadOutOfBounds (fileStorage, -1);
-		expectReadOutOfBounds (fileStorage, 0);
-		expectReadOutOfBounds (fileStorage, 1);
-		expectWriteOutOfBounds (fileStorage, -1, buffer);
-		expectWriteOutOfBounds (fileStorage, 0, buffer);
-		expectWriteOutOfBounds (fileStorage, 1, buffer);
+		expectReadOutOfBounds (storage, -1);
+		expectReadOutOfBounds (storage, 0);
+		expectReadOutOfBounds (storage, 1);
+		expectWriteOutOfBounds (storage, -1, buffer);
+		expectWriteOutOfBounds (storage, 0, buffer);
+		expectWriteOutOfBounds (storage, 1, buffer);
 
 	}
 
@@ -168,25 +171,24 @@ public class TestFileStorage {
 	@Test
 	public void testNewFile1_0() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
 		int pieceSize = 1024;
 
-		files.add (Util.createNonExistentTemporaryFile());
-		fileLengths.add (0L);
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 0L));
+		File baseFile = Util.createTemporaryDirectory();
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseFile);
+		storage.open (pieceSize, fileset);
 
 		ByteBuffer buffer = ByteBuffer.allocate (1024);
 
-		expectReadOutOfBounds (fileStorage, -1);
-		expectReadOutOfBounds (fileStorage, 0);
-		expectReadOutOfBounds (fileStorage, 1);
-		expectWriteOutOfBounds (fileStorage, -1, buffer);
-		expectWriteOutOfBounds (fileStorage, 0, buffer);
-		expectWriteOutOfBounds (fileStorage, 1, buffer);
+		expectReadOutOfBounds (storage, -1);
+		expectReadOutOfBounds (storage, 0);
+		expectReadOutOfBounds (storage, 1);
+		expectWriteOutOfBounds (storage, -1, buffer);
+		expectWriteOutOfBounds (storage, 0, buffer);
+		expectWriteOutOfBounds (storage, 1, buffer);
 
-		assertFalse (files.get(0).exists());
+		assertFalse (new File (baseFile, "blah").exists());
 
 	}
 
@@ -474,18 +476,16 @@ public class TestFileStorage {
 	@Test
 	public void testReadDoesNotCreateFile() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 1024L));
 		int pieceSize = 1024;
 
-		files.add (Util.createNonExistentTemporaryFile());
-		fileLengths.add (1024L);
+		File baseDirectory = Util.createTemporaryDirectory();
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		storage.read (0);
 
-		fileStorage.read (0);
-
-		assertFalse (files.get(0).exists());
+		assertFalse (new File (baseDirectory, "blah").exists());
 
 	}
 
@@ -498,18 +498,17 @@ public class TestFileStorage {
 	@Test
 	public void testReadDoesNotExtendFile() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 1024L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
+		File baseDirectory = Util.createTemporaryDirectory();
+		File file = new File (baseDirectory, "blah");
 		new RandomAccessFile(file, "rw").setLength (456);
-		files.add (file);
-		fileLengths.add (1024L);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		fileStorage.read (0);
+		storage.read (0);
 
 		assertEquals (456L, file.length());
 
@@ -524,16 +523,15 @@ public class TestFileStorage {
 	@Test
 	public void testReadOfNonExistentFileZeroExtends() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 1024L));
 		int pieceSize = 1024;
 
-		files.add (Util.createNonExistentTemporaryFile());
-		fileLengths.add (1024L);
+		File baseDirectory = Util.createTemporaryDirectory();
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		ByteBuffer buffer = fileStorage.read (0);
+		ByteBuffer buffer = storage.read (0);
 
 		ByteBuffer expectedBuffer = ByteBuffer.allocate (1024);
 		assertEquals (expectedBuffer, buffer);
@@ -549,18 +547,17 @@ public class TestFileStorage {
 	@Test
 	public void testReadOfShortFileZeroExtends() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 1024L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
+		File baseDirectory = Util.createTemporaryDirectory();
+		File file = new File (baseDirectory, "blah");
 		new RandomAccessFile(file, "rw").setLength (456);
-		files.add (file);
-		fileLengths.add (1024L);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		ByteBuffer buffer = fileStorage.read (0);
+		ByteBuffer buffer = storage.read (0);
 
 		ByteBuffer expectedBuffer = ByteBuffer.allocate (1024);
 		assertEquals (expectedBuffer, buffer);
@@ -575,20 +572,17 @@ public class TestFileStorage {
 	@Test
 	public void testWriteCreatesFileWithSubdirectories() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset ("base", Arrays.asList (new Filespec[] { new Filespec (Arrays.asList (new String[] { "1", "2", "blah" }), 1024L) }));
 		int pieceSize = 1024;
 
-		File baseFile = Util.createNonExistentTemporaryFile();
-		files.add (new File (baseFile, "test.tmp"));
-		fileLengths.add (1024L);
-
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		File baseDirectory = Util.createTemporaryDirectory();
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
 		ByteBuffer buffer = ByteBuffer.allocate (1024);
-		fileStorage.write (0, buffer);
+		storage.write (0, buffer);
 
-		assertTrue (files.get(0).exists());
+		assertTrue (new File (baseDirectory, "base" + File.separator + "1" + File.separator + "2" + File.separator + "blah").exists());
 
 	}
 
@@ -603,23 +597,20 @@ public class TestFileStorage {
 	@Test
 	public void testClose() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 1024L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
-		files.add (file);
-		fileLengths.add (1024L);
+		File baseDirectory = Util.createTemporaryDirectory();
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		ByteBuffer buffer = storage.read (0);
+		storage.write (0, buffer);
 
-		ByteBuffer buffer = fileStorage.read (0);
-		fileStorage.write (0, buffer);
+		storage.close();
 
-		fileStorage.close();
-
-		expectReadOutOfBounds (fileStorage, 0);
-		expectWriteOutOfBounds (fileStorage, 0, buffer);
+		expectReadOutOfBounds (storage, 0);
+		expectWriteOutOfBounds (storage, 0, buffer);
 
 	}
 
@@ -634,56 +625,62 @@ public class TestFileStorage {
 	@Test
 	public void testExistingFiles() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = Arrays.asList (new Long[] {456L, 10 * 1024L, 0L, 1024L});
+		InfoFileset fileset = new InfoFileset ("base", Arrays.asList (new Filespec[] {
+				new Filespec ("blah1", 456L),
+				new Filespec ("blah2", 10 * 1024L),
+				new Filespec ("blah3", 0L),
+				new Filespec ("blah4", 1024L)
+		}));
 		int pieceSize = 1024;
 
-		// Create files
-		long totalByteLength = 0;
-		for (Long length : fileLengths) {
-			File file = Util.createNonExistentTemporaryFile();
-			new RandomAccessFile(file, "rw").setLength (length);
-			files.add (file);
-			totalByteLength += length;
-		}
-		int numPieces = (int)Math.ceil ((double)totalByteLength / pieceSize);
-		int numWholePieces = (int)Math.floor ((double)totalByteLength / pieceSize);
-		int finalPieceLength = (int)(totalByteLength % pieceSize);
+		File baseDirectory = Util.createTemporaryDirectory();
+		new File (baseDirectory, "base").mkdir();
 
-		FileStorage fileStorage = new FileStorage (files, null, pieceSize);
+		// Create files
+		for (Filespec filespec : fileset.getFiles()) {
+			File file = new File (baseDirectory, "base" + File.separator + filespec.getName().get(0));
+			new RandomAccessFile(file, "rw").setLength (filespec.getLength());
+		}
+		int numPieces = (int)Math.ceil ((double)fileset.getLength() / pieceSize);
+		int numWholePieces = (int)Math.floor ((double)fileset.getLength() / pieceSize);
+		int finalPieceLength = (int)(fileset.getLength() % pieceSize);
+
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
 
 		ByteBuffer buffer = ByteBuffer.allocate (1024);
 
 		// Check that reads / writes below and above the bounds of the FileStorage are rejected
-		expectReadOutOfBounds (fileStorage, -1);
-		expectReadOutOfBounds (fileStorage, numPieces);
-		expectWriteOutOfBounds (fileStorage, -1, buffer);
-		expectWriteOutOfBounds (fileStorage, numPieces, buffer);
+		expectReadOutOfBounds (storage, -1);
+		expectReadOutOfBounds (storage, numPieces);
+		expectWriteOutOfBounds (storage, -1, buffer);
+		expectWriteOutOfBounds (storage, numPieces, buffer);
 
 		// Write whole pieces to the end of the FileStorage
 		ByteBuffer[] wholePieces = new ByteBuffer[numPieces];
 		for (int i = 0; i < numPieces; i++) {
 			wholePieces[i] = ByteBuffer.wrap (Util.pseudoRandomBlock (i, pieceSize, pieceSize));
-			fileStorage.write (i, wholePieces[i]);
+			storage.write (i, wholePieces[i]);
 			wholePieces[i].rewind();
 		}
 
 		// Check the file sizes after all writes are complete
-		for (int i = 0; i < fileLengths.size (); i++) {
-			assertEquals (fileLengths.get(i).longValue(), files.get(i).length());
+		for (Filespec filespec : fileset.getFiles()) {
+			File file = new File (baseDirectory, "base" + File.separator + filespec.getName().get(0));
+			assertEquals (filespec.getLength().longValue(), file.length());
 		}
 
 		// Check that the whole pieces have been written correctly
 		for (int i = 0; i < numWholePieces; i++) {
-			ByteBuffer readPiece = fileStorage.read (i);
+			ByteBuffer readPiece = storage.read (i);
 			assertEquals (wholePieces[i], readPiece);
 		}
 
 		// Check that the final short piece, if present, has been written correctly
 		if (finalPieceLength > 0) {
 			ByteBuffer partialFinalPiece = ByteBuffer.wrap (Util.pseudoRandomBlock (numPieces - 1, finalPieceLength, finalPieceLength));
-			ByteBuffer readPiece = fileStorage.read (numPieces - 1);
+			ByteBuffer readPiece = storage.read (numPieces - 1);
 			assertEquals (partialFinalPiece, readPiece);
 		}
 
@@ -698,18 +695,15 @@ public class TestFileStorage {
 	@Test(expected=IllegalArgumentException.class)
 	public void testPieceLength1024_0() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 0L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
-		new RandomAccessFile(file, "rw");
-		files.add (file);
-		fileLengths.add (0L);
+		File baseDirectory = Util.createTemporaryDirectory();
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		fileStorage.getPiecesetDescriptor().getPieceLength (0);
+		storage.getPiecesetDescriptor().getPieceLength (0);
 
 	}
 
@@ -722,18 +716,15 @@ public class TestFileStorage {
 	@Test
 	public void testPieceLength1024_1() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 1L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
-		new RandomAccessFile(file, "rw");
-		files.add (file);
-		fileLengths.add (1L);
+		File baseDirectory = Util.createTemporaryDirectory();
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		assertEquals (1, fileStorage.getPiecesetDescriptor().getPieceLength (0));
+		assertEquals (1, storage.getPiecesetDescriptor().getPieceLength (0));
 
 	}
 
@@ -746,18 +737,15 @@ public class TestFileStorage {
 	@Test
 	public void testPieceLength1024_1023() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 1023L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
-		new RandomAccessFile(file, "rw");
-		files.add (file);
-		fileLengths.add (1023L);
+		File baseDirectory = Util.createTemporaryDirectory();
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		assertEquals (1023, fileStorage.getPiecesetDescriptor().getPieceLength (0));
+		assertEquals (1023, storage.getPiecesetDescriptor().getPieceLength (0));
 
 	}
 
@@ -770,18 +758,15 @@ public class TestFileStorage {
 	@Test
 	public void testPieceLength1024_1024() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 1024L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
-		new RandomAccessFile(file, "rw");
-		files.add (file);
-		fileLengths.add (1024L);
+		File baseDirectory = Util.createTemporaryDirectory();
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		assertEquals (1024, fileStorage.getPiecesetDescriptor().getPieceLength (0));
+		assertEquals (1024, storage.getPiecesetDescriptor().getPieceLength (0));
 
 	}
 
@@ -794,19 +779,16 @@ public class TestFileStorage {
 	@Test
 	public void testPieceLength1024_1025() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 1025L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
-		new RandomAccessFile(file, "rw");
-		files.add (file);
-		fileLengths.add (1025L);
+		File baseDirectory = Util.createTemporaryDirectory();
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		assertEquals (1024, fileStorage.getPiecesetDescriptor().getPieceLength (0));
-		assertEquals (1, fileStorage.getPiecesetDescriptor().getPieceLength (1));
+		assertEquals (1024, storage.getPiecesetDescriptor().getPieceLength (0));
+		assertEquals (1, storage.getPiecesetDescriptor().getPieceLength (1));
 
 	}
 
@@ -819,19 +801,16 @@ public class TestFileStorage {
 	@Test
 	public void testPieceLength1024_2048() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 2048L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
-		new RandomAccessFile(file, "rw");
-		files.add (file);
-		fileLengths.add (2048L);
+		File baseDirectory = Util.createTemporaryDirectory();
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		assertEquals (1024, fileStorage.getPiecesetDescriptor().getPieceLength (0));
-		assertEquals (1024, fileStorage.getPiecesetDescriptor().getPieceLength (1));
+		assertEquals (1024, storage.getPiecesetDescriptor().getPieceLength (0));
+		assertEquals (1024, storage.getPiecesetDescriptor().getPieceLength (1));
 
 	}
 
@@ -844,13 +823,15 @@ public class TestFileStorage {
 	@Test
 	public void testFileBackedPieces0() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset ("base", new ArrayList<Filespec>());
 		int pieceSize = 1024;
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		File baseDirectory = Util.createTemporaryDirectory();
 
-		assertEquals (0, fileStorage.getStorageBackedPieces().length());
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
+
+		assertEquals (0, storage.getStorageBackedPieces().length());
 
 	}
 
@@ -863,17 +844,15 @@ public class TestFileStorage {
 	@Test
 	public void testFileBackedPieces1_0() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 1024L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
-		files.add (file);
-		fileLengths.add (1024L);
+		File baseDirectory = Util.createTemporaryDirectory();
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		BitField fileBackedPieces = fileStorage.getStorageBackedPieces();
+		BitField fileBackedPieces = storage.getStorageBackedPieces();
 		assertEquals (1, fileBackedPieces.length());
 		assertEquals (false, fileBackedPieces.get (0));
 
@@ -888,18 +867,18 @@ public class TestFileStorage {
 	@Test
 	public void testFileBackedPieces1_0x5() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 1024L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
+		File baseDirectory = Util.createTemporaryDirectory();
+
+		File file = new File (baseDirectory, "blah");
 		new RandomAccessFile (file, "rw").setLength (512L);
-		files.add (file);
-		fileLengths.add (1024L);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		BitField fileBackedPieces = fileStorage.getStorageBackedPieces();
+		BitField fileBackedPieces = storage.getStorageBackedPieces();
 		assertEquals (1, fileBackedPieces.length());
 		assertEquals (false, fileBackedPieces.get (0));
 
@@ -914,18 +893,18 @@ public class TestFileStorage {
 	@Test
 	public void testFileBackedPieces1_1() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 1024L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
+		File baseDirectory = Util.createTemporaryDirectory();
+
+		File file = new File (baseDirectory, "blah");
 		new RandomAccessFile (file, "rw").setLength (1024L);
-		files.add (file);
-		fileLengths.add (1024L);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		BitField fileBackedPieces = fileStorage.getStorageBackedPieces();
+		BitField fileBackedPieces = storage.getStorageBackedPieces();
 		assertEquals (1, fileBackedPieces.length());
 		assertEquals (true, fileBackedPieces.get (0));
 
@@ -940,18 +919,18 @@ public class TestFileStorage {
 	@Test
 	public void testFileBackedPieces2_1() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 2048L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
+		File baseDirectory = Util.createTemporaryDirectory();
+
+		File file = new File (baseDirectory, "blah");
 		new RandomAccessFile (file, "rw").setLength (1024L);
-		files.add (file);
-		fileLengths.add (2048L);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		BitField fileBackedPieces = fileStorage.getStorageBackedPieces();
+		BitField fileBackedPieces = storage.getStorageBackedPieces();
 		assertEquals (2, fileBackedPieces.length());
 		assertEquals (true, fileBackedPieces.get (0));
 		assertEquals (false, fileBackedPieces.get (1));
@@ -967,18 +946,18 @@ public class TestFileStorage {
 	@Test
 	public void testFileBackedPieces2_1x5() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 2048L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
+		File baseDirectory = Util.createTemporaryDirectory();
+
+		File file = new File (baseDirectory, "blah");
 		new RandomAccessFile (file, "rw").setLength (1500L);
-		files.add (file);
-		fileLengths.add (2048L);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		BitField fileBackedPieces = fileStorage.getStorageBackedPieces();
+		BitField fileBackedPieces = storage.getStorageBackedPieces();
 		assertEquals (2, fileBackedPieces.length());
 		assertEquals (true, fileBackedPieces.get (0));
 		assertEquals (false, fileBackedPieces.get (1));
@@ -994,18 +973,18 @@ public class TestFileStorage {
 	@Test
 	public void testFileBackedPieces2_2() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 2048L));
 		int pieceSize = 1024;
 
-		File file = Util.createNonExistentTemporaryFile();
+		File baseDirectory = Util.createTemporaryDirectory();
+
+		File file = new File (baseDirectory, "blah");
 		new RandomAccessFile (file, "rw").setLength (2048L);
-		files.add (file);
-		fileLengths.add (2048L);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		BitField fileBackedPieces = fileStorage.getStorageBackedPieces();
+		BitField fileBackedPieces = storage.getStorageBackedPieces();
 		assertEquals (2, fileBackedPieces.length());
 		assertEquals (true, fileBackedPieces.get (0));
 		assertEquals (true, fileBackedPieces.get (1));
@@ -1021,22 +1000,24 @@ public class TestFileStorage {
 	@Test
 	public void testFileBackedPieces0x5_1_2() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
+		InfoFileset fileset = new InfoFileset ("base", Arrays.asList(new Filespec[] {
+				new Filespec ("blah1", 512L),
+				new Filespec ("blah2", 1024L)
+		}));
 		int pieceSize = 1024;
 
-		File file1 = Util.createNonExistentTemporaryFile();
+		File baseDirectory = Util.createTemporaryDirectory();
+		new File (baseDirectory, "base").mkdir();
+
+		File file1 = new File (baseDirectory, "base" + File.separator + "blah1");
 		new RandomAccessFile (file1, "rw").setLength (512L);
-		File file2 = Util.createNonExistentTemporaryFile();
+		File file2 = new File (baseDirectory, "base" + File.separator + "blah2");
 		new RandomAccessFile (file2, "rw").setLength (1024L);
-		files.add (file1);
-		files.add (file2);
-		fileLengths.add (512L);
-		fileLengths.add (1024L);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		BitField fileBackedPieces = fileStorage.getStorageBackedPieces();
+		BitField fileBackedPieces = storage.getStorageBackedPieces();
 		assertEquals (2, fileBackedPieces.length());
 		assertEquals (true, fileBackedPieces.get (0));
 		assertEquals (true, fileBackedPieces.get (1));
@@ -1053,15 +1034,7 @@ public class TestFileStorage {
 	public void testParentDirectoryNotDirectory() throws Exception {
 
 		File testFile = File.createTempFile ("tcf", "tmp");
-		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
-				new Filespec (Arrays.asList (new String[] {"A"}), 65536L)
-		});
-
-		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 65536);
-		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.create (new InfoFileset ("blah", filespecs), 16384, pieceHashes);
-
-		FileStorage.create (testFile, info);
+		new FileStorage (testFile);
 
 	}
 
@@ -1074,6 +1047,7 @@ public class TestFileStorage {
 	@Test(expected=IOException.class)
 	public void testBaseDirectoryDot() throws Exception {
 
+		int pieceSize = 16384;
 		File testFile = Util.createNonExistentTemporaryFile();
 		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
 				new Filespec (Arrays.asList (new String[] {"A"}), 65536L)
@@ -1083,7 +1057,8 @@ public class TestFileStorage {
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
 		Info info = Info.create (new InfoFileset (".", filespecs), 16384, pieceHashes);
 
-		FileStorage.create (testFile, info);
+		FileStorage storage = new FileStorage (testFile);
+		storage.open (pieceSize, info.getFileset());
 
 	}
 
@@ -1096,6 +1071,7 @@ public class TestFileStorage {
 	@Test(expected=IOException.class)
 	public void testBaseDirectoryDotDot() throws Exception {
 
+		int pieceSize = 16384;
 		File testFile = Util.createNonExistentTemporaryFile();
 		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
 				new Filespec (Arrays.asList (new String[] {"A"}), 65536L)
@@ -1105,7 +1081,8 @@ public class TestFileStorage {
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
 		Info info = Info.create (new InfoFileset ("..", filespecs), 16384, pieceHashes);
 
-		FileStorage.create (testFile, info);
+		FileStorage storage = new FileStorage (testFile);
+		storage.open (pieceSize, info.getFileset());
 
 	}
 
@@ -1118,6 +1095,7 @@ public class TestFileStorage {
 	@Test(expected=IOException.class)
 	public void testBaseDirectorySeparator() throws Exception {
 
+		int pieceSize = 16384;
 		File testFile = Util.createNonExistentTemporaryFile();
 		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
 				new Filespec (Arrays.asList (new String[] {"A"}), 65536L)
@@ -1127,7 +1105,8 @@ public class TestFileStorage {
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
 		Info info = Info.create (new InfoFileset (File.separator, filespecs), 16384, pieceHashes);
 
-		FileStorage.create (testFile, info);
+		FileStorage storage = new FileStorage (testFile);
+		storage.open (pieceSize, info.getFileset());
 
 	}
 
@@ -1140,6 +1119,7 @@ public class TestFileStorage {
 	@Test(expected=IOException.class)
 	public void testFilePartDot() throws Exception {
 
+		int pieceSize = 16384;
 		File testFile = Util.createNonExistentTemporaryFile();
 		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
 				new Filespec (Arrays.asList (new String[] {"."}), 32768L)
@@ -1149,7 +1129,8 @@ public class TestFileStorage {
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
 		Info info = Info.create (new InfoFileset (testFile.getName(), filespecs), 16384, pieceHashes);
 
-		FileStorage.create (testFile, info);
+		FileStorage storage = new FileStorage (testFile);
+		storage.open (pieceSize, info.getFileset());
 
 	}
 
@@ -1162,6 +1143,7 @@ public class TestFileStorage {
 	@Test(expected=IOException.class)
 	public void testFilePartDotDot() throws Exception {
 
+		int pieceSize = 16384;
 		File testFile = Util.createNonExistentTemporaryFile();
 		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
 				new Filespec (Arrays.asList (new String[] {".."}), 32768L)
@@ -1171,7 +1153,8 @@ public class TestFileStorage {
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
 		Info info = Info.create (new InfoFileset (testFile.getName(), filespecs), 16384, pieceHashes);
 
-		FileStorage.create (testFile, info);
+		FileStorage storage = new FileStorage (testFile);
+		storage.open (pieceSize, info.getFileset());
 
 	}
 
@@ -1184,6 +1167,7 @@ public class TestFileStorage {
 	@Test(expected=IOException.class)
 	public void testFilePartSeparator() throws Exception {
 
+		int pieceSize = 16384;
 		File testFile = Util.createNonExistentTemporaryFile();
 		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
 				new Filespec (Arrays.asList (new String[] {File.separator}), 32768L)
@@ -1193,7 +1177,8 @@ public class TestFileStorage {
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
 		Info info = Info.create (new InfoFileset (testFile.getName(), filespecs), 16384, pieceHashes);
 
-		FileStorage.create (testFile, info);
+		FileStorage storage = new FileStorage (testFile);
+		storage.open (pieceSize, info.getFileset());
 
 	}
 
@@ -1205,8 +1190,8 @@ public class TestFileStorage {
 	@Test
 	public void testExistingSubdirectory() throws Exception {
 
-		File testFile = Util.createNonExistentTemporaryFile();
-		testFile.mkdir();
+		int pieceSize = 16384;
+		File baseDirectory = Util.createTemporaryDirectory();
 		List<Filespec> filespecs = Arrays.asList (new Filespec[] {
 				new Filespec (Arrays.asList (new String[] {"test1"}), 32768L),
 				new Filespec (Arrays.asList (new String[] {"test2"}), 32768L)
@@ -1214,14 +1199,15 @@ public class TestFileStorage {
 
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 65536);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
-		Info info = Info.create (new InfoFileset (testFile.getName(), filespecs), 16384, pieceHashes);
+		Info info = Info.create (new InfoFileset ("base", filespecs), 16384, pieceHashes);
 
-		FileStorage storage = FileStorage.create (testFile.getParentFile(), info);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, info.getFileset());
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384)));
 		storage.write (2, ByteBuffer.wrap (Util.pseudoRandomBlock (2, 16384, 16384)));
 
-		assertTrue (new File (testFile, "test1").exists());
-		assertTrue (new File (testFile, "test2").exists());
+		assertTrue (new File (baseDirectory, "base" + File.separator + "test1").exists());
+		assertTrue (new File (baseDirectory, "base" + File.separator + "test2").exists());
 
 	}
 
@@ -1233,18 +1219,17 @@ public class TestFileStorage {
 	@Test
 	public void testValidateNull() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
 		int pieceSize = 1024;
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 2048L));
 
-		File file = Util.createNonExistentTemporaryFile();
+		File baseDirectory = Util.createTemporaryDirectory();
+		File file = new File (baseDirectory, "blah");
 		new RandomAccessFile (file, "rw").setLength (2048L);
-		files.add (file);
-		fileLengths.add (2048L);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
-		assertFalse (fileStorage.open (null));
+		assertFalse (storage.validate (null));
 
 	}
 
@@ -1256,19 +1241,17 @@ public class TestFileStorage {
 	@Test
 	public void testValidateNonexistentUnchanged() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
 		int pieceSize = 1024;
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 2048L));
+		File baseDirectory = Util.createTemporaryDirectory();
 
-		File file = Util.createNonExistentTemporaryFile();
-		files.add (file);
-		fileLengths.add (2048L);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
+		ByteBuffer cookie = storage.close();
+		FileStorage storage2 = new FileStorage (baseDirectory);
+		storage2.open (pieceSize, fileset);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
-		ByteBuffer cookie = fileStorage.close();
-		FileStorage fileStorage2 = new FileStorage (files, fileLengths, pieceSize);
-
-		assertTrue (fileStorage2.open (cookie));
+		assertTrue (storage2.validate (cookie));
 
 	}
 
@@ -1280,22 +1263,23 @@ public class TestFileStorage {
 	@Test
 	public void testValidateUnchanged() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
 		int pieceSize = 1024;
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 2048L));
+		File baseDirectory = Util.createTemporaryDirectory();
 
-		File file = Util.createNonExistentTemporaryFile();
+		File file = new File (baseDirectory, "blah");
 		new RandomAccessFile (file, "rw").setLength (2048L);
-		files.add (file);
-		fileLengths.add (2048L);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
-		ByteBuffer cookie = fileStorage.close();
-		FileStorage fileStorage2 = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
+		ByteBuffer cookie = storage.close();
+		FileStorage storage2 = new FileStorage (baseDirectory);
+		storage2.open (pieceSize, fileset);
 
-		assertTrue (fileStorage2.open (cookie));
+		assertTrue (storage2.validate (cookie));
 
 	}
+
 
 	/**
 	 * Tests validation on an FileStorage in which a file data has changed
@@ -1304,21 +1288,20 @@ public class TestFileStorage {
 	@Test
 	public void testValidateDateChanged() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
 		int pieceSize = 1024;
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 2048L));
+		File baseDirectory = Util.createTemporaryDirectory();
 
-		File file = Util.createNonExistentTemporaryFile();
+		File file = new File (baseDirectory, "blah");
 		new RandomAccessFile (file, "rw").setLength (2048L);
-		files.add (file);
-		fileLengths.add (2048L);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
-		ByteBuffer cookie = fileStorage.close();
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
+		ByteBuffer cookie = storage.close();
 		file.setLastModified (file.lastModified() + 1000);
-		FileStorage fileStorage2 = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage2 = new FileStorage (baseDirectory);
 
-		assertFalse (fileStorage2.open (cookie));
+		assertFalse (storage2.validate (cookie));
 
 	}
 
@@ -1330,25 +1313,24 @@ public class TestFileStorage {
 	@Test
 	public void testValidateSizeChanged() throws Exception {
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
 		int pieceSize = 1024;
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 2048L));
+		File baseDirectory = Util.createTemporaryDirectory();
 
-		File file = Util.createNonExistentTemporaryFile();
-		new RandomAccessFile (file, "rw").setLength (1024L);
-		files.add (file);
-		fileLengths.add (2048L);
+		File file = new File (baseDirectory, "blah");
+		new RandomAccessFile (file, "rw").setLength (2048L);
 
-		FileStorage fileStorage = new FileStorage (files, fileLengths, pieceSize);
-		ByteBuffer cookie = fileStorage.close();
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
+		ByteBuffer cookie = storage.close();
 		long lastModified = file.lastModified();
 		RandomAccessFile randomAccessFile = new RandomAccessFile (file, "rw");
 		randomAccessFile.setLength (2048L);
 		randomAccessFile.close();
 		file.setLastModified (lastModified);
-		FileStorage fileStorage2 = new FileStorage (files, fileLengths, pieceSize);
+		FileStorage storage2 = new FileStorage (baseDirectory);
 
-		assertFalse (fileStorage2.open (cookie));
+		assertFalse (storage2.validate (cookie));
 
 	}
 
@@ -1366,12 +1348,10 @@ public class TestFileStorage {
 		PiecesetDescriptor expectedDescriptor1 = new PiecesetDescriptor (1024, 1024);
 		PiecesetDescriptor expectedDescriptor2 = new PiecesetDescriptor (1024, 2048);
 
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
-		files.add (Util.createNonExistentTemporaryFile());
-		fileLengths.add ((long)pieceSize);
-
-		FileStorage storage = new FileStorage (files, fileLengths, pieceSize);
+		InfoFileset fileset = new InfoFileset (new Filespec ("blah", 1024L));
+		File baseDirectory = Util.createTemporaryDirectory();
+		FileStorage storage = new FileStorage (baseDirectory);
+		storage.open (pieceSize, fileset);
 
 		assertEquals (expectedDescriptor1, storage.getPiecesetDescriptor());
 

@@ -50,9 +50,19 @@ public class MemoryStorage implements Storage {
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.torrentdb.Storage#open(java.nio.ByteBuffer)
+	 * @see org.itadaki.bobbin.torrentdb.Storage#open(int, org.itadaki.bobbin.torrentdb.InfoFileset)
 	 */
-	public boolean open (ByteBuffer cookie) {
+	public void open (int pieceSize, InfoFileset infoFileset) throws IOException {
+
+		// TODO implementation
+
+	}
+
+
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.torrentdb.Storage#validate(java.nio.ByteBuffer)
+	 */
+	public boolean validate (ByteBuffer cookie) {
 
 		return false;
 

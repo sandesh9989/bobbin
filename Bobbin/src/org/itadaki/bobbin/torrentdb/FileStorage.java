@@ -43,15 +43,10 @@ import org.itadaki.bobbin.util.CharsetUtil;
 public class FileStorage implements Storage {
 
 	/**
-	 * The header of a FileStorage validation cookie, as used by {@link #open(byte[])} and
+	 * The header of a FileStorage validation cookie, as used by {@link #validate(byte[])} and
 	 * {@link #close()}
 	 */
 	private static final byte[] VALIDATION_COOKIE_HEADER = "\0FileStorage\0".getBytes (CharsetUtil.UTF8);
-
-	/**
-	 * The descriptor of the {@code Storage}'s piece set characteristics
-	 */
-	private PiecesetDescriptor descriptor;
 
 	/**
 	 * The underlying files
@@ -71,14 +66,19 @@ public class FileStorage implements Storage {
 	private final NavigableMap<Long,Integer> fileIndexMap = new TreeMap<Long,Integer>();
 
 	/**
-	 * The size of the standard piece
+	 * The descriptor of the {@code Storage}'s piece set characteristics
 	 */
-	private final int pieceSize;
+	private PiecesetDescriptor descriptor = new PiecesetDescriptor (0, 0);
 
 	/**
-	 * The total length of the represented data in bytes
+	 * The parent directory beneath which files are written
 	 */
-	private long totalByteLength;
+	private File parentDirectory;
+
+	/**
+	 * The current fileset
+	 */
+	private MutableFileset fileset = new MutableFileset();
 
 	/**
 	 * An internal cache of RandomAccessFiles pointing to the underlying files
@@ -254,7 +254,7 @@ public class FileStorage implements Storage {
 	 */
 	private long[] getFileByteIndexForLinearByteIndex (long linearByteIndex) {
 
-		if ((linearByteIndex >= 0) && (linearByteIndex < this.totalByteLength)) {
+		if ((linearByteIndex >= 0) && (linearByteIndex < this.descriptor.getLength())) {
 			Entry<Long,Integer> entry = this.fileIndexMap.floorEntry (linearByteIndex);
 			return new long[] { entry.getValue(), linearByteIndex - entry.getKey() };
 		}
@@ -325,9 +325,65 @@ public class FileStorage implements Storage {
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.torrentdb.Storage#open(java.nio.ByteBuffer)
+	 * @see org.itadaki.bobbin.torrentdb.Storage#open(int, org.itadaki.bobbin.torrentdb.InfoFileset)
 	 */
-	public boolean open (ByteBuffer cookie) throws IOException {
+	public void open (int pieceSize, InfoFileset infoFileset) throws IOException {
+
+		File effectiveParentDirectory = this.parentDirectory;
+		if (!infoFileset.isSingleFile()) {
+			checkFilePartIsValid (infoFileset.getBaseDirectoryName());
+			effectiveParentDirectory = new File (effectiveParentDirectory, infoFileset.getBaseDirectoryName());
+			checkIsChild (this.parentDirectory, effectiveParentDirectory);
+		}
+
+		effectiveParentDirectory.mkdirs();
+		checkDirectoryIsValid (effectiveParentDirectory);
+
+		// Verify that the fileset is valid with respect to the local filesystem
+		List<File> files = new ArrayList<File>();
+		long totalLength = 0;
+		for (Filespec filespec : infoFileset.getFiles()) {
+			int numParts = filespec.getName().size();
+			StringBuilder fileBuilder = new StringBuilder();
+			for (int i = 0; i < numParts; i++) {
+				String filePart = filespec.getName().get (i);
+				checkFilePartIsValid (filePart);
+				fileBuilder.append (filePart);
+				if (i < (numParts - 1)) {
+					fileBuilder.append (File.separator);
+				}
+			}
+			File assembledFile = new File (effectiveParentDirectory, fileBuilder.toString());
+			checkFileIsValid (assembledFile);
+			checkIsChild (effectiveParentDirectory, assembledFile);
+			files.add (assembledFile);
+			totalLength += filespec.getLength();
+		}
+
+		this.fileset.setInfoFileset (infoFileset);
+		this.descriptor = new PiecesetDescriptor (pieceSize, totalLength);
+		this.randomAccessFiles.addAll (Arrays.asList (new RandomAccessFile[files.size()]));
+
+		long totalByteLength = 0;
+		for (int i = 0; i < infoFileset.getFiles().size(); i++) {
+			File file = files.get (i);
+			this.files.add (file);
+			long thisFileLength = infoFileset.getFiles().get (i).getLength();
+			this.fileLengths.add (thisFileLength);
+			if (!this.fileIndexMap.containsKey (totalByteLength)) {
+				this.fileIndexMap.put (totalByteLength, i);
+			}
+			totalByteLength += thisFileLength;
+		}
+
+
+	}
+
+
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.torrentdb.Storage#validate(java.nio.ByteBuffer)
+	 */
+	public boolean validate (ByteBuffer cookie) throws IOException {
 
 		if (cookie == null) {
 			return false;
@@ -342,16 +398,15 @@ public class FileStorage implements Storage {
 	 * @see org.itadaki.bobbin.torrentdb.Storage#extend(long)
 	 */
 	public void extend (long length) throws IOException {
-	
-		if (length < this.totalByteLength) {
+
+		if (length < this.descriptor.getLength()) {
 			throw new IllegalArgumentException ("Cannot extend to shorter length");
 		}
-	
+
 		int lastFileIndex = this.files.size() - 1;
-		this.fileLengths.set (lastFileIndex, this.fileLengths.get (lastFileIndex) + (length - this.totalByteLength));
-		this.totalByteLength = length;
+		this.fileLengths.set (lastFileIndex, this.fileLengths.get (lastFileIndex) + (length - this.descriptor.getLength()));
 		this.descriptor = new PiecesetDescriptor (this.descriptor.getPieceSize(), length);
-	
+
 	}
 
 
@@ -359,23 +414,23 @@ public class FileStorage implements Storage {
 	 * @see org.itadaki.bobbin.torrentdb.Storage#close()
 	 */
 	public ByteBuffer close() throws IOException {
-	
+
 		for (RandomAccessFile randomAccessFile : this.randomAccessFiles) {
 			if (randomAccessFile != null) randomAccessFile.close();
 		}
-	
+
 		// Create validation cookie
 		ByteBuffer cookie = null;
 		if (this.files.size() > 0) {
 			cookie = buildValidationCookie();
 		}
-	
+
 		this.files.clear();
 		this.fileLengths.clear();
 		this.randomAccessFiles = null;
-	
+
 		return cookie;
-	
+
 	}
 
 
@@ -389,7 +444,7 @@ public class FileStorage implements Storage {
 		}
 
 		// Find the file / byte index
-		long[] indices = getFileByteIndexForLinearByteIndex (((long)index) * this.pieceSize);
+		long[] indices = getFileByteIndexForLinearByteIndex (((long)index) * this.descriptor.getPieceSize());
 		int fileIndex = (int)indices[0];
 		long fileByteIndex = indices[1];
 
@@ -433,7 +488,7 @@ public class FileStorage implements Storage {
 		}
 
 		// Find the file / byte index
-		long[] indices = getFileByteIndexForLinearByteIndex (((long)index) * this.pieceSize);
+		long[] indices = getFileByteIndexForLinearByteIndex (((long)index) * this.descriptor.getPieceSize());
 		int fileIndex = (int)indices[0];
 		long fileByteIndex = indices[1];
 
@@ -532,81 +587,16 @@ public class FileStorage implements Storage {
 
 
 	/**
-	 * Creates a FileStorage for a list of possibly nonexistent files
-	 * 
-	 * @param files The files to create the FileStorage for
-	 * @param fileLengths The lengths of the files
-	 * @param pieceSize The piece size
+	 * @param parentDirectory The directory beneath which to write the files of the torrent
+	 * @throws IncompatibleLocationException If the given directory is not a valid, readable directory
 	 */
-	public FileStorage (List<File> files, List<Long> fileLengths, int pieceSize) {
+	public FileStorage (File parentDirectory) throws IncompatibleLocationException {
 
-		int numFiles = files.size();
-		long totalByteLength = 0;
-		for (int i = 0; i < numFiles; i++) {
-			File file = files.get (i);
-			this.files.add (file);
-			long thisFileLength = (fileLengths == null) ? file.length() : fileLengths.get(i);
-			this.fileLengths.add (thisFileLength);
-			if (!this.fileIndexMap.containsKey (totalByteLength))
-				this.fileIndexMap.put (totalByteLength, i);
-			totalByteLength += thisFileLength;
-		}
+		checkDirectoryIsValid (parentDirectory);
 
-		this.descriptor = new PiecesetDescriptor (pieceSize, totalByteLength);
-		this.totalByteLength = totalByteLength;
-		this.pieceSize = pieceSize;
-		this.randomAccessFiles.addAll (Arrays.asList (new RandomAccessFile[files.size()]));
+		this.parentDirectory = parentDirectory.getAbsoluteFile();
 
 	}
 
-
-	/**
-	 * Constructs a {@code FileStorage} based on a parent directory and the files contained in an
-	 * {@code Info}, checking the validity of the resulting filenames with respect to the local
-	 * filesystem
-	 * 
-	 * @param parentDirectory The parent directory
-	 * @param info The {@code Info}
-	 * @return A {@code FileStorage} for the given {@code Info} that will write files beneath the
-	 *         given parent directory
-	 * @throws IncompatibleLocationException If any file or directory specified by the {@code Info}
-	 *         cannot be written beneath the given parent directory or has an invalid name
-	 */
-	public static FileStorage create (File parentDirectory, Info info) throws IncompatibleLocationException {
-
-		parentDirectory = parentDirectory.getAbsoluteFile();
-
-		File effectiveParentDirectory = parentDirectory;
-		if (!info.getFileset().isSingleFile()) {
-			checkFilePartIsValid (info.getFileset().getBaseDirectoryName());
-			effectiveParentDirectory = new File (effectiveParentDirectory, info.getFileset().getBaseDirectoryName());
-			checkIsChild (parentDirectory, effectiveParentDirectory);
-		}
-		checkDirectoryIsValid (effectiveParentDirectory);
-
-		// Create list of files to include in the torrent
-		List<File> files = new ArrayList<File>();
-		List<Long> fileLengths = new ArrayList<Long>();
-		for (Filespec filespec : info.getFileset().getFiles()) {
-			int numParts = filespec.getName().size();
-			StringBuilder fileBuilder = new StringBuilder();
-			for (int i = 0; i < numParts; i++) {
-				String filePart = filespec.getName().get (i);
-				checkFilePartIsValid (filePart);
-				fileBuilder.append (filePart);
-				if (i < (numParts - 1)) {
-					fileBuilder.append (File.separator);
-				}
-			}
-			File assembledFile = new File (effectiveParentDirectory, fileBuilder.toString());
-			checkFileIsValid (assembledFile);
-			checkIsChild (effectiveParentDirectory, assembledFile);
-			files.add (assembledFile);
-			fileLengths.add (filespec.getLength());
-		}
-
-		return new FileStorage (files, fileLengths, info.getPieceLength());
-
-	}
 
 }

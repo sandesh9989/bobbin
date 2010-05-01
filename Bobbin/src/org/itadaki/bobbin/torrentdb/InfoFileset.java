@@ -58,8 +58,7 @@ public class InfoFileset {
 
 
 	/**
-	 * @return {@code true} if the fileset is a single-file fileset, or {@code false} if it is
-	 *         multi-file
+	 * @return The total byte length of the fileset
 	 */
 	public long getLength() {
 
