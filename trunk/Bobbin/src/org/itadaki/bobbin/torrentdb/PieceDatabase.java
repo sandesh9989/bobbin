@@ -139,16 +139,6 @@ public class PieceDatabase {
 	private final Set<PieceDatabaseListener> listeners = new HashSet<PieceDatabaseListener>();
 
 	/**
-	 * The {@code Info} describing the database's content
-	 */
-	private final Info info;
-
-	/**
-	 * The DSA public key used to sign the {@code Info}, or {@code null}
-	 */
-	private final PublicKey publicKey;
-
-	/**
 	 * The {@code Storage} used to access files on disk
 	 */
 	private final Storage storage;
@@ -162,6 +152,16 @@ public class PieceDatabase {
 	 * The set of view signatures indexed by view length
 	 */
 	private final Map<Long,ViewSignature> viewSignatures = new HashMap<Long,ViewSignature>();
+
+	/**
+	 * The {@code Info} describing the database's content
+	 */
+	private Info info;
+
+	/**
+	 * The DSA public key used to sign the {@code Info}, or {@code null}
+	 */
+	private PublicKey publicKey;
 
 	/**
 	 * The set of pieces that are present
@@ -622,13 +622,16 @@ public class PieceDatabase {
 	/**
 	 * Resumes state from metadata if possible
 	 *
+	 * @return {@code true} if the state was successfully resumed, otherwise {@code false}
 	 * @throws IOException if an I/O error was encountered while resuming
 	 */
-	private void resume() throws IOException {
+	private boolean resume() throws IOException {
 
 		BitField presentPieces;
 		byte[] elasticImmutableHashes;
 		byte[] elasticViewHashes;
+
+		boolean initialised = true;
 
 		switch (this.info.getPieceStyle()) {
 
@@ -696,6 +699,7 @@ public class PieceDatabase {
 					}
 				} catch (InvalidEncodingException e) {
 					// TODO Test - test behaviour on failure
+					initialised = false;
 				}
 				break;
 
@@ -711,7 +715,7 @@ public class PieceDatabase {
 				BDictionary resumeDictionary = new BDecoder (resumeBytes).decodeDictionary();
 				byte[] storageCookie = resumeDictionary.getBytes ("storageCookie");
 				byte[] presentPiecesBytes = resumeDictionary.getBytes ("presentPieces");
-				if (this.storage.open (ByteBuffer.wrap (storageCookie))) {
+				if (this.storage.validate (ByteBuffer.wrap (storageCookie))) {
 					if ((presentPiecesBytes != null) && (presentPiecesBytes.length == presentPieces.byteLength())) {
 						presentPieces = new BitField (presentPiecesBytes, this.storage.getPiecesetDescriptor().getNumberOfPieces());
 						this.verifiedPieces.not();
@@ -721,12 +725,14 @@ public class PieceDatabase {
 			}
 		} catch (InvalidEncodingException e) {
 			// Resume metadata is corrupt. Leave the database unverified
+			initialised = false;
 		}
 
 		this.presentPieces = presentPieces;
 
 		this.metadata.put ("resume", null);
 
+		return initialised;
 	}
 
 
@@ -1378,13 +1384,16 @@ public class PieceDatabase {
 		this.pieceHashes = this.info.getPieces();
 		this.elasticTree = null;
 
+		this.storage.open (this.info.getPieceLength(), this.info.getFileset());
+
 		// Resume previous state from metadata if possible
+		boolean initialised = false;
 		if (this.metadata != null ) {
+			initialised = resume();
+		}
 
-			resume();
-
-		} else {
-
+		// Initialise database with available information if we could not resume
+		if (!initialised) {
 			this.verifiedPieces = new BitField (this.storage.getPiecesetDescriptor().getNumberOfPieces());
 			this.verifiedPieceCount = 0;
 			this.presentPieces = new BitField (this.storage.getPiecesetDescriptor().getNumberOfPieces());
@@ -1396,7 +1405,6 @@ public class PieceDatabase {
 						ByteBuffer.wrap (this.info.getRootHash())
 				);
 			}
-
 		}
 
 		try {

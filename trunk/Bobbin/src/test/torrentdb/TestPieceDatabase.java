@@ -420,7 +420,7 @@ public class TestPieceDatabase {
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
 		Info info = Info.create (new InfoFileset (new Filespec (testFile.getName(), 65537L)), 16384, pieceHashes);
 
-		PieceDatabase pieceDatabase = new PieceDatabase (info, null, FileStorage.create (testFile.getParentFile(), info), null);
+		PieceDatabase pieceDatabase = new PieceDatabase (info, null, new FileStorage (testFile.getParentFile()), null);
 		pieceDatabase.start (true);
 		boolean result = pieceDatabase.writePiece (new Piece (4, ByteBuffer.wrap (Util.pseudoRandomBlock (4, 1, 1)), null));
 		assertTrue (result);
@@ -679,10 +679,13 @@ public class TestPieceDatabase {
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 16384);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
 		Info info = Info.create (new InfoFileset (new Filespec (testFile.getName(), 16384L)), 16384, pieceHashes);
-		Storage storage = FileStorage.create (testFile.getParentFile(), info);
+		Storage storage = new FileStorage (testFile.getParentFile());
+		storage.open (info.getPieceLength(), info.getFileset());
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384)));
+		storage.close();
 
-		PieceDatabase pieceDatabase = new PieceDatabase (info, null, storage, null);
+		Storage storage2 = new FileStorage (testFile.getParentFile());
+		PieceDatabase pieceDatabase = new PieceDatabase (info, null, storage2, null);
 		assertEquals (0, pieceDatabase.getVerifiedPieceCount());
 
 	}
@@ -701,10 +704,13 @@ public class TestPieceDatabase {
 		byte[][] blockHashes = Util.pseudoRandomBlockHashes (16384, 16384);
 		byte[] pieceHashes = Util.flatten2DArray (blockHashes);
 		Info info = Info.create (new InfoFileset (new Filespec (testFile.getName(), 16384L)), 16384, pieceHashes);
-		Storage storage = FileStorage.create (testFile.getParentFile(), info);
+		Storage storage = new FileStorage (testFile.getParentFile());
+		storage.open (info.getPieceLength(), info.getFileset());
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384)));
+		storage.close();
 
-		PieceDatabase pieceDatabase = new PieceDatabase (info, null, storage, new FileMetadata (metadataDirectory));
+		Storage storage2 = new FileStorage (testFile.getParentFile());
+		PieceDatabase pieceDatabase = new PieceDatabase (info, null, storage2, new FileMetadata (metadataDirectory));
 
 		assertEquals (0, pieceDatabase.getVerifiedPieceCount());
 		assertFalse (pieceDatabase.getPresentPieces().get (0));
@@ -715,8 +721,8 @@ public class TestPieceDatabase {
 		assertTrue (pieceDatabase.getPresentPieces().get (0));
 
 		pieceDatabase.terminate (true);
-		Storage storage2 = FileStorage.create (testFile.getParentFile(), info);
-		PieceDatabase pieceDatabase2 = new PieceDatabase (info, null, storage2, new FileMetadata (metadataDirectory));
+		Storage storage3 = new FileStorage (testFile.getParentFile());
+		PieceDatabase pieceDatabase2 = new PieceDatabase (info, null, storage3, new FileMetadata (metadataDirectory));
 
 		assertEquals (1, pieceDatabase2.getVerifiedPieceCount());
 		assertTrue (pieceDatabase2.getPresentPieces().get (0));
@@ -899,10 +905,13 @@ public class TestPieceDatabase {
 		ElasticTree tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
 		Info info = Info.createMerkle (new InfoFileset (new Filespec (testFile.getName(), (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash());
 
-		Storage storage = FileStorage.create (testFile.getParentFile(), info);
+		Storage storage = new FileStorage (testFile.getParentFile());
+		storage.open (info.getPieceLength(), info.getFileset());
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, pieceSize, pieceSize)));
+		storage.close();
 
-		PieceDatabase pieceDatabase = new PieceDatabase (info, null, storage, null);
+		Storage storage2 = new FileStorage (testFile.getParentFile());
+		PieceDatabase pieceDatabase = new PieceDatabase (info, null, storage2, null);
 		assertEquals (0, pieceDatabase.getVerifiedPieceCount());
 
 	}
@@ -922,10 +931,13 @@ public class TestPieceDatabase {
 
 		ElasticTree tree = ElasticTree.buildFromLeaves (pieceSize, totalLength, Util.pseudoRandomBlockHashes (pieceSize, totalLength));
 		Info info = Info.createMerkle (new InfoFileset (new Filespec (testFile.getName(), (long)totalLength)), pieceSize, tree.getView(totalLength).getRootHash());
-		Storage storage = FileStorage.create (testFile.getParentFile(), info);
+		Storage storage = new FileStorage (testFile.getParentFile());
+		storage.open (info.getPieceLength(), info.getFileset());
 		storage.write (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384)));
+		storage.close();
 
-		PieceDatabase pieceDatabase = new PieceDatabase (info, null, storage, new FileMetadata (metadataDirectory));
+		Storage storage2 = new FileStorage (testFile.getParentFile());
+		PieceDatabase pieceDatabase = new PieceDatabase (info, null, storage2, new FileMetadata (metadataDirectory));
 
 		assertEquals (0, pieceDatabase.getVerifiedPieceCount());
 		assertFalse (pieceDatabase.getPresentPieces().get (0));
@@ -936,8 +948,8 @@ public class TestPieceDatabase {
 		assertTrue (pieceDatabase.getPresentPieces().get (0));
 
 		pieceDatabase.terminate (true);
-		Storage storage2 = FileStorage.create (testFile.getParentFile(), info);
-		PieceDatabase pieceDatabase2 = new PieceDatabase (info, null, storage2, new FileMetadata (metadataDirectory));
+		Storage storage3 = new FileStorage (testFile.getParentFile());
+		PieceDatabase pieceDatabase2 = new PieceDatabase (info, null, storage3, new FileMetadata (metadataDirectory));
 
 		assertEquals (1, pieceDatabase2.getVerifiedPieceCount());
 		assertTrue (pieceDatabase2.getPresentPieces().get (0));

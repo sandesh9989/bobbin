@@ -34,10 +34,19 @@ public interface Storage {
 	public BitField getStorageBackedPieces();
 
 	/**
+	 * Initialises the {@code Storage} with the given initial fileset
+	 *
+	 * @param pieceSize The piece size
+	 * @param infoFileset The initial fileset
+	 * @throws IOException
+	 */
+	public void open (int pieceSize, InfoFileset infoFileset) throws IOException;
+
+	/**
 	 * Validates the state of the {@code Storage} against the given opaque cookie that was
 	 * returned by {@link #close()} on a previous, identically constructed {@code Storage}. It is
-	 * assumed that this method, if invoked, is called before any writes to this {@code Storage}
-	 * instance; its use at any other time is undefined.
+	 * assumed that this method, if invoked, is called immediately after the call to
+	 * {@link #open(int, InfoFileset)}; its use at any other time is undefined.
 	 *
 	 * @param cookie The opaque cookie to validate against. Passing {@code null} will always result
 	 *        in a return of {@code false}
@@ -45,7 +54,7 @@ public interface Storage {
 	 *         {@link #close()}, otherwise {@code false}
 	 * @throws IOException If an error occurs validating the underlying storage
 	 */
-	public boolean open (ByteBuffer cookie) throws IOException;
+	public boolean validate (ByteBuffer cookie) throws IOException;
 
 	/**
 	 * Extends the total length of the storage
@@ -60,7 +69,7 @@ public interface Storage {
 	 * Closes the storage. All associated system resources will be released.
 	 * Reading from or writing to the {@code Storage} after closure will result in an exception.
 	 * 
-	 * @return An opaque cookie that can be passed to {@link #open(ByteBuffer)} on a subsequent
+	 * @return An opaque cookie that can be passed to {@link #validate(ByteBuffer)} on a subsequent
 	 *         identically constructed {@code Storage}, or {@code null} if validation is
 	 *         unsupported
 	 * @throws IOException if an error occurred closing the storage

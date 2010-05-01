@@ -165,14 +165,8 @@ public class InfoBuilder {
 	 */
 	public Info build() throws IOException {
 
-		// Create list of files to include in the torrent and the FileStorage to access them
+		// Create fileset to include in the torrent
 		List<File> files = findFiles (this.baseFile);
-		Storage storage = new FileStorage (files, null, this.pieceSize);
-
-		// Create piece hashes
-		byte[] pieceHashes = calculatePiecesHashes (storage);
-
-		// Create fileset
 		InfoFileset fileset;
 		if (this.baseFile.isFile()) {
 			fileset = new InfoFileset (new Filespec (this.baseFile.getName(), this.baseFile.length()));
@@ -190,6 +184,12 @@ public class InfoBuilder {
 			}
 			fileset = new InfoFileset (this.baseFile.getName(), filespecs);
 		}
+
+		// Create piece hashes
+		Storage storage = new FileStorage (this.baseFile.getParentFile());
+		storage.open (this.pieceSize, fileset);
+		byte[] pieceHashes = calculatePiecesHashes (storage);
+		storage.close();
 
 		// Create Info
 		Info info;
