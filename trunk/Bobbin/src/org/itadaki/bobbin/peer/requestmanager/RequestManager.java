@@ -43,8 +43,6 @@ public interface RequestManager extends PeerCoordinatorListener {
 	/**
 	 * Indicates that the remote peer has Allowed Fast a given piece
 	 *
-	 * <p><b>Thread safety:</b> This method must be called with the peer context lock held
-	 *
 	 * @param peer The peer that Allowed Fast the piece
 	 * @param pieceNumber The piece that was Allowed Fast. Must be a piece actually advertised by
 	 *        the given peer

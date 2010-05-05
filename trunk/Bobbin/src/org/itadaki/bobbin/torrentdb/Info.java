@@ -4,6 +4,7 @@
  */
 package org.itadaki.bobbin.torrentdb;
 
+import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -42,6 +43,12 @@ public final class Info {
 	 * The total length of all files
 	 */
 	private final long totalLength;
+
+	/**
+	 * Cached value calculated from the dictionary:<br>
+	 * The piece hashes
+	 */
+	private final byte[] pieceHashes;
 
 	/**
 	 * Cached value calculated from the dictionary:<br>
@@ -164,9 +171,9 @@ public final class Info {
 
 
 	/**
-	 * @return The piece length of the torrent
+	 * @return The piece size of the torrent
 	 */
-	public int getPieceLength() {
+	public int getPieceSize() {
 
 		return ((BInteger)this.dictionary.get("piece length")).value().intValue();
 
@@ -176,7 +183,7 @@ public final class Info {
 	/**
 	 * @return The piece hashes contained in the torrent as a concatenated byte array
 	 */
-	public byte[] getPieces() {
+	public byte[] getPieceHashes() {
 
 		BValue piecesValue = this.dictionary.get ("pieces");
 		if (piecesValue != null) {
@@ -236,7 +243,7 @@ public final class Info {
 	 */
 	public PiecesetDescriptor getPiecesetDescriptor() {
 
-		return new PiecesetDescriptor (this.getPieceLength(), this.totalLength);
+		return new PiecesetDescriptor (this.getPieceSize(), this.totalLength);
 
 	}
 
@@ -247,6 +254,21 @@ public final class Info {
 	public InfoHash getHash() {
 
 		return this.hash;
+
+	}
+
+
+	/**
+	 * Compares a supplied hash against a hash in the piece hash array
+	 * @param pieceNumber The number of the piece
+	 * @param hash The hash to verify for the piece
+	 * @return {@code true} if the hashes were equal, otherwise {@code false}
+	 * @throws NullPointerException if this is not a plain piece Info
+	 * @throes IndexOutOfBoundsException if the piece number is invalid
+	 */
+	public boolean comparePieceHash (int pieceNumber, byte[] hash) {
+
+		return ByteBuffer.wrap(this.pieceHashes, 20 * pieceNumber, 20).equals (ByteBuffer.wrap (hash));
 
 	}
 
@@ -379,6 +401,8 @@ public final class Info {
 			assertTrue ((elastic.length == 1) && (elastic[0] == 0x01), "invalid 'elastic'");
 			assertTrue (rootSignatureValue != null, "'root signature' missing");
 		}
+
+		this.pieceHashes = (piecesValue == null) ? null : ((BBinary)piecesValue).value();
 
 		if (baseDirectoryName == null) {
 			this.fileset = new InfoFileset (files.get (0));

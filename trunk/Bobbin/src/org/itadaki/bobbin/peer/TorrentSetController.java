@@ -18,7 +18,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.itadaki.bobbin.bencode.BDecoder;
-import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.bencode.InvalidEncodingException;
 import org.itadaki.bobbin.connectionmanager.Connection;
 import org.itadaki.bobbin.connectionmanager.ConnectionManager;
@@ -35,6 +34,7 @@ import org.itadaki.bobbin.torrentdb.MetaInfo;
 import org.itadaki.bobbin.torrentdb.Metadata;
 import org.itadaki.bobbin.torrentdb.MetadataProvider;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
+import org.itadaki.bobbin.torrentdb.Storage;
 import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.CharsetUtil;
 import org.itadaki.bobbin.util.WorkQueue;
@@ -43,7 +43,6 @@ import org.itadaki.bobbin.util.statemachine.StateMachine;
 import org.itadaki.bobbin.util.statemachine.StateMachineUtil;
 import org.itadaki.bobbin.util.statemachine.TargetedAction;
 import org.itadaki.bobbin.util.statemachine.TransitionTable;
-
 
 
 /**
@@ -191,7 +190,7 @@ public class TorrentSetController {
 		public void torrentManagerTerminated (TorrentManager torrentManager) {
 
 			synchronized (TorrentSetController.this.stateMachine) {
-				TorrentSetController.this.torrentManagers.remove (torrentManager.getMetaInfo().getInfo().getHash());
+				TorrentSetController.this.torrentManagers.remove (torrentManager.getInfoHash());
 				switch (TorrentSetController.this.stateMachine.getState()) {
 					case TERMINATING:
 						if (TorrentSetController.this.torrentManagers.size() == 0) {
@@ -362,16 +361,18 @@ public class TorrentSetController {
 
 
 	/**
-	 * Adds a new {@link TorrentManager} for the given {@link MetaInfo}. The added
-	 * {@code TorrentManager} will initially be stopped, with all pieces set as wanted.
+	 * Adds a new {@link TorrentManager} for the given {@link MetaInfo} and {@code Storage}. The
+	 * added {@code TorrentManager} will initially be stopped, with all pieces set as wanted.
 	 *
 	 * @param metaInfo The {@code MetaInfo} that describes the torrent
-	 * @param baseDirectory The base directory beneath which to write the file(s) of the torrent
+	 * @param storage The {@code Storage} through which to read / write the torrent data
 	 * @return The created {@code TorrentManager}
-	 * @throws IOException If there was a problem initialising the {@code TorrentManager}'s file
-	 *         database
+	 * @throws IncompatibleLocationException If the specified base directory contains files or
+	 *         directories that are incompatible with the layout of the torrent
+	 * @throws IllegalArgumentException if the MetaInfo's Info Hash is already registered
+	 * @throws IOException On any other I/O error initialising the torrent manager
 	 */
-	public TorrentManager addTorrentManager (MetaInfo metaInfo, File baseDirectory) throws IOException {
+	public TorrentManager addTorrentManager (MetaInfo metaInfo, Storage storage) throws IOException {
 
 		synchronized (this.stateMachine) {
 
@@ -380,17 +381,24 @@ public class TorrentSetController {
 			}
 
 			Info info = metaInfo.getInfo();
+
+			if (this.torrentManagers.containsKey (info.getHash())) {
+				throw new IllegalArgumentException();
+			}
+
 			Metadata metadata = null;
 			if (this.metadataProvider != null) {
 				metadata = this.metadataProvider.metadataFor (info.getHash());
 			}
-			PieceDatabase pieceDatabase = new PieceDatabase (info, metaInfo.getPublicKey(), new FileStorage (baseDirectory), metadata);
+			PieceDatabase pieceDatabase = new PieceDatabase (info, metaInfo.getPublicKey(), storage, metadata);
 			BitField wantedPieces = new BitField (pieceDatabase.getPiecesetDescriptor().getNumberOfPieces());
 			wantedPieces.not();
 
-			TorrentManager torrentManager = new TorrentManager (this.localPeerID, this.localPort, metaInfo, this.connectionManager, pieceDatabase, wantedPieces);
+			TorrentManager torrentManager = new TorrentManager (this.localPeerID, this.localPort, info.getHash(), metaInfo.getAnnounceURLs(), this.connectionManager,
+					pieceDatabase);
+			torrentManager.setWantedPieces (wantedPieces);
 
-			this.torrentManagers.put (metaInfo.getInfo().getHash(), torrentManager);
+			this.torrentManagers.put (info.getHash(), torrentManager);
 			torrentManager.addListener (this.torrentManagerListener);
 
 			return torrentManager;
@@ -401,8 +409,9 @@ public class TorrentSetController {
 
 
 	/**
-	 * Adds a new {@link TorrentManager} for the given torrent file. The added
-	 * {@code TorrentManager} will initially be stopped, with all pieces set as wanted.
+	 * Adds a new {@link TorrentManager} for the given torrent file, using a {@link FileStorage} to
+	 * access the torrent data at the given location. The added {@code TorrentManager} will
+	 * initially be stopped, with all pieces set as wanted.
 	 *
 	 * @param torrentFile The torrent file to create a {@code TorrentManager} for
 	 * @param baseDirectory The base directory beneath which to write the file(s) of the torrent
@@ -412,7 +421,8 @@ public class TorrentSetController {
 	 *         data
 	 * @throws IncompatibleLocationException If the specified base directory contains files or
 	 *         directories that are incompatible with the layout of the torrent
-	 * @throws IOException On any other error reading from the torrent file
+	 * @throws IllegalArgumentException if the torrent's Info Hash is already registered
+	 * @throws IOException On any other I/O error initialising the torrent manager
 	 */
 	public TorrentManager addTorrentManager (File torrentFile, File baseDirectory) throws IOException {
 
@@ -423,21 +433,53 @@ public class TorrentSetController {
 			}
 
 			FileInputStream input = new FileInputStream (torrentFile);
-			BDictionary dictionary = new BDecoder(input).decodeDictionary();
-			input.close();
-			MetaInfo metaInfo = new MetaInfo (dictionary);
+			try {
+				MetaInfo metaInfo = new MetaInfo (new BDecoder(input).decodeDictionary());
+				Storage storage = new FileStorage (baseDirectory);
+				return addTorrentManager (metaInfo, storage);
+			} finally {
+				input.close();
+			}
 
-			Info info = metaInfo.getInfo();
+		}
+
+	}
+
+
+	/**
+	 * Adds a new {@link TorrentManager} for the given info hash, then tries to find the Info
+	 * through peer exchange
+	 *
+	 * @param infoHash
+	 * @param announceURLs
+	 * @param storage The {@code Storage} through which to read / write the torrent data
+	 * @return The created {@code TorrentManager}
+	 * @throws IllegalArgumentException if the torrent's Info is already registered
+	 * @throws IOException On any other I/O error initialising the torrent manager
+	 */
+	public TorrentManager addTorrentManager (InfoHash infoHash, List<List<String>> announceURLs, Storage storage) throws IOException {
+
+		// TODO Rationalise addTorrentManager calls - let manual trackers be added after creation
+
+		synchronized (this.stateMachine) {
+
+			if (this.stateMachine.getState() != State.RUNNING) {
+				throw new IllegalStateException();
+			}
+
+			if (this.torrentManagers.containsKey (infoHash)) {
+				throw new IllegalArgumentException();
+			}
+
 			Metadata metadata = null;
 			if (this.metadataProvider != null) {
-				metadata = this.metadataProvider.metadataFor (info.getHash());
+				metadata = this.metadataProvider.metadataFor (infoHash);
 			}
-			PieceDatabase pieceDatabase = new PieceDatabase (info, metaInfo.getPublicKey(), new FileStorage (baseDirectory), metadata);
-			BitField wantedPieces = new BitField (pieceDatabase.getPiecesetDescriptor().getNumberOfPieces()).not();
+			PieceDatabase pieceDatabase = new PieceDatabase (infoHash, storage, metadata);
 
-			TorrentManager torrentManager = new TorrentManager (this.localPeerID, this.localPort, metaInfo, this.connectionManager, pieceDatabase, wantedPieces);
+			TorrentManager torrentManager = new TorrentManager (this.localPeerID, this.localPort, infoHash, announceURLs, this.connectionManager, pieceDatabase);
 
-			this.torrentManagers.put (metaInfo.getInfo().getHash(), torrentManager);
+			this.torrentManagers.put (infoHash, torrentManager);
 			torrentManager.addListener (this.torrentManagerListener);
 
 			return torrentManager;

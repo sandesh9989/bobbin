@@ -6,12 +6,15 @@ package test.peer;
 
 import static org.junit.Assert.*;
 
+import java.util.Collections;
+import java.util.List;
+
 
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.connectionmanager.ConnectionManager;
 import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.peer.TorrentManager;
-import org.itadaki.bobbin.torrentdb.MetaInfo;
+import org.itadaki.bobbin.torrentdb.Info;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.util.BitField;
 import org.junit.Test;
@@ -33,22 +36,20 @@ public class TestTorrentManager {
 	@Test
 	public void testIncompleteStateNotSeeding() throws Exception {
 
-		BDictionary info = new BDictionary();
-		info.put ("length", 1024);
-		info.put ("name", "TestTorrent.txt");
-		info.put ("piece length", 262144);
-		info.put ("pieces", "01234567890123456789");
-		BDictionary torrent = new BDictionary();
-		torrent.put ("announce", "http://te.st.zz:6666/announce");
-		torrent.put ("info", info);
-		MetaInfo metaInfo = new MetaInfo (torrent);
+		BDictionary infoDictionary = new BDictionary();
+		infoDictionary.put ("length", 1024);
+		infoDictionary.put ("name", "TestTorrent.txt");
+		infoDictionary.put ("piece length", 262144);
+		infoDictionary.put ("pieces", "01234567890123456789");
+		List<List<String>> announceURLs = Collections.singletonList (Collections.singletonList ("http://te.st.zz:6666/announce"));
 
 		ConnectionManager connectionManager = new ConnectionManager();
 
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		BitField wantedPieces = new BitField (1);
 		wantedPieces.not();
-		TorrentManager torrentManager = new TorrentManager (new PeerID(), 0, metaInfo, connectionManager, pieceDatabase, wantedPieces);
+		TorrentManager torrentManager = new TorrentManager (new PeerID(), 0, new Info(infoDictionary).getHash(), announceURLs, connectionManager, pieceDatabase);
+		torrentManager.setWantedPieces (wantedPieces);
 
 		torrentManager.start (true);
 
@@ -68,15 +69,12 @@ public class TestTorrentManager {
 	@Test
 	public void testCompleteStateSeeding() throws Exception {
 
-		BDictionary info = new BDictionary();
-		info.put ("length", 1024);
-		info.put ("name", "TestTorrent.txt");
-		info.put ("piece length", 262144);
-		info.put ("pieces", "01234567890123456789");
-		BDictionary torrent = new BDictionary();
-		torrent.put ("announce", "http://te.st.zz:6666/announce");
-		torrent.put ("info", info);
-		MetaInfo metaInfo = new MetaInfo (torrent);
+		BDictionary infoDictionary = new BDictionary();
+		infoDictionary.put ("length", 1024);
+		infoDictionary.put ("name", "TestTorrent.txt");
+		infoDictionary.put ("piece length", 262144);
+		infoDictionary.put ("pieces", "01234567890123456789");
+		List<List<String>> announceURLs = Collections.singletonList (Collections.singletonList ("http://te.st.zz:6666/announce"));
 
 		ConnectionManager connectionManager = new ConnectionManager();
 
@@ -84,7 +82,8 @@ public class TestTorrentManager {
 
 		BitField wantedPieces = new BitField (1);
 		wantedPieces.not();
-		TorrentManager torrentManager = new TorrentManager (new PeerID(), 0, metaInfo, connectionManager, pieceDatabase, wantedPieces);
+		TorrentManager torrentManager = new TorrentManager (new PeerID(), 0, new Info(infoDictionary).getHash(), announceURLs, connectionManager, pieceDatabase);
+		torrentManager.setWantedPieces (wantedPieces);
 
 		torrentManager.start (true);
 

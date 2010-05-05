@@ -6,12 +6,16 @@ package test.torrentdb;
 
 import static org.junit.Assert.*;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 
+import org.itadaki.bobbin.torrentdb.Filespec;
+import org.itadaki.bobbin.torrentdb.InfoFileset;
 import org.itadaki.bobbin.torrentdb.MemoryStorage;
 import org.itadaki.bobbin.torrentdb.PiecesetDescriptor;
+import org.itadaki.bobbin.torrentdb.Storage;
 import org.junit.Test;
 
 import test.Util;
@@ -24,11 +28,13 @@ public class TestMemoryStorage {
 
 	/**
 	 * Tests creating a MemoryStorage that is too large
+	 * @throws IOException
 	 */
 	@Test(expected=IllegalArgumentException.class)
-	public void testTooLarge() {
+	public void testTooLarge() throws IOException {
 
-		new MemoryStorage (new PiecesetDescriptor (262144, (long)Integer.MAX_VALUE + 1));
+		Storage storage = new MemoryStorage();
+		storage.open (262144, new InfoFileset (new Filespec ("test.txt", (long)Integer.MAX_VALUE + 1)));
 
 	}
 
@@ -42,7 +48,8 @@ public class TestMemoryStorage {
 
 		ByteBuffer expectedPiece = ByteBuffer.wrap (new byte[] { 1 });
 
-		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1025));
+		Storage storage = new MemoryStorage();
+		storage.open (1024, new InfoFileset (new Filespec ("test.txt", 1025L)));
 
 		byte[] writtenPiece = new byte[1024];
 		Arrays.fill (writtenPiece, (byte)1);
@@ -64,7 +71,8 @@ public class TestMemoryStorage {
 
 		ByteBuffer expectedPiece = ByteBuffer.wrap (new byte[] { 1 });
 
-		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1025));
+		Storage storage = new MemoryStorage();
+		storage.open (1024, new InfoFileset (new Filespec ("test.txt", 1025L)));
 
 		ByteBuffer writtenPiece = ByteBuffer.wrap (new byte[] { 1 });
 		storage.write (1, writtenPiece);
@@ -83,7 +91,8 @@ public class TestMemoryStorage {
 	@Test
 	public void testOutputChannel1() throws Exception {
 
-		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1024));
+		Storage storage = new MemoryStorage();
+		storage.open (1024, new InfoFileset (new Filespec ("test.txt", 1024L)));
 		WritableByteChannel outputChannel = storage.openOutputChannel (0, 0);
 
 		ByteBuffer data = ByteBuffer.wrap (Util.pseudoRandomBlock (0, 1024, 1024));
@@ -102,7 +111,8 @@ public class TestMemoryStorage {
 	@Test
 	public void testOutputChannel1p5() throws Exception {
 
-		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1524));
+		Storage storage = new MemoryStorage();
+		storage.open (1024, new InfoFileset (new Filespec ("test.txt", 1524L)));
 		WritableByteChannel outputChannel = storage.openOutputChannel (0, 0);
 
 		ByteBuffer data = ByteBuffer.wrap (Util.pseudoRandomBlock (0, 1524, 1524));
@@ -122,7 +132,8 @@ public class TestMemoryStorage {
 	@Test
 	public void testOutputChannel0p5x1p5() throws Exception {
 
-		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1524));
+		Storage storage = new MemoryStorage();
+		storage.open (1024, new InfoFileset (new Filespec ("test.txt", 1524L)));
 		WritableByteChannel outputChannel = storage.openOutputChannel (0, 500);
 
 		ByteBuffer data = ByteBuffer.allocate (1524);
@@ -148,7 +159,8 @@ public class TestMemoryStorage {
 
 		PiecesetDescriptor expectedDescriptor1 = new PiecesetDescriptor (1024, 1024);
 		PiecesetDescriptor expectedDescriptor2 = new PiecesetDescriptor (1024, 2048);
-		MemoryStorage storage = new MemoryStorage (new PiecesetDescriptor (1024, 1024));
+		Storage storage = new MemoryStorage();
+		storage.open (1024, new InfoFileset (new Filespec ("test.txt", 1024L)));
 
 		assertEquals (expectedDescriptor1, storage.getPiecesetDescriptor());
 

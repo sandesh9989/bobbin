@@ -54,7 +54,8 @@ public class TestPeerCoordinator {
 		ConnectionManager connectionManager = null;
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 
 		// When
@@ -81,7 +82,8 @@ public class TestPeerCoordinator {
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		// Open then close a port so we are reasonably sure of having an uncontactable destination port
 		ServerSocket serverSocket = new ServerSocket (0);
@@ -117,7 +119,8 @@ public class TestPeerCoordinator {
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		ServerSocket serverSocket = new ServerSocket (0);
 		int port = serverSocket.getLocalPort();
@@ -152,7 +155,8 @@ public class TestPeerCoordinator {
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
 		serverSocketChannel.socket().bind (null);
@@ -189,7 +193,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
 		serverSocketChannel.socket().bind (null);
@@ -238,7 +243,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 
 		// When
 		peerCoordinator.peerConnectionComplete (mock (Connection.class), new PeerID(), false, false);
@@ -267,7 +273,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 
 		// When
@@ -296,7 +303,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		PeerID peerID = new PeerID();
 
@@ -327,7 +335,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 
 		// When
@@ -356,7 +365,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 
 		// When
@@ -386,7 +396,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 
 		// When
@@ -415,7 +426,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		final PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		final PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		PeerID peerID1 = new PeerID();
 		MockConnection connection1 = new MockConnection();
@@ -475,7 +487,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		final PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		final PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		PeerID peerID1 = new PeerID();
 		MockConnection connection1 = new MockConnection();
@@ -528,7 +541,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("1", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 
 		// When
@@ -557,7 +571,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 
 		// When
 		peerCoordinator.start();
@@ -591,7 +606,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		MockConnection connection = new MockConnection();
 		peerCoordinator.peerConnectionComplete (connection, new PeerID(), false, false);
@@ -624,7 +640,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		MockConnection connection = new MockConnection();
 		peerCoordinator.peerConnectionComplete (connection, new PeerID(), false, false);
@@ -666,7 +683,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		MockConnection connection = new MockConnection();
 		peerCoordinator.peerConnectionComplete (connection, new PeerID(), false, false);
@@ -700,7 +718,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("11", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		MockConnection connection = new MockConnection();
 		peerCoordinator.peerConnectionComplete (connection, new PeerID(), false, false);
@@ -733,7 +752,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("00", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		MockConnection connection = new MockConnection();
 		peerCoordinator.peerConnectionComplete (connection, new PeerID(), false, false);
@@ -775,7 +795,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("10", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		MockConnection connection = new MockConnection();
 		peerCoordinator.peerConnectionComplete (connection, new PeerID(), false, false);
@@ -810,7 +831,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("10", 16384);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		MockConnection connection = new MockConnection();
 		peerCoordinator.peerConnectionComplete (connection, new PeerID(), false, false);
@@ -853,7 +875,8 @@ public class TestPeerCoordinator {
 		PieceDatabase pieceDatabase = MockPieceDatabase.createElastic ("0", pieceSize);
 		pieceDatabase.start (true);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
-		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		PeerCoordinator peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
+		peerCoordinator.setWantedPieces (wantedPieces);
 		peerCoordinator.start();
 		MockConnection connection = new MockConnection();
 		peerCoordinator.peerConnectionComplete (connection, new PeerID(), true, true);

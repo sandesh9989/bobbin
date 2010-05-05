@@ -437,19 +437,19 @@ public class FileStorage implements Storage {
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.torrentdb.Storage#read(int)
 	 */
-	public ByteBuffer read (int index) throws IOException {
+	public ByteBuffer read (int pieceNumber) throws IOException {
 
-		if (index < 0) {
-			throw new IndexOutOfBoundsException ("Invalid index " + index);
+		if ((pieceNumber < 0) || (pieceNumber >= this.descriptor.getNumberOfPieces())) {
+			throw new IndexOutOfBoundsException ("Invalid index " + pieceNumber);
 		}
 
 		// Find the file / byte index
-		long[] indices = getFileByteIndexForLinearByteIndex (((long)index) * this.descriptor.getPieceSize());
+		long[] indices = getFileByteIndexForLinearByteIndex (((long)pieceNumber) * this.descriptor.getPieceSize());
 		int fileIndex = (int)indices[0];
 		long fileByteIndex = indices[1];
 
 		int bufferByteIndex = 0;
-		int bytesLeftToRead = this.descriptor.getPieceLength (index);
+		int bytesLeftToRead = this.descriptor.getPieceLength (pieceNumber);
 		byte[] buffer = new byte[bytesLeftToRead];
 
 		// Read fragments until complete
@@ -481,21 +481,21 @@ public class FileStorage implements Storage {
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.torrentdb.Storage#write(int, java.nio.ByteBuffer)
 	 */
-	public void write (int index, ByteBuffer buffer) throws IOException {
+	public void write (int pieceNumber, ByteBuffer buffer) throws IOException {
 
-		if (index < 0) {
-			throw new IndexOutOfBoundsException ("Invalid index " + index);
+		if ((pieceNumber < 0) || (pieceNumber >= this.descriptor.getNumberOfPieces())) {
+			throw new IndexOutOfBoundsException ("Invalid index " + pieceNumber);
 		}
 
 		// Find the file / byte index
-		long[] indices = getFileByteIndexForLinearByteIndex (((long)index) * this.descriptor.getPieceSize());
+		long[] indices = getFileByteIndexForLinearByteIndex (((long)pieceNumber) * this.descriptor.getPieceSize());
 		int fileIndex = (int)indices[0];
 		long fileByteIndex = indices[1];
 
 		int numFiles = this.files.size();
 
 		// Write fragments until complete
-		int bytesLeftToWrite = this.descriptor.getPieceLength (index);
+		int bytesLeftToWrite = this.descriptor.getPieceLength (pieceNumber);
 		while (bytesLeftToWrite > 0) {
 
 			long bytesInThisFragment = Math.max (0, this.fileLengths.get (fileIndex) - fileByteIndex);

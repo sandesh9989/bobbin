@@ -22,6 +22,7 @@ import org.itadaki.bobbin.peer.protocol.PeerProtocolConstants;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
+import org.itadaki.bobbin.torrentdb.Info;
 import org.itadaki.bobbin.torrentdb.PieceStyle;
 import org.itadaki.bobbin.torrentdb.ResourceType;
 import org.itadaki.bobbin.torrentdb.PiecesetDescriptor;
@@ -874,14 +875,22 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		this.peerStatistics = new PeerStatistics (parentStatistics);
 		this.connection.setListener (this);
 
-		PiecesetDescriptor initialDescriptor = this.peerSetContext.pieceDatabase.getInfo().getPiecesetDescriptor();
-		this.state.remoteBitField = new BitField (initialDescriptor.getNumberOfPieces());
-		this.state.remoteView = initialDescriptor;
+		Info info = this.peerSetContext.pieceDatabase.getInfo();
+		if (info != null) {
+			PiecesetDescriptor initialDescriptor = info.getPiecesetDescriptor();
+			this.state.remoteBitField = new BitField (initialDescriptor.getNumberOfPieces());
+			this.state.remoteView = initialDescriptor;
+		} else {
+			this.state.remoteBitField = new BitField (0);
+			this.state.remoteView = null;
+		}
 		this.outboundQueue = new PeerOutboundQueue (this.connection, this.peerSetContext.pieceDatabase, this.peerStatistics.blockBytesSent);
 
 		// Send bitfield
 		BitField bitField = this.peerSetContext.pieceDatabase.getPresentPieces();
-		if (this.peerSetContext.pieceDatabase.getInfo().getPieceStyle() == PieceStyle.ELASTIC) {
+		PieceStyle pieceStyle = (info == null) ? PieceStyle.PLAIN : info.getPieceStyle();
+
+		if (pieceStyle == PieceStyle.ELASTIC) {
 			this.outboundQueue.sendHaveNoneMessage();
 		} else {
 			if (this.state.fastExtensionEnabled) {
@@ -900,13 +909,13 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 			}
 		}
 
-		if (this.peerSetContext.pieceDatabase.getInfo().getPieceStyle() == PieceStyle.ELASTIC) {
+		if (pieceStyle == PieceStyle.ELASTIC) {
 			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC)), null, null);
 			if (this.peerSetContext.pieceDatabase.getPiecesetDescriptor().getLength() > this.peerSetContext.pieceDatabase.getInfo().getPiecesetDescriptor().getLength()) {
 				this.outboundQueue.sendElasticSignatureMessage (this.peerSetContext.pieceDatabase.getViewSignature (this.peerSetContext.pieceDatabase.getPiecesetDescriptor().getLength()));
 			}
 			this.outboundQueue.sendElasticBitfieldMessage (this.peerSetContext.pieceDatabase.getPresentPieces());
-		} else if (this.peerSetContext.pieceDatabase.getInfo().getPieceStyle() == PieceStyle.MERKLE) {
+		} else if (pieceStyle == PieceStyle.MERKLE) {
 			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_MERKLE)), null, null);
 		};
 
