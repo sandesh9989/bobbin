@@ -45,6 +45,8 @@ import org.itadaki.bobbin.util.statemachine.TransitionTable;
 /**
  * Manages the relationship between an {@link Info} describing a torrent's data and a
  * {@link Storage} that contains the data
+ * 
+ * TODO Revisit thread safety
  */
 public class PieceDatabase {
 
@@ -154,7 +156,13 @@ public class PieceDatabase {
 	private final Map<Long,ViewSignature> viewSignatures = new HashMap<Long,ViewSignature>();
 
 	/**
-	 * The {@code Info} describing the database's content
+	 * The {@code InfoHash} of the {@code Info} describing the database's content. This is always
+	 * known initially, even when the {@code Info} is not
+	 */
+	private final InfoHash infoHash;
+
+	/**
+	 * The {@code Info} describing the database's content. May not be known initially
 	 */
 	private Info info;
 
@@ -172,11 +180,6 @@ public class PieceDatabase {
 	 * The set of pieces that have been verified as being either present or absent
 	 */
 	private BitField verifiedPieces;
-
-	/**
-	 * The concatenated piece hashes (cached from Info)
-	 */
-	private byte[] pieceHashes;
 
 	/**
 	 * The expandable Merkle hash tree
@@ -281,7 +284,7 @@ public class PieceDatabase {
 	private void actionVerify() {
 
 		this.verifier = new Verifier();
-		this.verifier.setName ("PieceDatabase Verifier - " + CharsetUtil.hexencode (this.info.getHash().getBytes()));
+		this.verifier.setName ("PieceDatabase Verifier - " + CharsetUtil.hexencode (this.infoHash.getBytes()));
 		this.verifier.setDaemon (true);
 		this.verifier.start();
 
@@ -365,7 +368,7 @@ public class PieceDatabase {
 		// {@code Storage} closed normally
 		if (this.metadata != null) {
 
-			if ((storageCookie != null) && (this.verifiedPieceCount == this.storage.getPiecesetDescriptor().getNumberOfPieces())) {
+			if ((this.info != null) && (storageCookie != null) && (this.verifiedPieceCount == this.storage.getPiecesetDescriptor().getNumberOfPieces())) {
 				try {
 					if (this.elasticTree != null) {
 						ByteBuffer elasticImmutableHashes = this.elasticTree.getImmutableHashes();
@@ -497,6 +500,9 @@ public class PieceDatabase {
 			BitField fileBackedPieces = PieceDatabase.this.storage.getStorageBackedPieces();
 
 			synchronized (PieceDatabase.this.presentPieces) {
+				if (PieceDatabase.this.presentPieces.length() == 0) {
+					return true;
+				}
 				for (int i = 0; i < numPieces; i++) {
 					if (!PieceDatabase.this.verifiedPieces.get (i) && !fileBackedPieces.get (i)) {
 						PieceDatabase.this.presentPieces.clear (i);
@@ -510,7 +516,7 @@ public class PieceDatabase {
 			// If we have no verified pieces, an empty hash tree and all data is file backed, build
 			// a tree to see if all pieces are present
 			if (
-					   (PieceDatabase.this.pieceHashes == null)
+					   (PieceDatabase.this.info.getPieceStyle() != PieceStyle.PLAIN)
 					&& (PieceDatabase.this.elasticTree.getAllViews().size() == 1)
 					&& (PieceDatabase.this.verifiedPieces.cardinality() == 0)
 					&& (fileBackedPieces.cardinality() == numPieces)
@@ -584,9 +590,9 @@ public class PieceDatabase {
 						}
 
 						boolean storedPieceOK = false;
-						if (PieceDatabase.this.pieceHashes != null) {
+						if (PieceDatabase.this.info.getPieceStyle() == PieceStyle.PLAIN) {
 							// Hash array verification
-							storedPieceOK = ByteBuffer.wrap(PieceDatabase.this.pieceHashes, 20 * i, 20).equals (ByteBuffer.wrap (storedPieceHash));
+							storedPieceOK = PieceDatabase.this.info.comparePieceHash (i, storedPieceHash);
 						} else {
 							// Hash tree verification
 							ElasticTreeView view = PieceDatabase.this.elasticTree.getCeilingView (
@@ -737,11 +743,26 @@ public class PieceDatabase {
 
 
 	/**
-	 * Gets an Info describing the database's content
+	 * Gets the {@code InfoHash} of the database's {@code Info}. This will always be known
+	 * initially, but the {@code Info} may not
 	 *
 	 * <p><b>Thread safety:</b> This method is thread safe
 	 *
 	 * @return An Info describing the database's content
+	 */
+	public InfoHash getInfoHash() {
+
+		return this.infoHash;
+
+	}
+
+
+	/**
+	 * Gets the Info describing the database's content. This may not be known initially
+	 *
+	 * <p><b>Thread safety:</b> This method is thread safe
+	 *
+	 * @return An Info describing the database's content, or {@code null} if it is not yet known
 	 */
 	public Info getInfo() {
 
@@ -1199,7 +1220,7 @@ public class PieceDatabase {
 			} else {
 
 				// Compare hash of supplied piece to known valid hash
-				if (!ByteBuffer.wrap(this.pieceHashes, 20 * piece.getPieceNumber(), 20).equals (ByteBuffer.wrap (checkPieceHash))) {
+				if (!this.info.comparePieceHash (piece.getPieceNumber(), checkPieceHash)) {
 					return false;
 				}
 
@@ -1377,14 +1398,14 @@ public class PieceDatabase {
 	 */
 	public PieceDatabase (Info info, PublicKey publicKey, Storage storage, Metadata metadata) throws IOException {
 
+		this.infoHash = info.getHash();
 		this.info = info;
 		this.publicKey = publicKey;
 		this.storage = storage;
 		this.metadata = metadata;
-		this.pieceHashes = this.info.getPieces();
 		this.elasticTree = null;
 
-		this.storage.open (this.info.getPieceLength(), this.info.getFileset());
+		this.storage.open (this.info.getPieceSize(), this.info.getFileset());
 
 		// Resume previous state from metadata if possible
 		boolean initialised = false;
@@ -1415,6 +1436,38 @@ public class PieceDatabase {
 		}
 
 		this.workQueue = new WorkQueue ("PieceDatabase WorkQueue - " + CharsetUtil.hexencode (info.getHash().getBytes()));
+
+	}
+
+
+	/**
+	 * TODO This is the bare minimum necessary to start with no Info. Well defined semantics needed.
+	 *
+	 * @param infoHash
+	 * @param storage
+	 * @param metadata
+	 */
+	public PieceDatabase (InfoHash infoHash, Storage storage, Metadata metadata) {
+
+		// TODO implementation
+		this.storage = storage;
+		this.metadata = metadata;
+		this.infoHash = infoHash;
+		this.info = null;
+		this.publicKey = null;
+		this.elasticTree = null;
+		this.verifiedPieces = new BitField (0);
+		this.verifiedPieceCount = 0;
+		this.presentPieces = new BitField (0);
+
+		try {
+			this.digest = MessageDigest.getInstance ("SHA");
+		} catch (NoSuchAlgorithmException e) {
+			// Shouldn't happen
+			throw new InternalError (e.getMessage());
+		}
+
+		this.workQueue = new WorkQueue ("PieceDatabase WorkQueue - " + CharsetUtil.hexencode (infoHash.getBytes()));
 
 	}
 

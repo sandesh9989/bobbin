@@ -33,7 +33,6 @@ import org.itadaki.bobbin.torrentdb.MemoryStorage;
 import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.Storage;
-import org.itadaki.bobbin.torrentdb.PiecesetDescriptor;
 import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.elastictree.ElasticTree;
@@ -1840,7 +1839,7 @@ public class TestPeerHandler {
 				tree.getView(totalLength).getRootHash(),
 				originalSignature
 		);
-		Storage storage = new MemoryStorage (new PiecesetDescriptor (pieceSize, totalLength));
+		Storage storage = new MemoryStorage();
 		PieceDatabase pieceDatabase = new PieceDatabase (info, MockPieceDatabase.mockPublicKey, storage, null);
 		pieceDatabase.start (true);
 		pieceDatabase.writePiece (new Piece (0, ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384)), tree.getHashChain (0, 16384)));

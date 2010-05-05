@@ -30,6 +30,7 @@ import org.itadaki.bobbin.peer.protocol.PeerConnectionListener;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolNegotiator;
 import org.itadaki.bobbin.peer.requestmanager.DefaultRequestManager;
 import org.itadaki.bobbin.peer.requestmanager.RequestManagerListener;
+import org.itadaki.bobbin.torrentdb.Info;
 import org.itadaki.bobbin.torrentdb.Piece;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.PieceStyle;
@@ -213,7 +214,8 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 		this.unconnectedPeers.remove (connection);
 
-		if ((this.peerSetContext.pieceDatabase.getInfo().getPieceStyle() != PieceStyle.PLAIN) && !extensionProtocolEnabled) {
+		Info info = this.peerSetContext.pieceDatabase.getInfo();
+		if ((info != null) && (info.getPieceStyle() != PieceStyle.PLAIN) && !extensionProtocolEnabled) {
 
 			// If the torrent is a Merkle or Elastic torrent, the extension protocol is mandatory
 			try {
@@ -872,11 +874,10 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 	 * @param localPeerID The local peer's ID
 	 * @param connectionManager The ConnectionManager for the managed torrent
 	 * @param pieceDatabase The PieceDatabase of the managed torrent
-	 * @param wantedPieces The set of pieces that are wanted
 	 */
-	public PeerCoordinator (PeerID localPeerID, ConnectionManager connectionManager, PieceDatabase pieceDatabase, BitField wantedPieces) {
+	public PeerCoordinator (PeerID localPeerID, ConnectionManager connectionManager, PieceDatabase pieceDatabase) {
 
-		this.workQueue = new WorkQueue ("PeerCoordinator WorkQueue - " + CharsetUtil.hexencode (pieceDatabase.getInfo().getHash().getBytes()));
+		this.workQueue = new WorkQueue ("PeerCoordinator WorkQueue - " + CharsetUtil.hexencode (pieceDatabase.getInfoHash().getBytes()));
 
 		this.peerSetContext = new PeerSetContext (
 				this,
@@ -887,7 +888,7 @@ public class PeerCoordinator implements PeerConnectionListener, PeerSourceListen
 
 		this.localPeerID = localPeerID;
 		this.connectionManager = connectionManager;
-		this.wantedPieces = wantedPieces.clone();
+		this.wantedPieces = new BitField (pieceDatabase.getPiecesetDescriptor().getNumberOfPieces());
 		this.chokingManager = new DefaultChokingManager();
 		this.listeners.add (this.chokingManager);
 		this.listeners.add (this.peerSetContext.requestManager);

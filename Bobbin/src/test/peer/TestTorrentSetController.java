@@ -27,6 +27,7 @@ import org.itadaki.bobbin.peer.TorrentSetController;
 import org.itadaki.bobbin.peer.TorrentSetControllerListener;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
 import org.itadaki.bobbin.torrentdb.InfoHash;
+import org.itadaki.bobbin.torrentdb.MemoryStorage;
 import org.itadaki.bobbin.torrentdb.MetaInfo;
 import org.itadaki.bobbin.torrentdb.Metadata;
 import org.itadaki.bobbin.torrentdb.MetadataProvider;
@@ -70,7 +71,7 @@ public class TestTorrentSetController {
 
 		MetaInfo metaInfo = createTestMetaInfo();
 
-		TorrentManager manager = controller.addTorrentManager (metaInfo, Util.createTemporaryDirectory());
+		TorrentManager manager = controller.addTorrentManager (metaInfo, new MemoryStorage());
 
 		final CountDownLatch startedLatch = new CountDownLatch (1);
 		final CountDownLatch stoppedLatch = new CountDownLatch (1);
@@ -107,6 +108,23 @@ public class TestTorrentSetController {
 
 
 	/**
+	 * Tests adding two TorrentManagers for the same info hash
+	 * @throws Exception
+	 */
+	@Test(expected=IllegalArgumentException.class)
+	public void testDoubleAddManager() throws Exception {
+
+		TorrentSetController controller = new TorrentSetController();
+
+		MetaInfo metaInfo = createTestMetaInfo();
+
+		controller.addTorrentManager (metaInfo, new MemoryStorage());
+		controller.addTorrentManager (metaInfo, new MemoryStorage());
+
+	}
+
+
+	/**
 	 * Tests terminating a TorrentSetController with one TorrentManager
 	 * @throws Exception
 	 */
@@ -117,7 +135,7 @@ public class TestTorrentSetController {
 
 		MetaInfo metaInfo = createTestMetaInfo();
 
-		TorrentManager manager = controller.addTorrentManager (metaInfo, Util.createTemporaryDirectory());
+		TorrentManager manager = controller.addTorrentManager (metaInfo, new MemoryStorage());
 
 		assertTrue (controller.isRunning());
 		assertFalse (controller.isTerminated());
@@ -149,7 +167,7 @@ public class TestTorrentSetController {
 		});
 
 		MetaInfo metaInfo = createTestMetaInfo();
-		TorrentManager manager = controller.addTorrentManager (metaInfo, Util.createTemporaryDirectory());
+		TorrentManager manager = controller.addTorrentManager (metaInfo, new MemoryStorage());
 
 
 		assertTrue (controller.isRunning());
@@ -175,7 +193,7 @@ public class TestTorrentSetController {
 		int localPort = controller.getLocalPort();
 
 		MetaInfo metaInfo = createTestMetaInfo();
-		TorrentManager manager = controller.addTorrentManager (metaInfo, Util.createTemporaryDirectory());
+		TorrentManager manager = controller.addTorrentManager (metaInfo, new MemoryStorage());
 		manager.start (true);
 
 		assertEquals (0, manager.getPeers().size());
@@ -185,6 +203,38 @@ public class TestTorrentSetController {
 		socketChannel.write (PeerProtocolBuilder.handshake (false, false, metaInfo.getInfo().getHash(), new PeerID()));
 
 		while (socketChannel.read (ByteBuffer.allocate (1)) == 0);
+
+		Thread.sleep (250);
+
+		assertEquals (1, manager.getPeers().size());
+
+		socketChannel.close();
+		controller.terminate (true);
+
+	}
+
+
+	/**
+	 * Tests an incoming connection to a torrent we don't have the Info for yet
+	 * @throws Exception
+	 */
+	@Test
+	public void testIncomingConnectionNoInfo() throws Exception {
+
+		TorrentSetController controller = new TorrentSetController();
+		int localPort = controller.getLocalPort();
+
+		MetaInfo metaInfo = createTestMetaInfo();
+		TorrentManager manager = controller.addTorrentManager (metaInfo.getInfo().getHash(), metaInfo.getAnnounceURLs(), new MemoryStorage());
+		manager.start (true);
+
+		assertEquals (0, manager.getPeers().size());
+
+		// Handshake through the port and wait to hear that the coordinator has replied
+		final SocketChannel socketChannel = SocketChannel.open (new InetSocketAddress (InetAddress.getLocalHost(), localPort));
+		socketChannel.write (PeerProtocolBuilder.handshake (false, false, metaInfo.getInfo().getHash(), new PeerID()));
+
+		socketChannel.read (ByteBuffer.allocate (1));
 
 		Thread.sleep (250);
 
@@ -207,7 +257,7 @@ public class TestTorrentSetController {
 		controller.terminate (true);
 
 		MetaInfo metaInfo = createTestMetaInfo();
-		controller.addTorrentManager (metaInfo, Util.createTemporaryDirectory());
+		controller.addTorrentManager (metaInfo, new MemoryStorage());
 
 	}
 
@@ -263,7 +313,7 @@ public class TestTorrentSetController {
 		TorrentSetController controller = new TorrentSetController();
 
 		MetaInfo metaInfo = createTestMetaInfo();
-		controller.addTorrentManager (metaInfo, Util.createTemporaryDirectory());
+		controller.addTorrentManager (metaInfo, new MemoryStorage());
 
 		final boolean[] terminatedCalled = new boolean[1];
 		TorrentSetControllerListener listener = new TorrentSetControllerListener() {
@@ -289,7 +339,7 @@ public class TestTorrentSetController {
 		TorrentSetController controller = new TorrentSetController();
 
 		MetaInfo metaInfo = createTestMetaInfo();
-		controller.addTorrentManager (metaInfo, Util.createTemporaryDirectory());
+		controller.addTorrentManager (metaInfo, new MemoryStorage());
 
 		final boolean[] terminatedCalled = new boolean[1];
 		TorrentSetControllerListener listener = new TorrentSetControllerListener() {
@@ -316,7 +366,7 @@ public class TestTorrentSetController {
 		TorrentSetController controller = new TorrentSetController();
 
 		MetaInfo metaInfo = createTestMetaInfo();
-		controller.addTorrentManager (metaInfo, Util.createTemporaryDirectory());
+		controller.addTorrentManager (metaInfo, new MemoryStorage());
 
 		assertNotNull (controller.getTorrentManager (metaInfo.getInfo().getHash()));
 
@@ -333,11 +383,11 @@ public class TestTorrentSetController {
 		TorrentSetController controller = new TorrentSetController();
 
 		MetaInfo metaInfo = createTestMetaInfo();
-		controller.addTorrentManager (metaInfo, Util.createTemporaryDirectory());
+		controller.addTorrentManager (metaInfo, new MemoryStorage());
 
 		List<TorrentManager> managers = controller.getAllTorrentManagers();
 		assertEquals (1, managers.size());
-		assertEquals (metaInfo.getInfo().getHash(), managers.get(0).getMetaInfo().getInfo().getHash());
+		assertEquals (metaInfo.getInfo().getHash(), managers.get(0).getInfoHash());
 
 	}
 
@@ -363,9 +413,9 @@ public class TestTorrentSetController {
 		});
 
 		MetaInfo metaInfo = createTestMetaInfo();
-		TorrentManager manager = controller.addTorrentManager (metaInfo, Util.createTemporaryDirectory());
+		TorrentManager manager = controller.addTorrentManager (metaInfo, new MemoryStorage());
 		manager.terminate (true);
-		controller.forgetTorrent (manager.getMetaInfo().getInfo().getHash());
+		controller.forgetTorrent (manager.getInfoHash());
 
 		assertTrue (forgetCalled[0]);
 
@@ -393,8 +443,8 @@ public class TestTorrentSetController {
 		});
 
 		MetaInfo metaInfo = createTestMetaInfo();
-		TorrentManager manager = controller.addTorrentManager (metaInfo, Util.createTemporaryDirectory());
-		controller.forgetTorrent (manager.getMetaInfo().getInfo().getHash());
+		TorrentManager manager = controller.addTorrentManager (metaInfo, new MemoryStorage());
+		controller.forgetTorrent (manager.getInfoHash());
 
 	}
 

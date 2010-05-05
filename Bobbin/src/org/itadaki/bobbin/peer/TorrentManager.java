@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.itadaki.bobbin.connectionmanager.ConnectionManager;
 import org.itadaki.bobbin.peer.protocol.PeerConnectionListener;
-import org.itadaki.bobbin.torrentdb.MetaInfo;
+import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.PieceDatabase;
 import org.itadaki.bobbin.torrentdb.PieceDatabaseListener;
 import org.itadaki.bobbin.trackerclient.PeerIdentifier;
@@ -33,7 +33,6 @@ import org.itadaki.bobbin.util.statemachine.StateMachine;
 import org.itadaki.bobbin.util.statemachine.StateMachineUtil;
 import org.itadaki.bobbin.util.statemachine.TargetedAction;
 import org.itadaki.bobbin.util.statemachine.TransitionTable;
-
 
 
 /**
@@ -173,9 +172,9 @@ public class TorrentManager {
 	private final PeerID localPeerID;
 
 	/**
-	 * The {@code MetaInfo} of the managed torrent
+	 * The {@code InfoHash} of the managed torrent
 	 */
-	private final MetaInfo metaInfo;
+	private final InfoHash infoHash;
 
 	/**
 	 * A Future for the scheduled maintenance task allowing it to be cancelled
@@ -645,11 +644,11 @@ public class TorrentManager {
 	/**
 	 * <p><b>Thread safety:</b> This method is thread safe
 	 *
-	 * @return The {@code MetaInfo} of the managed torrent
+	 * @return The {@code InfoHash} of the managed torrent
 	 */
-	public MetaInfo getMetaInfo() {
+	public InfoHash getInfoHash() {
 
-		return this.metaInfo;
+		return this.infoHash;
 
 	}
 
@@ -1042,24 +1041,24 @@ public class TorrentManager {
 	/**
 	 * @param localPeerID The local peer's ID
 	 * @param localPort The local peer's port
-	 * @param metaInfo The MetaInfo describing the managed torrent
+	 * @param infoHash The InfoHash of the managed torrent
+	 * @param announceURLs The tracker announce URLs
 	 * @param connectionManager The ConnectionManager for the managed torrent
 	 * @param pieceDatabase The PieceDatabase of the managed torrent
-	 * @param wantedPieces The set of pieces that are wanted
 	 */
-	public TorrentManager (PeerID localPeerID, int localPort, MetaInfo metaInfo, ConnectionManager connectionManager,
-			PieceDatabase pieceDatabase, BitField wantedPieces)
+	public TorrentManager (PeerID localPeerID, int localPort, InfoHash infoHash, List<List<String>> announceURLs, ConnectionManager connectionManager,
+			PieceDatabase pieceDatabase)
 	{
 
 		this.localPeerID = localPeerID;
-		this.metaInfo = metaInfo;
+		this.infoHash = infoHash;
 		this.pieceDatabase = pieceDatabase;
 
-		this.workQueue = new WorkQueue ("TorrentManager WorkQueue - " + CharsetUtil.hexencode (metaInfo.getInfo().getHash().getBytes()));
-		this.peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase, wantedPieces);
+		this.workQueue = new WorkQueue ("TorrentManager WorkQueue - " + CharsetUtil.hexencode (infoHash.getBytes()));
+		this.peerCoordinator = new PeerCoordinator (localPeerID, connectionManager, pieceDatabase);
 		this.peerCoordinator.addListener (this.peerCoordinatorListener);
-		this.trackerClient = new TrackerClient (connectionManager, metaInfo.getInfo().getHash(), localPeerID,
-				localPort, metaInfo.getAnnounceURLs(), 0, this.peerCoordinator.getDesiredPeerConnections(), this.trackerClientListener);
+		this.trackerClient = new TrackerClient (connectionManager, infoHash, localPeerID, localPort, announceURLs, 0,
+				this.peerCoordinator.getDesiredPeerConnections(), this.trackerClientListener);
 
 		pieceDatabase.addListener (this.pieceDatabaseListener);
 

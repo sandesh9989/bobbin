@@ -22,12 +22,12 @@ public class MemoryStorage implements Storage {
 	/**
 	 * The descriptor of the {@code Storage}'s piece set characteristics
 	 */
-	private PiecesetDescriptor descriptor;
+	private PiecesetDescriptor descriptor = new PiecesetDescriptor (0, 0);
 
 	/**
 	 * The bytes of the stored data
 	 */
-	private byte[] data;
+	private byte[] data = new byte[0];
 
 
 	/* (non-Javadoc)
@@ -54,7 +54,14 @@ public class MemoryStorage implements Storage {
 	 */
 	public void open (int pieceSize, InfoFileset infoFileset) throws IOException {
 
-		// TODO implementation
+		if (infoFileset.getLength() > Integer.MAX_VALUE) {
+			throw new IllegalArgumentException ("Requested storage is too large");
+		}
+
+		int length = (int) infoFileset.getLength();
+
+		this.descriptor = new PiecesetDescriptor (pieceSize, length);
+		this.data = Arrays.copyOf (this.data, length);
 
 	}
 
@@ -104,6 +111,10 @@ public class MemoryStorage implements Storage {
 	 */
 	public ByteBuffer read (int pieceNumber) throws IOException {
 
+		if ((pieceNumber < 0) || (pieceNumber >= this.descriptor.getNumberOfPieces())) {
+			throw new IndexOutOfBoundsException ("Invalid index " + pieceNumber);
+		}
+
 		int pieceSize = this.descriptor.getPieceSize();
 		int thisPieceLength = this.descriptor.getPieceLength (pieceNumber);
 		byte[] content = new byte[thisPieceLength];
@@ -118,6 +129,10 @@ public class MemoryStorage implements Storage {
 	 * @see org.itadaki.bobbin.torrentdb.Storage#write(int, java.nio.ByteBuffer)
 	 */
 	public void write (int pieceNumber, ByteBuffer buffer) throws IOException {
+
+		if ((pieceNumber < 0) || (pieceNumber >= this.descriptor.getNumberOfPieces())) {
+			throw new IndexOutOfBoundsException ("Invalid index " + pieceNumber);
+		}
 
 		buffer.get (this.data, pieceNumber * this.descriptor.getPieceSize(), this.descriptor.getPieceLength (pieceNumber));
 
@@ -160,17 +175,22 @@ public class MemoryStorage implements Storage {
 
 
 	/**
-	 * @param descriptor The descriptor to create a {@code MemoryStorage} for
+	 * Creates a MemoryStorage with known initial data
+	 * @param data The data
 	 */
-	public MemoryStorage (PiecesetDescriptor descriptor) {
+	public MemoryStorage (byte[] data) {
 
-		if (descriptor.getLength() > Integer.MAX_VALUE) {
-			throw new IllegalArgumentException ("Requested storage is too large");
-		}
-		int length = (int) descriptor.getLength();
+		this.data = data;
 
-		this.descriptor = descriptor;
-		this.data = new byte [length];
+	}
+
+
+	/**
+	 * Default constructor
+	 */
+	public MemoryStorage() {
+
+		// Nothing to do
 
 	}
 

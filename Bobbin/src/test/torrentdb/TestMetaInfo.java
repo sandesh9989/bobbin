@@ -857,8 +857,8 @@ public class TestMetaInfo {
 		assertEquals (name, files.get(0).getName().get(0));
 		assertEquals (new Long (length), files.get(0).getLength());
 
-		assertEquals (pieceSize, metaInfo.getInfo().getPieceLength());
-		assertArrayEquals (pieces, metaInfo.getInfo().getPieces());
+		assertEquals (pieceSize, metaInfo.getInfo().getPieceSize());
+		assertArrayEquals (pieces, metaInfo.getInfo().getPieceHashes());
 		assertNull (metaInfo.getInfo().getRootHash());
 
 		assertNotNull (metaInfo.getCreationDate());
@@ -898,8 +898,8 @@ public class TestMetaInfo {
 		assertEquals (name, files.get(0).getName().get(0));
 		assertEquals (new Long (length), files.get(0).getLength());
 
-		assertEquals (pieceSize, metaInfo.getInfo().getPieceLength());
-		assertNull (metaInfo.getInfo().getPieces());
+		assertEquals (pieceSize, metaInfo.getInfo().getPieceSize());
+		assertNull (metaInfo.getInfo().getPieceHashes());
 		assertArrayEquals (rootHash, metaInfo.getInfo().getRootHash());
 
 		assertNotNull (metaInfo.getCreationDate());
@@ -979,8 +979,8 @@ public class TestMetaInfo {
 			assertEquals (filespecs.get (i), metaFiles.get(i));
 		}
 
-		assertEquals (pieceSize, metaInfo.getInfo().getPieceLength());
-		assertArrayEquals (pieces, metaInfo.getInfo().getPieces());
+		assertEquals (pieceSize, metaInfo.getInfo().getPieceSize());
+		assertArrayEquals (pieces, metaInfo.getInfo().getPieceHashes());
 		assertNull (metaInfo.getInfo().getRootHash());
 
 		assertNotNull (metaInfo.getCreationDate());
@@ -1023,8 +1023,8 @@ public class TestMetaInfo {
 			assertEquals (filespecs.get (i), metaFiles.get(i));
 		}
 
-		assertEquals (pieceSize, metaInfo.getInfo().getPieceLength());
-		assertNull (metaInfo.getInfo().getPieces());
+		assertEquals (pieceSize, metaInfo.getInfo().getPieceSize());
+		assertNull (metaInfo.getInfo().getPieceHashes());
 		assertArrayEquals (rootHash, metaInfo.getInfo().getRootHash());
 
 		assertNotNull (metaInfo.getCreationDate());
