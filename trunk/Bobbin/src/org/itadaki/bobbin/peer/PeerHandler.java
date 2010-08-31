@@ -480,7 +480,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 					hashChain = (hashes == null) ? null : new HashChain (viewLength, hashes);
 					break;
 			}
-			this.peerSetContext.requestManager.handleBlock (this, descriptor, viewSignature, hashChain, block);
+			this.peerSetContext.requestManager.fulfilRequest (this, descriptor, viewSignature, hashChain, block);
 		} else {
 			if (!this.state.fastExtensionEnabled) {
 				// Spam, or a request we cancelled. Can't tell the difference in the base protocol,
@@ -533,7 +533,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		// do). We will simply ignore any such suggestions.
 
 		if (this.state.remoteBitField.get (pieceNumber)) {
-			this.peerSetContext.requestManager.setPieceSuggested (this, pieceNumber);
+			this.peerSetContext.requestManager.pieceSuggested (this, pieceNumber);
 		}
 
 	}
@@ -600,7 +600,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 		// The Fast Extension spec explicitly allows peers to send Allowed Fast messages for pieces
 		// they don't actually have. We drop any such messages here
 		if (this.state.remoteBitField.get (pieceNumber)) {
-			this.peerSetContext.requestManager.setPieceAllowedFast (this, pieceNumber);
+			this.peerSetContext.requestManager.pieceAllowedFast (this, pieceNumber);
 			this.outboundQueue.setRequestAllowedFast (pieceNumber);
 		}
 

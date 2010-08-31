@@ -4,7 +4,6 @@
  */
 package org.itadaki.bobbin.peer.requestmanager;
 
-
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,7 +27,6 @@ import org.itadaki.bobbin.util.BitField;
 import org.itadaki.bobbin.util.elastictree.HashChain;
 
 
-
 /**
  * A {@link RequestManager} that implements a random piece allocation order
  */
@@ -48,11 +46,6 @@ public class DefaultRequestManager implements RequestManager {
 	 * The set of pieces that are needed and not available in the PieceDatabase
 	 */
 	private BitField neededPieces;
-
-	/**
-	 * The cached number of pieces that are needed
-	 */
-	private int neededPieceCount;
 
 	/**
 	 * The total numbers of each piece that are available from currently
@@ -88,6 +81,16 @@ public class DefaultRequestManager implements RequestManager {
 		public Map<Integer,Piece> pieces = new HashMap<Integer,Piece>();
 
 		/**
+		 * A set of pieces that are Allowed Fast for this peer
+		 */
+		private Set<Integer> allowedFastPieces = new HashSet<Integer>(); 
+
+		/**
+		 * A set of pieces that are suggested for this peer
+		 */
+		private Set<Integer> suggestedPieces = new HashSet<Integer>(); 
+
+		/**
 		 * Requests belonging to a piece allocated to this peer but which have not yet been sent to
 		 * the peer
 		 */
@@ -97,16 +100,6 @@ public class DefaultRequestManager implements RequestManager {
 		 * Requests that have been sent to the peer
 		 */
 		private Set<BlockDescriptor> issuedRequests = new HashSet<BlockDescriptor>();
-
-		/**
-		 * A set of pieces that are Allowed Fast for this peer
-		 */
-		private Set<Integer> allowedFastPieces = new HashSet<Integer>(); 
-
-		/**
-		 * A set of pieces that are suggested for this peer
-		 */
-		private Set<Integer> suggestedPieces = new HashSet<Integer>(); 
 
 
 		/**
@@ -190,10 +183,10 @@ public class DefaultRequestManager implements RequestManager {
 				// Attempt to allocate orphaned pieces first
 				List<Integer> orphanPieceNumbers = new ArrayList<Integer> (DefaultRequestManager.this.orphanedPieces.keySet());
 				allocateRequestsFrom (orphanPieceNumbers, peerViewLength, peerBitField, numRequests);
-	
+
 				// Attempt to allocate suggested pieces
 				allocateRequestsFrom (this.suggestedPieces, peerViewLength, peerBitField, numRequests);
-	
+
 				// Attempt to allocate pieces from the queue
 				allocateRequestsFrom (null, peerViewLength, peerBitField, numRequests);
 			}
@@ -327,8 +320,8 @@ public class DefaultRequestManager implements RequestManager {
 		if (this.peerStates.containsKey (peer)) {
 			throw new IllegalArgumentException();
 		}
-		PeerState peerState = new PeerState();
-		this.peerStates.put (peer, peerState);
+
+		this.peerStates.put (peer, new PeerState());
 
 	}
 
@@ -406,7 +399,7 @@ public class DefaultRequestManager implements RequestManager {
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.requestmanager.RequestManager#pieceSuggested(org.itadaki.bobbin.peer.ManageablePeer, int)
 	 */
-	public void setPieceAllowedFast (ManageablePeer peer, int pieceNumber) {
+	public void pieceAllowedFast (ManageablePeer peer, int pieceNumber) {
 
 		PeerState peerState = this.peerStates.get (peer);
 		peerState.setPieceAllowedFast (pieceNumber);
@@ -417,7 +410,7 @@ public class DefaultRequestManager implements RequestManager {
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.requestmanager.RequestManager#setPieceSuggested(org.itadaki.bobbin.peer.ManageablePeer, int)
 	 */
-	public void setPieceSuggested (ManageablePeer peer, int pieceNumber) {
+	public void pieceSuggested (ManageablePeer peer, int pieceNumber) {
 
 		PeerState peerState = this.peerStates.get (peer);
 		peerState.setPieceSuggested (pieceNumber);
@@ -440,7 +433,7 @@ public class DefaultRequestManager implements RequestManager {
 	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.requestmanager.RequestManager#handleBlock(org.itadaki.bobbin.peer.ManageablePeer, org.itadaki.bobbin.torrentdb.BlockDescriptor, org.itadaki.bobbin.torrentdb.ViewSignature, org.itadaki.bobbin.util.elastictree.HashChain, java.nio.ByteBuffer)
 	 */
-	public void handleBlock (ManageablePeer peer, BlockDescriptor descriptor, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block) {
+	public void fulfilRequest (ManageablePeer peer, BlockDescriptor descriptor, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block) {
 
 		Integer pieceIndex = descriptor.getPieceNumber();
 
@@ -464,12 +457,21 @@ public class DefaultRequestManager implements RequestManager {
 
 
 	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.peer.requestmanager.RequestManager#deallocateRequest(org.itadaki.bobbin.peer.ManageablePeer, org.itadaki.bobbin.torrentdb.BlockDescriptor)
+	 */
+	public void deallocateRequest (ManageablePeer peer, BlockDescriptor descriptor) {
+
+		// TODO Auto-generated method stub
+
+	}
+
+
+	/* (non-Javadoc)
 	 * @see org.itadaki.bobbin.peer.requestmanager.RequestManager#setNeededPieces(org.itadaki.bobbin.util.BitField)
 	 */
 	public void setNeededPieces (BitField neededPieces) {
 
 		this.neededPieces = neededPieces.clone();
-		this.neededPieceCount = this.neededPieces.cardinality();
 
 		this.piecePriority = new LinkedList<Integer>();
 		for (Integer pieceIndex : this.neededPieces) {
@@ -497,7 +499,6 @@ public class DefaultRequestManager implements RequestManager {
 	public void setPieceNotNeeded (int pieceNumber) {
 
 		this.neededPieces.clear (pieceNumber);
-		this.neededPieceCount--;
 		this.piecePriority.remove (new Integer (pieceNumber));
 		this.orphanedPieces.remove (pieceNumber);
 		cancelRequestsForPiece (pieceNumber);
@@ -510,7 +511,7 @@ public class DefaultRequestManager implements RequestManager {
 	 */
 	public int getNeededPieceCount() {
 
-		return this.neededPieceCount;
+		return this.neededPieces.cardinality();
 
 	}
 
@@ -547,7 +548,7 @@ public class DefaultRequestManager implements RequestManager {
 	 *
 	 * @param pieceNumber The piece to cancel
 	 */
-	private void cancelRequestsForPiece(int pieceNumber) {
+	private void cancelRequestsForPiece (int pieceNumber) {
 
 		for (ManageablePeer peer : this.peerStates.keySet()) {
 			PeerState peerState = this.peerStates.get (peer);
@@ -555,7 +556,7 @@ public class DefaultRequestManager implements RequestManager {
 			if (requestsToCancel != null) {
 				peer.cancelRequests (requestsToCancel);
 			}
-			if (this.neededPieceCount == 0) {
+			if (this.neededPieces.cardinality() == 0) {
 				peer.setWeAreInterested (false);
 			}
 		}
@@ -592,7 +593,6 @@ public class DefaultRequestManager implements RequestManager {
 		this.listener = listener;
 		this.pieceAvailability = new short [piecesetDescriptor.getNumberOfPieces()];
 		this.neededPieces = new BitField (piecesetDescriptor.getNumberOfPieces());
-		this.neededPieceCount = 0;
 
 	}
 

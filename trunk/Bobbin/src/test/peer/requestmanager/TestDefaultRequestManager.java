@@ -353,6 +353,7 @@ public class TestDefaultRequestManager {
 
 		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 		ManageablePeer peer2 = mockManageablePeer (descriptor, peer2BitField);
+		@SuppressWarnings("rawtypes")
 		ArgumentCaptor<List> peer2captor = ArgumentCaptor.forClass (List.class);
 		peerBitField.set (0);
 		requestManager.peerRegistered (peer);
@@ -370,7 +371,7 @@ public class TestDefaultRequestManager {
 			byte[] blockData = new byte[16384];
 			System.arraycopy (piece, position, blockData, 0, 16384);
 			position += 16384;
-			requestManager.handleBlock (peer, block, null, null, ByteBuffer.wrap (blockData));
+			requestManager.fulfilRequest (peer, block, null, null, ByteBuffer.wrap (blockData));
 		}
 		requestManager.setPieceNotNeeded (0);
 
@@ -421,7 +422,7 @@ public class TestDefaultRequestManager {
 			byte[] blockData = new byte[16384];
 			System.arraycopy (piece, position, blockData, 0, 16384);
 			position += 16384;
-			requestManager.handleBlock (peer, block, null, null, ByteBuffer.wrap (blockData));
+			requestManager.fulfilRequest (peer, block, null, null, ByteBuffer.wrap (blockData));
 		}
 
 		requestManager.peerDeregistered (peer);
@@ -435,7 +436,7 @@ public class TestDefaultRequestManager {
 			byte[] blockData = new byte[16384];
 			System.arraycopy (piece, position, blockData, 0, 16384);
 			position += 16384;
-			requestManager.handleBlock (peer2, block, null, null, ByteBuffer.wrap (blockData));
+			requestManager.fulfilRequest (peer2, block, null, null, ByteBuffer.wrap (blockData));
 		}
 
 		// Then
@@ -505,7 +506,7 @@ public class TestDefaultRequestManager {
 			byte[] blockData = new byte[16384];
 			System.arraycopy (piece, position, blockData, 0, 16384);
 			position += 16384;
-			requestManager.handleBlock (peer2, block, null, null, ByteBuffer.wrap (blockData));
+			requestManager.fulfilRequest (peer2, block, null, null, ByteBuffer.wrap (blockData));
 		}
 		requestManager.setPieceNotNeeded (0);
 
@@ -666,7 +667,7 @@ public class TestDefaultRequestManager {
 		peerBitField.set (0);
 		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 		requestManager.peerRegistered (peer);
-		requestManager.setPieceAllowedFast (peer, 0);
+		requestManager.pieceAllowedFast (peer, 0);
 
 		// When
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 16, true);
@@ -696,7 +697,7 @@ public class TestDefaultRequestManager {
 		peerBitField.not();
 		ManageablePeer peer = mockManageablePeer (descriptor, peerBitField);
 		requestManager.peerRegistered (peer);
-		requestManager.setPieceSuggested (peer, 3);
+		requestManager.pieceSuggested (peer, 3);
 
 		// When
 		List<BlockDescriptor> blocks = requestManager.allocateRequests (peer, 1, false);
