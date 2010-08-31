@@ -47,7 +47,7 @@ public interface RequestManager extends PeerCoordinatorListener {
 	 * @param pieceNumber The piece that was Allowed Fast. Must be a piece actually advertised by
 	 *        the given peer
 	 */
-	public void setPieceAllowedFast (ManageablePeer peer, int pieceNumber);
+	public void pieceAllowedFast (ManageablePeer peer, int pieceNumber);
 
 	/**
 	 * Indicates that the remotepeer has suggested a given piece
@@ -56,7 +56,7 @@ public interface RequestManager extends PeerCoordinatorListener {
 	 * @param pieceNumber The piece that was suggested. Must be a piece actually advertised by the
 	 *        given peer
 	 */
-	public void setPieceSuggested (ManageablePeer peer, int pieceNumber);
+	public void pieceSuggested (ManageablePeer peer, int pieceNumber);
 
 	/**
 	 * Allocates requests to the supplied peer. The requests are not guaranteed to be unique, and
@@ -84,7 +84,15 @@ public interface RequestManager extends PeerCoordinatorListener {
 	 * @param hashChain The hash chain of the piece, if supplied, or {@code null}
 	 * @param block The data of the block
 	 */
-	public void handleBlock (ManageablePeer peer, BlockDescriptor descriptor, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block);
+	public void fulfilRequest (ManageablePeer peer, BlockDescriptor descriptor, ViewSignature viewSignature, HashChain hashChain, ByteBuffer block);
+
+	/**
+	 * Returns a previously allocated request unfulfilled
+	 *
+	 * @param peer The peer that allocated the request
+	 * @param descriptor The request to return
+	 */
+	public void deallocateRequest (ManageablePeer peer, BlockDescriptor descriptor);
 
 	/**
 	 * @param neededPieces The set of needed pieces

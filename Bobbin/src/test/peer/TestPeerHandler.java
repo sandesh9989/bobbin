@@ -223,7 +223,7 @@ public class TestPeerHandler {
 
 		// Then
 		mockConnection.mockExpectNoMoreOutput();
-		verify (peerSetContext.requestManager).handleBlock (eq (handler), eq (request), eq ((ViewSignature)null), eq ((HashChain)null), any (ByteBuffer.class));
+		verify (peerSetContext.requestManager).fulfilRequest (eq (handler), eq (request), eq ((ViewSignature)null), eq ((HashChain)null), any (ByteBuffer.class));
 		assertEquals (16384, handler.getReadableStatistics().getTotal (PeerStatistics.Type.BLOCK_BYTES_RECEIVED_RAW));
 
 
@@ -1443,7 +1443,7 @@ public class TestPeerHandler {
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.requestMessage (requestDescriptor));
 		mockConnection.mockExpectNoMoreOutput();
-		verify(peerSetContext.requestManager).setPieceAllowedFast (handler, 2);
+		verify(peerSetContext.requestManager).pieceAllowedFast (handler, 2);
 		assertTrue (mockConnection.isOpen());
 
 
@@ -1483,7 +1483,7 @@ public class TestPeerHandler {
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.requestMessage (requestDescriptor));
 		mockConnection.mockExpectNoMoreOutput();
-		verify(peerSetContext.requestManager).setPieceSuggested (handler, 2);
+		verify(peerSetContext.requestManager).pieceSuggested (handler, 2);
 		assertTrue (mockConnection.isOpen());
 
 
