@@ -186,7 +186,7 @@ public class TestTorrentSetController {
 	 * Tests routing of an incoming connection to its PeerCoordinator
 	 * @throws Exception
 	 */
-	@Test
+	@Test(timeout=2000)
 	public void testIncomingConnection() throws Exception {
 
 		TorrentSetController controller = new TorrentSetController();
@@ -218,7 +218,7 @@ public class TestTorrentSetController {
 	 * Tests an incoming connection to a torrent we don't have the Info for yet
 	 * @throws Exception
 	 */
-	@Test
+	@Test(timeout=2000)
 	public void testIncomingConnectionNoInfo() throws Exception {
 
 		TorrentSetController controller = new TorrentSetController();
