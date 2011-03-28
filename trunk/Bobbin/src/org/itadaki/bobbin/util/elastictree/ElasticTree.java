@@ -70,22 +70,6 @@ public class ElasticTree {
 
 
 	/**
-	 * Tests the equality of an array to a partial array
-	 *
-	 * @param array1 The first array
-	 * @param array2 The second array
-	 * @param array2Offset The offset within the second array
-	 * @param array2Length The length within the second array
-	 * @return {@code true} if the arrays are equal
-	 */
-	static boolean arraysEqual (byte[] array1, byte[] array2, int array2Offset, int array2Length) {
-
-		return ByteBuffer.wrap (array1).equals (ByteBuffer.wrap (array2, array2Offset, array2Length));
-
-	}
-
-
-	/**
 	 * Returns the node index for a given leaf number
 	 *
 	 * @param leafNumber The piece number

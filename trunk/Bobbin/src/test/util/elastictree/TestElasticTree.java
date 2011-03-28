@@ -482,4 +482,38 @@ public class TestElasticTree {
 	}
 
 
+	/**
+	 * Tests ElasticTree.getImmutableHashes()
+	 * Smoke test only - checks length of returned array
+	 * @throws Exception
+	 */
+	@Test
+	public void testGetImmutableHashes() throws Exception {
+
+		ElasticTree tree = specimenTree (1024, 1024 * 18);
+
+		assertEquals (680, tree.getImmutableHashes().remaining());
+
+	}
+
+
+	// TODO Test addView
+	// TODO Test getAllViews
+	// TODO Test withNodeHashes
+	// TODO Test buildFromLeaves
+	// TODO Increase View.getSiblings coverage
+	// TODO Increase View.setSiblings coverage
+	// TODO Increase View.parentHash coverage
+	// TODO Increase View.getHash coverage
+	// TODO Increase View.setHash coverage
+	// TODO Increase View.buildLeafHashes coverage
+	// TODO Increase View.getRootHash coverage
+	// TODO Test View.getMutableHashes
+	// TODO Increase View.canVerifyLeaf coverage
+	// TODO Increase View.verifyHashChain coverage
+	// TODO Increase View.verifyLeafHash coverage
+	// TODO Test View.withMutableHashes
+	// TODO Increase View() coverage
+
+
 }
