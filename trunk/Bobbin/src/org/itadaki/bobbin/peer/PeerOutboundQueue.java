@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
-import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.itadaki.bobbin.bencode.BDictionary;
@@ -395,6 +394,32 @@ public class PeerOutboundQueue {
 	}
 
 
+	 /**
+	 * Sends a Peer Metadata Data message. Only valid when the Peer Metadata extension is enabled
+	 * @param pieceNumber The Metadata piece number
+	 * @param totalSize The total size of the Info
+	 * @param piece The piece data
+	 */
+	void sendPeerMetadataDataMessage (int pieceNumber, int totalSize, ByteBuffer piece) {
+
+		this.extensionMessageQueue.add (PeerProtocolBuilder.peerMetadataDataMessage (this.extensionIdentifiers.get (PeerProtocolConstants.EXTENSION_PEER_METADATA), pieceNumber, totalSize, piece));
+		this.connection.setWriteEnabled (true);
+
+	}
+
+
+	/**
+	 * Sends a Peer Metadata Reject message. Only valid when the Peer Metadata extension is enabled
+	 * @param pieceNumber The Metadata piece number
+	 */
+	public void sendPeerMetadataRejectMessage (int pieceNumber) {
+
+		this.extensionMessageQueue.add (PeerProtocolBuilder.peerMetadataRejectMessage (this.extensionIdentifiers.get (PeerProtocolConstants.EXTENSION_PEER_METADATA), pieceNumber));
+		this.connection.setWriteEnabled (true);
+
+	}
+
+
 	/**
 	 * Sends an Elastic Signature message
 	 *
@@ -407,7 +432,7 @@ public class PeerOutboundQueue {
 		}
 		this.remotePeerViews.add (viewSignature.getViewLength());
 
-		this.extensionMessageQueue.add (PeerProtocolBuilder.elasticSignatureMessage (viewSignature));
+		this.extensionMessageQueue.add (PeerProtocolBuilder.elasticSignatureMessage (this.extensionIdentifiers.get (PeerProtocolConstants.EXTENSION_ELASTIC), viewSignature));
 		this.connection.setWriteEnabled (true);
 
 	}
@@ -420,7 +445,7 @@ public class PeerOutboundQueue {
 	 */
 	public void sendElasticBitfieldMessage (BitField bitField) {
 
-		this.extensionMessageQueue.add (PeerProtocolBuilder.elasticBitfieldMessage (bitField));
+		this.extensionMessageQueue.add (PeerProtocolBuilder.elasticBitfieldMessage (this.extensionIdentifiers.get (PeerProtocolConstants.EXTENSION_ELASTIC), bitField));
 		this.connection.setWriteEnabled (true);
 
 	}
@@ -620,52 +645,56 @@ public class PeerOutboundQueue {
 
 
 	/**
+	 * Updates the remote peer's extension name to ID mapping
+	 * @param extensionsEnabled A map of extension names and IDs that have been enabled
+	 * @param extensionsDisabled A list of extension names that have been disabled
+	 * @param extra A dictionary of extra values sent with the extension handshake
+	 */
+	public void updateExtensionMapping (Map<String,Integer> extensionsEnabled, Set<String> extensionsDisabled, BDictionary extra) {
+
+		if (extensionsEnabled != null) {
+			this.extensionIdentifiers.putAll (extensionsEnabled);
+		}
+
+		if (extensionsDisabled != null) {
+			this.extensionIdentifiers.keySet().removeAll (extensionsDisabled);
+		}
+
+	}
+
+
+	/**
 	 * Sends an extension handshake message
 	 *
-	 * @param extensionsAdded The set of extensions enabled by this handshake
-	 * @param extensionsRemoved The set of extensions disabled by this handshake
+	 * @param extensionsEnabled A map of extension names and IDs enabled by this handshake
+	 * @param extensionsDisabled The set of extensions disabled by this handshake
 	 * @param extra A set of key/value pairs to include in the handshake message, or {@code null}
 	 */
-	public void sendExtensionHandshake (Set<String> extensionsAdded, Set<String> extensionsRemoved, BDictionary extra)
+	public void sendExtensionHandshake (Map<String,Integer> extensionsEnabled, Set<String> extensionsDisabled, BDictionary extra)
 	{
 
 		Map<String,Integer> extensions = new HashMap<String,Integer>();
 
-		if (extensionsAdded != null) {
-			SortedSet<Integer> extensionMessageIDs = new TreeSet<Integer> (this.extensionIdentifiers.values());
-			int nextExtensionMessageID = (extensionMessageIDs.isEmpty() ?
-					PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM :
-					Math.max (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM, extensionMessageIDs.last() + 1)
-			);
-			for (String identifier : extensionsAdded) {
-				int extensionMessageID;
-				if (PeerProtocolConstants.EXTENSION_MERKLE.equals (identifier)) {
-					extensionMessageID = PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE;
-				} else if (PeerProtocolConstants.EXTENSION_ELASTIC.equals (identifier)) {
-					extensionMessageID = PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC;
-				} else {
-					extensionMessageID = nextExtensionMessageID++;
-				}
-				this.extensionIdentifiers.put (identifier, extensionMessageID);
-				extensions.put (identifier, extensionMessageID);
-			}
+		if (extensionsEnabled != null) {
+			extensions.putAll (extensionsEnabled);
 		}
 
-		if (extensionsRemoved != null) {
-			for (String identifier : extensionsRemoved) {
-				this.extensionIdentifiers.remove (identifier);
+		if (extensionsDisabled != null) {
+			for (String identifier : extensionsDisabled) {
 				extensions.put (identifier, 0);
 			}
 		}
 
 		// TODO Refactor - Better Merkle/Elastic negotiation needed
 
-		if (this.extensionIdentifiers.containsKey (PeerProtocolConstants.EXTENSION_MERKLE)) {
-			this.pieceStyle = PieceStyle.MERKLE;
-		}
-
-		if (this.extensionIdentifiers.containsKey (PeerProtocolConstants.EXTENSION_ELASTIC)) {
-			this.pieceStyle = PieceStyle.ELASTIC;
+		if (extensionsEnabled != null) {
+			if (extensionsEnabled.keySet().contains (PeerProtocolConstants.EXTENSION_MERKLE)) {
+				this.pieceStyle = PieceStyle.MERKLE;
+			}
+	
+			if (extensionsEnabled.keySet().contains (PeerProtocolConstants.EXTENSION_ELASTIC)) {
+				this.pieceStyle = PieceStyle.ELASTIC;
+			}
 		}
 
 		this.extensionMessageQueue.add (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra));
@@ -812,21 +841,21 @@ public class PeerOutboundQueue {
 						break;
 					case MERKLE:
 						ByteBuffer merkleHashChain = (request.getOffset() == 0) ? piece.getHashChain().getHashes() : null;
-						buffers = PeerProtocolBuilder.merklePieceMessage (request, merkleHashChain, block);
+						buffers = PeerProtocolBuilder.merklePieceMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE, request, merkleHashChain, block);
 						break;
 					case ELASTIC:
 						long viewLength = piece.getHashChain().getViewLength();
 						ArrayList<ByteBuffer> bufferList = new ArrayList<ByteBuffer>();
 						if (!this.remotePeerViews.contains (viewLength) && (viewLength > this.pieceDatabase.getInfo().getPiecesetDescriptor().getLength())) {
 							ViewSignature viewSignature = this.pieceDatabase.getViewSignature (viewLength);
-							bufferList.addAll (Arrays.asList (PeerProtocolBuilder.elasticSignatureMessage (viewSignature)));
+							bufferList.addAll (Arrays.asList (PeerProtocolBuilder.elasticSignatureMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, viewSignature)));
 							if (this.remotePeerViews.size() > 1) {
 								this.remotePeerViews.pollFirst();
 							}
 							this.remotePeerViews.add (viewLength);
 						}
 						ByteBuffer elasticHashChain = (request.getOffset() == 0) ? piece.getHashChain().getHashes() : null;
-						bufferList.addAll (Arrays.asList (PeerProtocolBuilder.elasticPieceMessage (request, viewLength, elasticHashChain, block)));
+						bufferList.addAll (Arrays.asList (PeerProtocolBuilder.elasticPieceMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, request, viewLength, elasticHashChain, block)));
 						buffers = bufferList.toArray (new ByteBuffer[0]);
 						break;
 					default:

@@ -76,7 +76,6 @@ public class MockPieceDatabase {
 		int numPieces = piecesPresent.length();
 
 		ByteBuffer data = ByteBuffer.allocate (numPieces * pieceSize);
-		long position = 0;
 		int index = 0;
 		for (char c : piecesPresent.toCharArray()) {
 			switch (c) {
@@ -90,7 +89,6 @@ public class MockPieceDatabase {
 					throw new Exception();
 			}
 			index++;
-			position += 16384;
 		}
 
 		MemoryStorage storage = new MemoryStorage (data.array());

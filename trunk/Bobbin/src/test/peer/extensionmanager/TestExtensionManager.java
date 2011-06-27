@@ -8,6 +8,7 @@ import static org.mockito.Mockito.*;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.itadaki.bobbin.bencode.BDictionary;
@@ -47,7 +48,7 @@ public class TestExtensionManager {
 		// Then
 		InOrder sequence = inOrder (handler, peer);
 		sequence.verify(handler).peerRegistered (peer);
-		sequence.verify(peer).sendExtensionHandshake (any (Set.class), any (Set.class), any (BDictionary.class));
+		sequence.verify(peer).sendExtensionHandshake (any (Map.class), any (Set.class), any (BDictionary.class));
 		sequence.verify(handler).peerEnabledExtension (eq (peer), any (BDictionary.class));
 		sequence.verify(handler).extensionMessage (eq (peer), eq (new byte[]{ 1, 2, 3, 4 }));
 		sequence.verify(handler).peerDeregistered (peer);

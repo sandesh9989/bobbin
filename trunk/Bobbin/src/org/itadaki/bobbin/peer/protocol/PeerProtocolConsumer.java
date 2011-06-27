@@ -7,6 +7,7 @@ package org.itadaki.bobbin.peer.protocol;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.itadaki.bobbin.bencode.BDictionary;
@@ -150,12 +151,12 @@ public interface PeerProtocolConsumer {
 	 * Indicates that an "extension handshake" message has been received (basic protocol message ID
 	 * 20, extension ID 0 when the extension protocol is enabled)
 	 *
-	 * @param extensionsEnabled A set of extension identifier strings enabled in this handshake
+	 * @param extensionsEnabled A map of extension identifier strings and extension IDs enabled in this handshake
 	 * @param extensionsDisabled A set of extension identifier strings disabled in this handshake
 	 * @param extra A set of key/value pairs included in the handshake
 	 * @throws IOException On any validation error
 	 */
-	public void extensionHandshakeMessage (Set<String> extensionsEnabled, Set<String> extensionsDisabled, BDictionary extra) throws IOException;
+	public void extensionHandshakeMessage (Map<String,Integer> extensionsEnabled, Set<String> extensionsDisabled, BDictionary extra) throws IOException;
 
 	/**
 	 * Indicates that an "extension" message has been received (basic protocol message ID 20,
@@ -167,6 +168,15 @@ public interface PeerProtocolConsumer {
 	 * @throws IOException On any validation error
 	 */
 	public void extensionMessage (String identifier, byte[] data) throws IOException;
+
+	/**
+	 * Indicates that a "peer metadata request" message has been received (extension protocol
+	 * identifier "ut_metadata", sub type 0)
+	 *
+	 * @param pieceNumber
+	 * @throws IOException
+	 */
+	public void peerMetadataRequestMessage (int pieceNumber) throws IOException;
 
 	/**
 	 * Indicates that a "elastic signature" message has been received (extension protocol identifier

@@ -110,7 +110,7 @@ public class PeerState {
 	 */
 	public Set<String> getRemoteExtensions() {
 
-		return this.remoteExtensions;
+		return new HashSet<String> (this.remoteExtensions);
 
 	}
 

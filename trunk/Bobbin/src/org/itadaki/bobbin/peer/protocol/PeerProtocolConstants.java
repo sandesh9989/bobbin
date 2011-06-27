@@ -157,27 +157,32 @@ public class PeerProtocolConstants {
 	public static final byte MESSAGE_TYPE_EXTENDED = 20;
 
 
-	/* Extended messages. These identifiers are only used on the outbound protocol */
+	/* Extended messages. These are the identifiers we ask the remote peer to use */
 
 	/**
-	 * BEP 0030 Merkle extension
+	 * BEP 0009 Extension for Peers to Send Metadata Files
 	 */
-	public static final byte EXTENDED_MESSAGE_TYPE_MERKLE = 1;
+	public static final byte EXTENDED_MESSAGE_TYPE_PEER_METADATA = 1;
+
+	/**
+	 * BEP 0030 Merkle hash torrent extension
+	 */
+	public static final byte EXTENDED_MESSAGE_TYPE_MERKLE = 2;
 
 	/**
 	 * Elastic extension
 	 */
-	public static final byte EXTENDED_MESSAGE_TYPE_ELASTIC = 2;
+	public static final byte EXTENDED_MESSAGE_TYPE_ELASTIC = 3;
 
 	/**
 	 * Resource extension
 	 */
-	public static final byte EXTENDED_MESSAGE_TYPE_RESOURCE = 3;
+	public static final byte EXTENDED_MESSAGE_TYPE_RESOURCE = 4;
 
 	/**
 	 * The first available custom extended message
 	 */
-	public static final byte EXTENDED_MESSAGE_TYPE_CUSTOM = 4;
+	public static final byte EXTENDED_MESSAGE_TYPE_CUSTOM = 5;
 
 
 	/* Elastic extension message subtypes */
@@ -226,7 +231,7 @@ public class PeerProtocolConstants {
 	/**
 	 * BEP 0009 metadata extension
 	 */
-	public static final String EXTENSION_METADATA = "ut_metadata";
+	public static final String EXTENSION_PEER_METADATA = "ut_metadata";
 
 	/**
 	 * BEP 0028 tracker exchange extension

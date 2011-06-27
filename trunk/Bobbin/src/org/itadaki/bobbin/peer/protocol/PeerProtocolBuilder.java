@@ -427,14 +427,68 @@ public class PeerProtocolBuilder {
 
 
 	/**
+	 * Constructs a Peer Metadata extension request message
+	 * @param extendedMessageID 
+	 * @param pieceNumber 
+	 * @return An array of ByteBuffers containing the encoded message
+	 */
+	public static ByteBuffer[] peerMetadataRequestMessage (int extendedMessageID, int pieceNumber) {
+
+		BDictionary dictionary = new BDictionary();
+		dictionary.put ("msg_type", 0);
+		dictionary.put ("piece", pieceNumber);
+
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (BEncoder.encode (dictionary)));
+
+	}
+
+
+	/**
+	 * Constructs a Peer Metadata extension data message
+	 * @param extendedMessageID 
+	 * @param pieceNumber 
+	 * @param totalSize 
+	 * @param data 
+	 * @return An array of ByteBuffers containing the encoded message
+	 */
+	public static ByteBuffer[] peerMetadataDataMessage (int extendedMessageID, int pieceNumber, int totalSize, ByteBuffer data) {
+
+		BDictionary dictionary = new BDictionary();
+		dictionary.put ("msg_type", 1);
+		dictionary.put ("piece", pieceNumber);
+		dictionary.put ("total_size", totalSize);
+
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (BEncoder.encode (dictionary)), data);
+
+	}
+
+
+	/**
+	 * Constructs a Peer Metadata extension reject message
+	 * @param extendedMessageID 
+	 * @param pieceNumber 
+	 * @return An array of ByteBuffers containing the encoded message
+	 */
+	public static ByteBuffer[] peerMetadataRejectMessage (int extendedMessageID, int pieceNumber) {
+
+		BDictionary dictionary = new BDictionary();
+		dictionary.put ("msg_type", 2);
+		dictionary.put ("piece", pieceNumber);
+
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (BEncoder.encode (dictionary)));
+
+	}
+
+
+	/**
 	 * Constructs a Merkle extension piece message
-	 *
+	 * @param extendedMessageID The remote peer's extended message ID for the extension
 	 * @param descriptor The descriptor of the block to send
 	 * @param hashChain The concatenated sibling hash chain of the block to send
 	 * @param block The block to send
 	 * @return An array of ByteBuffers containing the encoded message
 	 */
-	public static ByteBuffer[] merklePieceMessage (BlockDescriptor descriptor, ByteBuffer hashChain, ByteBuffer block) {
+	public static ByteBuffer[] merklePieceMessage (int extendedMessageID, BlockDescriptor descriptor, ByteBuffer hashChain, ByteBuffer block) {
 
 		if (descriptor.getLength() != block.remaining()) {
 			throw new IllegalArgumentException ("Invalid block data length");
@@ -488,21 +542,21 @@ public class PeerProtocolBuilder {
 		messageHeaderBytes[11] = (byte)(hashChainLength & 0xff);
 
 		if (hashChain == null) {
-			return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE, ByteBuffer.wrap (messageHeaderBytes), block);
+			return extensionMessage (extendedMessageID, ByteBuffer.wrap (messageHeaderBytes), block);
 		}
 
-		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE, ByteBuffer.wrap (messageHeaderBytes), encodedHashChain, block);
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (messageHeaderBytes), encodedHashChain, block);
 
 	}
 
 
 	/**
 	 * Constructs an Elastic extension signature message
-	 *
+	 * @param extendedMessageID The remote peer's extended message ID for the extension
 	 * @param viewSignature The view signature
 	 * @return An array of ByteBuffers containing the encoded message
 	 */
-	public static ByteBuffer[] elasticSignatureMessage (ViewSignature viewSignature) {
+	public static ByteBuffer[] elasticSignatureMessage (int extendedMessageID, ViewSignature viewSignature) {
 
 		if (viewSignature.getViewRootHash().remaining() != 20) {
 			throw new IllegalArgumentException ("Invalid view root hash length");
@@ -524,21 +578,21 @@ public class PeerProtocolBuilder {
 		messageHeaderBytes[7] = (byte)((viewLength >>> 8) & 0xff);
 		messageHeaderBytes[8] = (byte)(viewLength & 0xff);
 
-		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, ByteBuffer.wrap (messageHeaderBytes), viewSignature.getViewRootHash(), viewSignature.getSignature());
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (messageHeaderBytes), viewSignature.getViewRootHash(), viewSignature.getSignature());
 
 	}
 
 
 	/**
 	 * Constructs an Elastic extension piece message
+	 * @param extendedMessageID The remote peer's extended message ID for the extension
 	 * @param descriptor The descriptor of the block to send
 	 * @param viewLength The view length to which the hash chain applies
 	 * @param hashChain The concatenated sibling hash chain of the block to send
 	 * @param block The block to send
-	 *
 	 * @return An array of ByteBuffers containing the encoded message
 	 */
-	public static ByteBuffer[] elasticPieceMessage (BlockDescriptor descriptor, Long viewLength, ByteBuffer hashChain, ByteBuffer block) {
+	public static ByteBuffer[] elasticPieceMessage (int extendedMessageID, BlockDescriptor descriptor, Long viewLength, ByteBuffer hashChain, ByteBuffer block) {
 
 		if (descriptor.getLength() != block.remaining()) {
 			throw new IllegalArgumentException ("Invalid block data length");
@@ -565,42 +619,42 @@ public class PeerProtocolBuilder {
 		messageHeaderBytes[9] = hashCount;
 
 		if (hashChain == null) {
-			return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, ByteBuffer.wrap (messageHeaderBytes), block);
+			return extensionMessage (extendedMessageID, ByteBuffer.wrap (messageHeaderBytes), block);
 		}
 
 		ByteBuffer viewLengthBuffer = ByteBuffer.allocate (8);
 		viewLengthBuffer.asLongBuffer().put (viewLength);
 
-		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, ByteBuffer.wrap (messageHeaderBytes), viewLengthBuffer, hashChain, block);
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (messageHeaderBytes), viewLengthBuffer, hashChain, block);
 
 	}
 
 
 	/**
 	 * Constructs an Elastic extension bitfield message
-	 *
+	 * @param extendedMessageID The remote peer's extended message ID for the extension
 	 * @param bitField The bitfield to send
 	 * @return An array of ByteBuffers containing the encoded message
 	 */
-	public static ByteBuffer[] elasticBitfieldMessage (BitField bitField) {
+	public static ByteBuffer[] elasticBitfieldMessage (int extendedMessageID, BitField bitField) {
 
 		byte[] messageBytes =  new byte[bitField.byteLength() + 1];
 		messageBytes[0] = PeerProtocolConstants.ELASTIC_MESSAGE_TYPE_BITFIELD;
 		bitField.copyTo (messageBytes, 1);
 
-		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, ByteBuffer.wrap (messageBytes));
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (messageBytes));
 
 	}
 
 
 	/**
 	 * Constructs a Resource extension directory message
-	 *
+	 * @param extendedMessageID The remote peer's extended message ID for the extension
 	 * @param resources The resources to announce
 	 * @param lengths The lengths of the resources
 	 * @return An array of ByteBuffers containing the encoded message
 	 */
-	public static ByteBuffer[] resourceDirectoryMessage (List<ResourceType> resources, List<Integer> lengths) {
+	public static ByteBuffer[] resourceDirectoryMessage (int extendedMessageID, List<ResourceType> resources, List<Integer> lengths) {
 
 		if (resources.size() != lengths.size()) {
 			throw new IllegalArgumentException ("Invalid resource length array");
@@ -620,7 +674,7 @@ public class PeerProtocolBuilder {
 		ByteBuffer encodedDirectory = ByteBuffer.wrap (BEncoder.encode (directory));
 
 		return extensionMessage (
-				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				extendedMessageID,
 				ByteBuffer.wrap (new byte[] { PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_DIRECTORY }),
 				encodedDirectory
 		);
@@ -630,30 +684,32 @@ public class PeerProtocolBuilder {
 
 	/**
 	 * Constructs a Resource extension directory message
-	 *
+	 * @param extendedMessageID The remote peer's extended message ID for the extension
 	 * @param resourceID The ID of the resource to subscribe to
+	 *
 	 * @return An array of ByteBuffers containing the encoded message
 	 */
-	public static ByteBuffer[] resourceSubscribeMessage (int resourceID) {
+	public static ByteBuffer[] resourceSubscribeMessage (int extendedMessageID, int resourceID) {
 
 		byte[] messageBytes = new byte[] {
 				PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_SUBSCRIBE,
 				(byte)(resourceID & 0xff)
 		};
 
-		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (messageBytes));
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (messageBytes));
 
 	}
 
 
 	/**
 	 * Constructs a Resource extension have message
-	 *
+	 * @param extendedMessageID The remote peer's extended message ID for the extension
 	 * @param resourceID The ID of the resource referred to
 	 * @param pieceNumber The piece number to send
+	 *
 	 * @return An array of ByteBuffers containing the encoded message
 	 */
-	public static ByteBuffer[] resourceHaveMessage (int resourceID, int pieceNumber) {
+	public static ByteBuffer[] resourceHaveMessage (int extendedMessageID, int resourceID, int pieceNumber) {
 
 		byte[] messageBytes = new byte[] {
 				PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_TRANSFER,
@@ -665,19 +721,20 @@ public class PeerProtocolBuilder {
 				(byte)(pieceNumber & 0xff)
 		};
 
-		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (messageBytes));
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (messageBytes));
 
 	}
 
 
 	/**
 	 * Constructs a Resource extension bitfield message
-	 *
+	 * @param extendedMessageID The remote peer's extended message ID for the extension
 	 * @param resourceID 
 	 * @param bitField The bitfield to send
+	 *
 	 * @return An array of ByteBuffers containing the encoded message
 	 */
-	public static ByteBuffer[] resourceBitfieldMessage (int resourceID, BitField bitField) {
+	public static ByteBuffer[] resourceBitfieldMessage (int extendedMessageID, int resourceID, BitField bitField) {
 
 		byte[] messageBytes =  new byte[bitField.byteLength() + 3];
 		messageBytes[0] = PeerProtocolConstants.RESOURCE_MESSAGE_TYPE_TRANSFER;
@@ -685,19 +742,20 @@ public class PeerProtocolBuilder {
 		messageBytes[2] = PeerProtocolConstants.MESSAGE_TYPE_BITFIELD;
 		bitField.copyTo (messageBytes, 3);
 
-		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (messageBytes));
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (messageBytes));
 
 	}
 
 
 	/**
 	 * Constructs a Resource extension request message
-	 *
+	 * @param extendedMessageID The remote peer's extended message ID for the extension
 	 * @param resourceID The ID of the resource referred to
 	 * @param descriptor The descriptor of the block to request
+	 *
 	 * @return An array of ByteBuffers containing the encoded message
 	 */
-	public static ByteBuffer[] resourceRequestMessage (int resourceID, BlockDescriptor descriptor) {
+	public static ByteBuffer[] resourceRequestMessage (int extendedMessageID, int resourceID, BlockDescriptor descriptor) {
 
 
 		int pieceNumber = descriptor.getPieceNumber();
@@ -722,19 +780,20 @@ public class PeerProtocolBuilder {
 				(byte)(length & 0xff)
 		};
 
-		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (messageBytes));
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (messageBytes));
 
 	}
 
 
 	/**
 	 * Constructs a Resource extension cancel message
-	 *
+	 * @param extendedMessageID The remote peer's extended message ID for the extension
 	 * @param resourceID The ID of the resource referred to
 	 * @param descriptor The descriptor of the block to cancel
+	 *
 	 * @return An array of ByteBuffers containing the encoded message
 	 */
-	public static ByteBuffer[] resourceCancelMessage (int resourceID, BlockDescriptor descriptor) {
+	public static ByteBuffer[] resourceCancelMessage (int extendedMessageID, int resourceID, BlockDescriptor descriptor) {
 
 
 		int pieceNumber = descriptor.getPieceNumber();
@@ -759,21 +818,22 @@ public class PeerProtocolBuilder {
 				(byte)(length & 0xff)
 		};
 
-		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (messageBytes));
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (messageBytes));
 
 	}
 
 
 	/**
 	 * Constructs a Resource extension piece message
-	 *
+	 * @param extendedMessageID The remote peer's extended message ID for the extension
 	 * @param resourceID The ID of the resource referred to
 	 * @param descriptor The descriptor of the block to send
 	 * @param block The block to send
+	 *
 	 * @return An array of ByteBuffers containing the encoded message
 	 * @throws IllegalArgumentException if descriptor.getLength() is not equal to data.length
 	 */
-	public static ByteBuffer[] resourcePieceMessage (int resourceID, BlockDescriptor descriptor, ByteBuffer block) {
+	public static ByteBuffer[] resourcePieceMessage (int extendedMessageID, int resourceID, BlockDescriptor descriptor, ByteBuffer block) {
 
 		if (descriptor.getLength() != block.remaining()) {
 			throw new IllegalArgumentException ("Invalid block data length");
@@ -796,19 +856,20 @@ public class PeerProtocolBuilder {
 				(byte)(offset & 0xff)
 		};
 
-		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (headerBytes), block);
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (headerBytes), block);
 
 	}
 
 	
 	/**
 	 * Constructs a Resource extension reject request message
-	 *
+	 * @param extendedMessageID The remote peer's extended message ID for the extension
 	 * @param resourceID The ID of the resource referred to
 	 * @param descriptor The descriptor of the rejected request
+	 *
 	 * @return An array of ByteBuffers containing the encoded message
 	 */
-	public static ByteBuffer[] resourceRejectRequestMessage (int resourceID, BlockDescriptor descriptor) {
+	public static ByteBuffer[] resourceRejectRequestMessage (int extendedMessageID, int resourceID, BlockDescriptor descriptor) {
 
 		int pieceNumber = descriptor.getPieceNumber();
 		int offset = descriptor.getOffset();
@@ -832,7 +893,7 @@ public class PeerProtocolBuilder {
 				(byte)(length & 0xff)
 		};
 
-		return extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, ByteBuffer.wrap (messageBytes));
+		return extensionMessage (extendedMessageID, ByteBuffer.wrap (messageBytes));
 
 	}
 
