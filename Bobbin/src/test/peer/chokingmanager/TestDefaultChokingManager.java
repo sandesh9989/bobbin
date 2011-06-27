@@ -10,6 +10,7 @@ import static org.mockito.Mockito.*;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.itadaki.bobbin.bencode.BDictionary;
@@ -114,7 +115,7 @@ public class TestDefaultChokingManager {
 
 		public void sendKeepaliveOrClose() { }
 
-		public void sendExtensionHandshake (Set<String> extensionsAdded, Set<String> extensionsRemoved, BDictionary extra) { }
+		public void sendExtensionHandshake (Map<String, Integer> extensionsAdded, Set<String> extensionsRemoved, BDictionary extra) { }
 
 		public void sendExtensionMessage (String identifier, ByteBuffer data) { }
 

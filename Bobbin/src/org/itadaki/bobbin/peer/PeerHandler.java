@@ -9,12 +9,14 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.itadaki.bobbin.bencode.BDictionary;
+import org.itadaki.bobbin.bencode.BEncoder;
 import org.itadaki.bobbin.connectionmanager.Connection;
 import org.itadaki.bobbin.connectionmanager.ConnectionManager;
 import org.itadaki.bobbin.connectionmanager.ConnectionReadyListener;
@@ -230,7 +232,7 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.ManageablePeer#sendKeepalive()
+	 * @see org.itadaki.bobbin.peer.ManageablePeer#sendKeepaliveOrClose()
 	 */
 	public void sendKeepaliveOrClose() {
 
@@ -254,9 +256,9 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.ExtensiblePeer#sendExtensionHandshake(java.util.Set, java.util.Set, org.itadaki.bobbin.bencode.BDictionary)
+	 * @see org.itadaki.bobbin.peer.ExtensiblePeer#sendExtensionHandshake(java.util.Map, java.util.Set, org.itadaki.bobbin.bencode.BDictionary)
 	 */
-	public void sendExtensionHandshake (Set<String> extensionsAdded, Set<String> extensionsRemoved, BDictionary extra) {
+	public void sendExtensionHandshake (Map<String,Integer> extensionsAdded, Set<String> extensionsRemoved, BDictionary extra) {
 
 		this.outboundQueue.sendExtensionHandshake (extensionsAdded, extensionsRemoved, extra);
 
@@ -611,15 +613,27 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#extensionHandshakeMessage(java.util.Set, java.util.Set, org.itadaki.bobbin.bencode.BDictionary)
+	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#extensionHandshakeMessage(java.util.Map, java.util.Set, org.itadaki.bobbin.bencode.BDictionary)
 	 */
 	@Override
-	public void extensionHandshakeMessage (Set<String> extensionsEnabled, Set<String> extensionsDisabled, BDictionary extra) throws IOException
+	public void extensionHandshakeMessage (Map<String,Integer> extensionsEnabled, Set<String> extensionsDisabled, BDictionary extra) throws IOException
 	{
 
-		this.state.remoteExtensions.addAll (extensionsEnabled);
+		this.state.remoteExtensions.addAll (extensionsEnabled.keySet());
 		this.state.remoteExtensions.removeAll (extensionsDisabled);
-		this.peerSetContext.extensionManager.enableDisablePeerExtensions (this, extensionsEnabled, extensionsDisabled, extra);
+		this.outboundQueue.updateExtensionMapping (extensionsEnabled, extensionsDisabled, extra);
+
+		// TODO disabling Merkle/Elastic is an error
+
+		// FIXME Does it matter if this happens more than once?
+		if (extensionsEnabled.containsKey (PeerProtocolConstants.EXTENSION_ELASTIC)) {
+			if (this.peerSetContext.pieceDatabase.getPiecesetDescriptor().getLength() > this.peerSetContext.pieceDatabase.getInfo().getPiecesetDescriptor().getLength()) {
+				this.outboundQueue.sendElasticSignatureMessage (this.peerSetContext.pieceDatabase.getViewSignature (this.peerSetContext.pieceDatabase.getPiecesetDescriptor().getLength()));
+			}
+			this.outboundQueue.sendElasticBitfieldMessage (this.peerSetContext.pieceDatabase.getPresentPieces());
+		}
+
+		this.peerSetContext.extensionManager.enableDisablePeerExtensions (this, extensionsEnabled.keySet(), extensionsDisabled, extra);
 
 	}
 
@@ -631,6 +645,26 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 	public void extensionMessage (String identifier, byte[] data) throws IOException {
 
 		this.peerSetContext.extensionManager.processExtensionMessage (this, identifier, data);
+
+	}
+
+
+	/* (non-Javadoc)
+	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#peerMetadataRequestMessage(int)
+	 */
+	@Override
+	public void peerMetadataRequestMessage (int pieceNumber) throws IOException {
+
+		BDictionary infoDictionary = this.peerSetContext.pieceDatabase.getInfo().getDictionary();
+		byte[] infoBytes = BEncoder.encode (infoDictionary);
+		int start = pieceNumber * 16384;
+		if (start >= infoBytes.length) {
+			this.outboundQueue.sendPeerMetadataRejectMessage (pieceNumber);
+		} else {
+			int length = Math.min (16384, infoBytes.length - start);
+			ByteBuffer piece = ByteBuffer.wrap (infoBytes, start, length);
+			this.outboundQueue.sendPeerMetadataDataMessage (pieceNumber, infoBytes.length, piece);
+		}
 
 	}
 
@@ -739,7 +773,6 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 			}
 
 		} catch (IOException e) {
-
 			close();
 
 		}
@@ -909,17 +942,25 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 			}
 		}
 
-		if (pieceStyle == PieceStyle.ELASTIC) {
-			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC)), null, null);
-			if (this.peerSetContext.pieceDatabase.getPiecesetDescriptor().getLength() > this.peerSetContext.pieceDatabase.getInfo().getPiecesetDescriptor().getLength()) {
-				this.outboundQueue.sendElasticSignatureMessage (this.peerSetContext.pieceDatabase.getViewSignature (this.peerSetContext.pieceDatabase.getPiecesetDescriptor().getLength()));
-			}
-			this.outboundQueue.sendElasticBitfieldMessage (this.peerSetContext.pieceDatabase.getPresentPieces());
-		} else if (pieceStyle == PieceStyle.MERKLE) {
-			this.outboundQueue.sendExtensionHandshake (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_MERKLE)), null, null);
-		};
+		// Advertise extensions
+		Map<String,Integer> extensions = new HashMap<String,Integer>();
+		BDictionary extra = new BDictionary();
+		extensions.put (PeerProtocolConstants.EXTENSION_PEER_METADATA, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_PEER_METADATA);
+		if (info != null) {
+			extra.put ("metadata_size", BEncoder.encode(info.getDictionary()).length);
+		}
+		switch (pieceStyle) {
+			case ELASTIC:
+				extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
+				break;
+			case MERKLE:
+				extensions.put (PeerProtocolConstants.EXTENSION_MERKLE, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE);
+				break;
+			default:
+		}
 
 		if (this.state.extensionProtocolEnabled) {
+			this.outboundQueue.sendExtensionHandshake (extensions, null, extra);
 			this.peerSetContext.extensionManager.offerExtensionsToPeer (this);
 		}
 

@@ -102,12 +102,6 @@ public class PeerProtocolParser {
 	private boolean extensionProtocolEnabled = false;
 
 	/**
-	 * A map of extension message IDs and corresponding extension identifier strings offered by the
-	 * remote peer
-	 */
-	private Map<Integer,String> extensionIdentifiers = new HashMap<Integer,String>();
-
-	/**
 	 * A map of resource IDs offered by the remote peer and the known resources they correspond to
 	 */
 	private Map<Integer,ResourceType> resourceIdentifiers = new HashMap<Integer,ResourceType>();
@@ -452,7 +446,7 @@ public class PeerProtocolParser {
 		}
 
 		// Enabled and disabled extensions
-		Set<String> extensionsEnabled = new TreeSet<String>();
+		Map<String,Integer> extensionsEnabled = new HashMap<String,Integer>();
 		Set<String> extensionsDisabled = new TreeSet<String>();
 		BValue extensionDictionaryValue = handshakeDictionary.get ("m");
 		if (!(extensionDictionaryValue instanceof BDictionary)) {
@@ -470,21 +464,50 @@ public class PeerProtocolParser {
 			}
 			String identifier = identifierBinary.stringValue();
 			if (messageID == 0) {
-				// If it was enabled, disable it and report the change. If it was not enabled, we don't
-				// care much
-				if (this.extensionIdentifiers.values().remove (identifier)) {
-					extensionsDisabled.add (identifier);
-				}
+				extensionsDisabled.add (identifier);
 			} else {
-				// If it was disabled, enable it and report the change
-				if (!this.extensionIdentifiers.containsValue (identifier)) {
-					extensionsEnabled.add (identifier);
-				}
-				this.extensionIdentifiers.put (messageID, identifier);
+				extensionsEnabled.put (identifier, messageID);
 			}
 		}
 		handshakeDictionary.remove ("m");
 		this.consumer.extensionHandshakeMessage (extensionsEnabled, extensionsDisabled, handshakeDictionary);
+	}
+
+
+	/**
+	 * Parses a complete Peer Metadata message at the current position
+	 *
+	 * @throws IOException if a parse error occurs
+	 */
+	private void parsePeerMetadataMessage() throws IOException {
+
+		ByteArrayInputStream inputStream = new ByteArrayInputStream (this.messageData.array(), this.messageData.position(), this.messageData.remaining());
+		BDictionary dictionary = new BDecoder (inputStream).decodeDictionary();
+
+		BValue messageTypeValue = dictionary.get ("msg_type");
+		BValue pieceNumberValue = dictionary.get ("piece");
+		if (!((messageTypeValue instanceof BInteger) && (messageTypeValue instanceof BInteger))) {
+			throw new IOException ("Invalid peer metadata message");
+		}
+		int messageType = ((BInteger)messageTypeValue).value().intValue();
+		int pieceNumber = ((BInteger)pieceNumberValue).value().intValue();
+
+		switch (messageType) {
+			case 0:
+				this.consumer.peerMetadataRequestMessage (pieceNumber);
+				break;
+			case 1:
+			case 2:
+				// TODO currently unimplemented
+				break;
+			default:
+				throw new IOException ("Invalid peer metadata message");
+		}
+
+		// Request
+
+		// Data
+		// Reject
 	}
 
 
@@ -839,26 +862,31 @@ public class PeerProtocolParser {
 							case PeerProtocolConstants.MESSAGE_TYPE_EXTENDED:
 								if (this.extensionProtocolEnabled && (this.messageData.remaining() >= 1)) {
 									int extensionID = this.messageData.get() & 0xff;
-									if (extensionID == 0) {
-										parseExtensionHandshakeMessage();
-									} else {
-										// Extension message
-										String identifier = this.extensionIdentifiers.get (extensionID);
-										if (PeerProtocolConstants.EXTENSION_MERKLE.equals (identifier)) {
+									switch (extensionID) {
+										case 0:
+											parseExtensionHandshakeMessage();
+											break;
+										case PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_PEER_METADATA:
+											parsePeerMetadataMessage();
+											break;
+										case PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE:
 											parseMerklePieceMessage();
-										} else if (PeerProtocolConstants.EXTENSION_ELASTIC.equals (identifier)) {
+											break;
+										case PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC:
 											parseElasticMessage();
-										} else if (PeerProtocolConstants.EXTENSION_RESOURCE.equals (identifier)) {
+											break;
+										case PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE:
 											parseResourceMessage();
-										} else {
+											break;
+										default:
 											byte[] extensionData = new byte[this.messageData.remaining()];
 											this.messageData.get (extensionData);
-											this.consumer.extensionMessage (identifier, extensionData);
-										}
+											//this.consumer.extensionMessage (extensionID, extensionData); // FIXME
+											break;
 									}
 								} else {
 									this.parserState = ParserState.ERROR;
-									throw new IOException ("Extension protocol disabled");
+									throw new IOException ("Extension protocol error");
 								}
 								break;
 

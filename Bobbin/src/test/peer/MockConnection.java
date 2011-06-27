@@ -15,6 +15,7 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.itadaki.bobbin.bencode.BDictionary;
@@ -471,7 +472,7 @@ public class MockConnection extends Connection {
 				System.out.printf ("%2d allowed fast (%d)\n", this.sequence++, pieceNumber);
 			}
 
-			public void extensionHandshakeMessage (Set<String> extensionsEnabled, Set<String> extensionsDisabled, BDictionary extra)
+			public void extensionHandshakeMessage (Map<String,Integer> extensionsEnabled, Set<String> extensionsDisabled, BDictionary extra)
 					throws IOException
 			{
 				System.out.printf ("%2d extension handshake\n", this.sequence++);
@@ -479,6 +480,10 @@ public class MockConnection extends Connection {
 
 			public void extensionMessage (String identifier, byte[] data) throws IOException {
 				System.out.printf ("%2d extension (%s:%d)\n", this.sequence++, identifier, data.length);
+			}
+
+			public void peerMetadataRequestMessage (int pieceNumber) throws IOException {
+				System.out.printf ("%2d Peer Metadata request\n", this.sequence++);
 			}
 
 			public void elasticSignatureMessage (ViewSignature viewSignature) throws IOException {

@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.itadaki.bobbin.bencode.BDictionary;
+import org.itadaki.bobbin.bencode.BEncoder;
 import org.itadaki.bobbin.connectionmanager.Connection;
 import org.itadaki.bobbin.connectionmanager.ConnectionManager;
 import org.itadaki.bobbin.peer.PeerCoordinator;
@@ -870,6 +871,9 @@ public class TestPeerCoordinator {
 		// Given
 		int pieceSize = 16384;
 		int totalLength = pieceSize;
+		Map<String,Integer> extensionsMap = new HashMap<String,Integer>();
+		extensionsMap.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
+
 		PeerID localPeerID = new PeerID();
 		ConnectionManager connectionManager = new ConnectionManager();
 		PieceDatabase pieceDatabase = MockPieceDatabase.createElastic ("0", pieceSize);
@@ -881,7 +885,14 @@ public class TestPeerCoordinator {
 		MockConnection connection = new MockConnection();
 		peerCoordinator.peerConnectionComplete (connection, new PeerID(), true, true);
 
+		Map<String,Integer> expectedExtensions = new HashMap<String,Integer>();
+		expectedExtensions.put (PeerProtocolConstants.EXTENSION_PEER_METADATA, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_PEER_METADATA);
+		expectedExtensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
+		BDictionary extra = new BDictionary();
+		extra.put ("metadata_size", BEncoder.encode (pieceDatabase.getInfo().getDictionary()).length);
+
 		connection.mockInput (PeerProtocolBuilder.bitfieldMessage (new BitField(1).not()));
+		connection.mockInput (PeerProtocolBuilder.extensionHandshakeMessage(extensionsMap, new BDictionary()));
 		connection.mockTriggerIO (true, true);
 
 		totalLength += pieceSize;
@@ -907,18 +918,16 @@ public class TestPeerCoordinator {
 		connection.mockTriggerIO (true, true);
 
 		// Then
-		Map<String,Integer> extensionsMap = new HashMap<String,Integer>();
-		extensionsMap.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
-		BDictionary extra = new BDictionary();
-		extra.put ("reqq", 250);
+		BDictionary extra2 = new BDictionary();
+		extra2.put ("reqq", 250);
 		assertEquals (totalLength, pieceDatabase.getPiecesetDescriptor().getLength());
 		assertEquals (2, peerCoordinator.getWantedPieces().cardinality());
 		connection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
-		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensionsMap, new BDictionary()));
-		connection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (new BitField (1)));
-		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (new HashMap<String,Integer>(), extra));
+		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, extra));
+		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (new HashMap<String,Integer>(), extra2));
+		connection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, new BitField (1)));
 		connection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
-		connection.mockExpectOutput (PeerProtocolBuilder.elasticSignatureMessage (receivedViewSignature));
+		connection.mockExpectOutput (PeerProtocolBuilder.elasticSignatureMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, receivedViewSignature));
 
 
 		peerCoordinator.terminate();

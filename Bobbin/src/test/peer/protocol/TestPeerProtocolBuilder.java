@@ -14,6 +14,7 @@ import java.util.TreeMap;
 import org.itadaki.bobbin.bencode.BDictionary;
 import org.itadaki.bobbin.peer.PeerID;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
+import org.itadaki.bobbin.peer.protocol.PeerProtocolConstants;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.InfoHash;
 import org.itadaki.bobbin.torrentdb.ResourceType;
@@ -446,7 +447,7 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = {
 				0, 0, 0, 58,
 				20,
-				1,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE,
 				0, 0, 0, 1,
 				0, 0, 0, 0,
 				0, 0, 0, 40,
@@ -455,9 +456,9 @@ public class TestPeerProtocolBuilder {
 		};
 
 		ByteBuffer[] buffers = PeerProtocolBuilder.merklePieceMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE,
 				new BlockDescriptor (1, 0, 4),
-				ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }),
-				ByteBuffer.wrap (new byte[] { 50, 51, 52, 53 })
+				ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }), ByteBuffer.wrap (new byte[] { 50, 51, 52, 53 })
 		);
 
 		byte[] messageBytes = Util.flattenBuffers(buffers).array();
@@ -476,7 +477,7 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = {
 				0, 0, 0, 18,
 				20,
-				1,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE,
 				0, 0, 0, 1,
 				0, 0, 0, 4,
 				0, 0, 0, 0,
@@ -484,9 +485,9 @@ public class TestPeerProtocolBuilder {
 		};
 
 		ByteBuffer[] buffers = PeerProtocolBuilder.merklePieceMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE,
 				new BlockDescriptor (1, 4, 4),
-				null,
-				ByteBuffer.wrap (new byte[] { 54, 55, 56, 57 })
+				null, ByteBuffer.wrap (new byte[] { 54, 55, 56, 57 })
 		);
 
 		byte[] messageBytes = Util.flattenBuffers(buffers).array();
@@ -505,7 +506,7 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = {
 				0, 0, 0, 71,
 				20,
-				2,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC,
 				0,
 				1, 2, 3, 4, 5, 6, 7, 8,
 				0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
@@ -513,7 +514,7 @@ public class TestPeerProtocolBuilder {
 				70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89
 		};
 
-		ByteBuffer[] buffers = PeerProtocolBuilder.elasticSignatureMessage (new ViewSignature (
+		ByteBuffer[] buffers = PeerProtocolBuilder.elasticSignatureMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, new ViewSignature (
 				0x0102030405060708L,
 				ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }),
 				ByteBuffer.wrap (new byte[] {
@@ -538,7 +539,7 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = {
 				0, 0, 0, 44,
 				20,
-				2,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC,
 				1,
 				0, 0, 0, 1,
 				0, 0, 0, 0,
@@ -549,10 +550,10 @@ public class TestPeerProtocolBuilder {
 		};
 
 		ByteBuffer[] buffers = PeerProtocolBuilder.elasticPieceMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC,
 				new BlockDescriptor (1, 0, 4),
 				0x0102030405060708L,
-				ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }),
-				ByteBuffer.wrap (new byte[] { 50, 51, 52, 53 })
+				ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 }), ByteBuffer.wrap (new byte[] { 50, 51, 52, 53 })
 		);
 
 		byte[] messageBytes = Util.flattenBuffers(buffers).array();
@@ -571,7 +572,7 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = {
 				0, 0, 0, 16,
 				20,
-				2,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC,
 				1,
 				0, 0, 0, 1,
 				0, 0, 0, 4,
@@ -580,10 +581,10 @@ public class TestPeerProtocolBuilder {
 		};
 
 		ByteBuffer[] buffers = PeerProtocolBuilder.elasticPieceMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC,
 				new BlockDescriptor (1, 4, 4),
 				null,
-				null,
-				ByteBuffer.wrap (new byte[] { 54, 55, 56, 57 })
+				null, ByteBuffer.wrap (new byte[] { 54, 55, 56, 57 })
 		);
 
 		byte[] messageBytes = Util.flattenBuffers(buffers).array();
@@ -602,7 +603,7 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = {
 				0, 0, 0, 8,
 				20,
-				2,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC,
 				2,
 				-128, 64, 32, 16, 8
 		};
@@ -614,7 +615,7 @@ public class TestPeerProtocolBuilder {
 		bitField.set (27);
 		bitField.set (36);
 
-		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.elasticBitfieldMessage (bitField)).array();
+		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.elasticBitfieldMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, bitField)).array();
 
 		assertArrayEquals (expectedBytes, messageBytes);
 
@@ -630,7 +631,7 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = {
 				0, 0, 0, 53, 
 				20,
-				3,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
 				0,
 				108,
 				108, 105, 49, 101, 52, 58, 105, 110, 102, 111, 105, 49, 50, 51, 52, 101, 101,
@@ -639,8 +640,8 @@ public class TestPeerProtocolBuilder {
 		};
 
 		ByteBuffer[] buffers = PeerProtocolBuilder.resourceDirectoryMessage (
-				Arrays.asList (new ResourceType[] { ResourceType.INFO, ResourceType.X509_CERTIFICATE }),
-				Arrays.asList (new Integer[] { 1234, 5678 })
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				Arrays.asList (new ResourceType[] { ResourceType.INFO, ResourceType.X509_CERTIFICATE }), Arrays.asList (new Integer[] { 1234, 5678 })
 		);
 		byte[] messageBytes = Util.flattenBuffers(buffers).array();
 
@@ -658,12 +659,12 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = {
 				0, 0, 0, 4,
 				20,
-				3,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
 				2,
 				63,
 		};
 
-		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceSubscribeMessage (63)).array();
+		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceSubscribeMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, 63)).array();
 
 		assertArrayEquals (expectedBytes, messageBytes);
 
@@ -679,14 +680,14 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = {
 				0, 0, 0, 9,
 				20,
-				3,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
 				1,
 				63,
 				4,
 				9, 8, 7, 6
 		};
 
-		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceHaveMessage (63, (9 << 24) + (8 << 16) + (7 << 8) + 6)).array();
+		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceHaveMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, 63, (9 << 24) + (8 << 16) + (7 << 8) + 6)).array();
 
 		assertArrayEquals (expectedBytes, messageBytes);
 
@@ -702,7 +703,7 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = {
 				0, 0, 0, 10,
 				20,
-				3,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
 				1,
 				63,
 				5,
@@ -716,7 +717,7 @@ public class TestPeerProtocolBuilder {
 		bitField.set (27);
 		bitField.set (36);
 
-		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceBitfieldMessage (63, bitField)).array();
+		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceBitfieldMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, 63, bitField)).array();
 
 		assertArrayEquals (expectedBytes, messageBytes);
 
@@ -736,7 +737,7 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = new byte[] {
 				0, 0, 0, 17,
 				20,
-				3,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
 				1,
 				63,
 				6,
@@ -745,7 +746,7 @@ public class TestPeerProtocolBuilder {
 				14, 13, 12, 11
 		};
 
-		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceRequestMessage (63, new BlockDescriptor (pieceIndex, offset, length))).array();
+		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceRequestMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, 63, new BlockDescriptor (pieceIndex, offset, length))).array();
 
 		assertArrayEquals (expectedBytes, messageBytes);
 
@@ -766,7 +767,7 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = new byte[] {
 				0, 0, 0, 17,
 				20,
-				3,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
 				1,
 				63,
 				8,
@@ -775,7 +776,7 @@ public class TestPeerProtocolBuilder {
 				14, 13, 12, 11
 		};
 
-		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceCancelMessage (63, new BlockDescriptor (pieceIndex, offset, length))).array();
+		byte[] messageBytes = Util.flattenBuffers(PeerProtocolBuilder.resourceCancelMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, 63, new BlockDescriptor (pieceIndex, offset, length))).array();
 
 		assertArrayEquals (expectedBytes, messageBytes);
 
@@ -795,7 +796,7 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = new byte[] {
 				0, 0, 0, 20,
 				20,
-				3,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
 				1,
 				63,
 				7,
@@ -804,7 +805,7 @@ public class TestPeerProtocolBuilder {
 				40, 41, 42, 43, 44, 45, 46
 		};
 
-		ByteBuffer[] buffers = PeerProtocolBuilder.resourcePieceMessage (63, new BlockDescriptor (pieceIndex, offset, data.length), ByteBuffer.wrap (data));
+		ByteBuffer[] buffers = PeerProtocolBuilder.resourcePieceMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, 63, new BlockDescriptor (pieceIndex, offset, data.length), ByteBuffer.wrap (data));
 		byte[] messageBytes = Util.flattenBuffers(buffers).array();
 
 		assertArrayEquals (expectedBytes, messageBytes);
@@ -825,7 +826,7 @@ public class TestPeerProtocolBuilder {
 		byte[] expectedBytes = new byte[] {
 				0, 0, 0, 17,
 				20,
-				3,
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
 				1,
 				63,
 				16,
@@ -834,7 +835,7 @@ public class TestPeerProtocolBuilder {
 				14, 13, 12, 11
 		};
 
-		byte[] messageBytes = Util.flattenBuffers (PeerProtocolBuilder.resourceRejectRequestMessage (63, new BlockDescriptor (pieceIndex, offset, length))).array();
+		byte[] messageBytes = Util.flattenBuffers (PeerProtocolBuilder.resourceRejectRequestMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE, 63, new BlockDescriptor (pieceIndex, offset, length))).array();
 
 		assertArrayEquals (expectedBytes, messageBytes);
 

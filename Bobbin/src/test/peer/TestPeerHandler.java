@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Map;
 
 import org.itadaki.bobbin.bencode.BDictionary;
+import org.itadaki.bobbin.bencode.BEncoder;
 import org.itadaki.bobbin.peer.ManageablePeer;
 import org.itadaki.bobbin.peer.PeerHandler;
 import org.itadaki.bobbin.peer.PeerID;
@@ -1502,6 +1503,10 @@ public class TestPeerHandler {
 		// Given
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
+		Map<String,Integer> extensions = new HashMap<String,Integer>();
+		extensions.put (PeerProtocolConstants.EXTENSION_PEER_METADATA, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_PEER_METADATA);
+		BDictionary extra = new BDictionary();
+		extra.put ("metadata_size", BEncoder.encode (pieceDatabase.getInfo().getDictionary()).length);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		PeerServices peerServices = mock (PeerServices.class);
 		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
@@ -1514,6 +1519,7 @@ public class TestPeerHandler {
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
+		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra));
 		mockConnection.mockExpectNoMoreOutput();
 		verify(peerSetContext.extensionManager).offerExtensionsToPeer (handler);
 
@@ -1534,7 +1540,12 @@ public class TestPeerHandler {
 		PieceDatabase pieceDatabase = MockPieceDatabase.create ("0", 16384);
 		pieceDatabase.start (true);
 		Map<String,Integer> extensions = new HashMap<String,Integer>();
+		extensions.put (PeerProtocolConstants.EXTENSION_PEER_METADATA, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_PEER_METADATA);
+		BDictionary extra = new BDictionary();
+		extra.put ("metadata_size", BEncoder.encode (pieceDatabase.getInfo().getDictionary()).length);
 		extensions.put ("bl_ah", 1);
+		Map<String,Integer> expectedExtensions = new HashMap<String,Integer>();
+		expectedExtensions.put (PeerProtocolConstants.EXTENSION_PEER_METADATA, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_PEER_METADATA);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		PeerServices peerServices = mock (PeerServices.class);
 		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
@@ -1548,11 +1559,12 @@ public class TestPeerHandler {
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
+		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, extra));
 		mockConnection.mockExpectNoMoreOutput();
 		verify(peerSetContext.extensionManager).offerExtensionsToPeer (handler);
 		verify(peerSetContext.extensionManager).enableDisablePeerExtensions (
 				eq (handler),
-				eq (new HashSet<String> (Arrays.asList ("bl_ah"))),
+				eq (new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_PEER_METADATA, "bl_ah"))),
 				eq (new HashSet<String>()),
 				argThat (new ArgumentMatcher<BDictionary>() {
 					@Override
@@ -1582,6 +1594,11 @@ public class TestPeerHandler {
 		pieceDatabase.start (true);
 		Map<String,Integer> extensions = new HashMap<String,Integer>();
 		extensions.put (PeerProtocolConstants.EXTENSION_MERKLE, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE);
+		Map<String,Integer> expectedExtensions = new HashMap<String,Integer>();
+		expectedExtensions.put (PeerProtocolConstants.EXTENSION_PEER_METADATA, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_PEER_METADATA);
+		expectedExtensions.put (PeerProtocolConstants.EXTENSION_MERKLE, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE);
+		BDictionary extra = new BDictionary();
+		extra.put ("metadata_size", BEncoder.encode (pieceDatabase.getInfo().getDictionary()).length);
 		BitField wantedPieces = pieceDatabase.getPresentPieces().not();
 		PeerServices peerServices = mock (PeerServices.class);
 		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
@@ -1596,9 +1613,10 @@ public class TestPeerHandler {
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
+		//mockConnection.mockDebugParseOutput(true,  true);
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveAllMessage());
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.allowedFastMessage (0));
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
+		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, extra));
 		mockConnection.mockExpectNoMoreOutput();
 		verify(peerSetContext.extensionManager).offerExtensionsToPeer (handler);
 		verify(peerSetContext.extensionManager).enableDisablePeerExtensions (
@@ -1623,8 +1641,8 @@ public class TestPeerHandler {
 		// Then
 		ByteBuffer expectedBlock1 = ByteBuffer.wrap (Util.pseudoRandomBlock (0, 8192, 8192));
 		ByteBuffer expectedBlock2 = ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384), 8192, 8192);
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.merklePieceMessage (descriptor1, tree.getHashChain(0, pieceSize).getHashes(), expectedBlock1));
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.merklePieceMessage (descriptor2, null, expectedBlock2));
+		mockConnection.mockExpectOutput (PeerProtocolBuilder.merklePieceMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE, descriptor1, tree.getHashChain(0, pieceSize).getHashes(), expectedBlock1));
+		mockConnection.mockExpectOutput (PeerProtocolBuilder.merklePieceMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE, descriptor2, null, expectedBlock2));
 		mockConnection.mockExpectNoMoreOutput();
 
 
@@ -1647,6 +1665,11 @@ public class TestPeerHandler {
 		pieceDatabase.start (true);
 		Map<String,Integer> extensions = new HashMap<String,Integer>();
 		extensions.put (PeerProtocolConstants.EXTENSION_MERKLE, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE);
+		Map<String,Integer> expectedExtensions = new HashMap<String,Integer>();
+		expectedExtensions.put (PeerProtocolConstants.EXTENSION_PEER_METADATA, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_PEER_METADATA);
+		expectedExtensions.put (PeerProtocolConstants.EXTENSION_MERKLE, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE);
+		BDictionary extra = new BDictionary();
+		extra.put ("metadata_size", BEncoder.encode (pieceDatabase.getInfo().getDictionary()).length);
 		final BlockDescriptor requestDescriptor = new BlockDescriptor (0, 0, 16384);
 		PeerServices peerServices = mock (PeerServices.class);
 		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
@@ -1666,7 +1689,7 @@ public class TestPeerHandler {
 
 		// Then
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
+		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, extra));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectNoMoreOutput();
 		verify(peerSetContext.extensionManager).offerExtensionsToPeer (handler);
@@ -1693,7 +1716,7 @@ public class TestPeerHandler {
 
 		// When
 		ByteBuffer block = ByteBuffer.wrap (Util.pseudoRandomBlock (0, 16384, 16384));
-		mockConnection.mockInput (PeerProtocolBuilder.merklePieceMessage (expectedDescriptor, tree.getHashChain(0, pieceSize).getHashes(), block));
+		mockConnection.mockInput (PeerProtocolBuilder.merklePieceMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE, expectedDescriptor, tree.getHashChain(0, pieceSize).getHashes(), block));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
@@ -1721,6 +1744,11 @@ public class TestPeerHandler {
 		pieceDatabase.start (true);
 		Map<String,Integer> extensions = new HashMap<String,Integer>();
 		extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
+		Map<String,Integer> expectedExtensions = new HashMap<String,Integer>();
+		expectedExtensions.put (PeerProtocolConstants.EXTENSION_PEER_METADATA, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_PEER_METADATA);
+		expectedExtensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
+		BDictionary extra = new BDictionary();
+		extra.put ("metadata_size", BEncoder.encode (pieceDatabase.getInfo().getDictionary()).length);
 		PeerServices peerServices = mock (PeerServices.class);
 		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
 		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
@@ -1735,8 +1763,8 @@ public class TestPeerHandler {
 
 		// Then
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (new BitField(4).not()));
+		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, extra));
+		mockConnection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, new BitField(4).not()));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectNoMoreOutput();
 		verify(peerSetContext.extensionManager).offerExtensionsToPeer (handler);
@@ -1776,6 +1804,11 @@ public class TestPeerHandler {
 		pieceDatabase.start (true);
 		Map<String,Integer> extensions = new HashMap<String,Integer>();
 		extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
+		Map<String,Integer> expectedExtensions = new HashMap<String,Integer>();
+		expectedExtensions.put (PeerProtocolConstants.EXTENSION_PEER_METADATA, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_PEER_METADATA);
+		expectedExtensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
+		BDictionary extra = new BDictionary();
+		extra.put ("metadata_size", BEncoder.encode (pieceDatabase.getInfo().getDictionary()).length);
 		PeerServices peerServices = mock (PeerServices.class);
 		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
 		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (true);
@@ -1794,9 +1827,9 @@ public class TestPeerHandler {
 
 		// Then
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.elasticSignatureMessage (pieceDatabase.getViewSignature (totalLength)));
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (new BitField(5).not()));
+		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, extra));
+		mockConnection.mockExpectOutput (PeerProtocolBuilder.elasticSignatureMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, pieceDatabase.getViewSignature (totalLength)));
+		mockConnection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, new BitField(5).not()));
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.interestedMessage());
 		mockConnection.mockExpectNoMoreOutput();
 		verify(peerSetContext.extensionManager).offerExtensionsToPeer (handler);
@@ -1846,6 +1879,11 @@ public class TestPeerHandler {
 		pieceDatabase.writePiece (new Piece (1, ByteBuffer.wrap (Util.pseudoRandomBlock (1, 8192, 8192)), tree.getHashChain (1, 8192)));
 		Map<String,Integer> extensions = new HashMap<String,Integer>();
 		extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
+		Map<String,Integer> expectedExtensions = new HashMap<String,Integer>();
+		expectedExtensions.put (PeerProtocolConstants.EXTENSION_PEER_METADATA, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_PEER_METADATA);
+		expectedExtensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
+		BDictionary extra = new BDictionary();
+		extra.put ("metadata_size", BEncoder.encode (pieceDatabase.getInfo().getDictionary()).length);
 		PeerServices peerServices = mock (PeerServices.class);
 		PeerSetContext peerSetContext = new PeerSetContext (peerServices, pieceDatabase, mock (RequestManager.class), mock (ExtensionManager.class));
 		when(peerSetContext.requestManager.piecesAvailable (any (ManageablePeer.class))).thenReturn (false);
@@ -1856,13 +1894,13 @@ public class TestPeerHandler {
 		// When
 		mockConnection.mockInput (PeerProtocolBuilder.haveNoneMessage());
 		mockConnection.mockInput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
-		mockConnection.mockInput (PeerProtocolBuilder.elasticBitfieldMessage (new BitField (2)));
+		mockConnection.mockInput (PeerProtocolBuilder.elasticBitfieldMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, new BitField (2)));
 		handler.connectionReady (mockConnection, true, true);
 
 		// Then
 		mockConnection.mockExpectOutput (PeerProtocolBuilder.haveNoneMessage());
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (extensions, null));
-		mockConnection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (new BitField(2).not()));
+		mockConnection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, extra));
+		mockConnection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, new BitField(2).not()));
 		mockConnection.mockExpectNoMoreOutput();
 		assertEquals (2, handler.getRemoteBitField().length());
 

@@ -8,10 +8,9 @@ import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 
 import org.itadaki.bobbin.peer.PeerOutboundQueue;
 import org.itadaki.bobbin.peer.protocol.PeerProtocolBuilder;
@@ -1081,8 +1080,8 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testExtensionHandshakeAdd() throws IOException {
 
-		Set<String> extensionsAdded = new TreeSet<String>();
-		extensionsAdded.add ("bl_ah");
+		Map<String,Integer> extensionsEnabled = new HashMap<String,Integer>();
+		extensionsEnabled.put ("bl_ah", 42);
 
 		MockConnection connection = new MockConnection();
 
@@ -1092,7 +1091,7 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
+		peerOutboundQueue.sendExtensionHandshake (extensionsEnabled, null, null);
 
 		connection.mockExpectNoMoreOutput();
 		assertTrue (connection.mockIsWriteEnabled());
@@ -1100,7 +1099,7 @@ public class TestPeerOutboundQueue {
 		peerOutboundQueue.sendData();
 
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
-		expectedExtensions.put ("bl_ah", (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM);
+		expectedExtensions.put ("bl_ah", 42);
 		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, null));
 		connection.mockExpectNoMoreOutput();
 
@@ -1114,8 +1113,8 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testExtensionHandshakeRemove() throws IOException {
 
-		Set<String> extensionsAdded = new TreeSet<String>();
-		extensionsAdded.add ("bl_ah");
+		Map<String,Integer> extensionsEnabled = new HashMap<String,Integer>();
+		extensionsEnabled.put ("bl_ah", 42);
 
 		MockConnection connection = new MockConnection();
 
@@ -1125,8 +1124,9 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
-		peerOutboundQueue.sendExtensionHandshake (null, extensionsAdded, null);
+		peerOutboundQueue.updateExtensionMapping (extensionsEnabled, null, null);
+		peerOutboundQueue.sendExtensionHandshake (extensionsEnabled, null, null);
+		peerOutboundQueue.sendExtensionHandshake (null, extensionsEnabled.keySet(), null);
 
 		connection.mockExpectNoMoreOutput();
 		assertTrue (connection.mockIsWriteEnabled());
@@ -1134,7 +1134,7 @@ public class TestPeerOutboundQueue {
 		peerOutboundQueue.sendData();
 
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
-		expectedExtensions.put ("bl_ah", (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM);
+		expectedExtensions.put ("bl_ah", 42);
 		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, null));
 		Map<String,Integer> expectedExtensions2 = new TreeMap<String,Integer>();
 		expectedExtensions2.put ("bl_ah", 0);
@@ -1151,8 +1151,8 @@ public class TestPeerOutboundQueue {
 	@Test
 	public void testExtensionMessage() throws IOException {
 
-		Set<String> extensionsAdded = new TreeSet<String>();
-		extensionsAdded.add ("bl_ah");
+		Map<String,Integer> extensionsEnabled = new HashMap<String,Integer>();
+		extensionsEnabled.put ("bl_ah", 42);
 
 		MockConnection connection = new MockConnection();
 
@@ -1162,7 +1162,7 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
-		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
+		peerOutboundQueue.updateExtensionMapping (extensionsEnabled, null, null);
 		peerOutboundQueue.sendExtensionMessage ("bl_ah", ByteBuffer.wrap (new byte[] { 1, 2, 3, 4 }));
 
 		connection.mockExpectNoMoreOutput();
@@ -1171,9 +1171,8 @@ public class TestPeerOutboundQueue {
 		peerOutboundQueue.sendData();
 
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
-		expectedExtensions.put ("bl_ah", (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM);
-		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, null));
-		connection.mockExpectOutput (PeerProtocolBuilder.extensionMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM, ByteBuffer.wrap (new byte[] { 1, 2, 3, 4})));
+		expectedExtensions.put ("bl_ah", 42);
+		connection.mockExpectOutput (PeerProtocolBuilder.extensionMessage (42, ByteBuffer.wrap (new byte[] { 1, 2, 3, 4})));
 		connection.mockExpectNoMoreOutput();
 
 	}
@@ -1190,8 +1189,8 @@ public class TestPeerOutboundQueue {
 		int totalLength = 1024;
 		BlockDescriptor blockDescriptor = new BlockDescriptor (0, 0, 1024);
 
-		Set<String> extensionsAdded = new TreeSet<String>();
-		extensionsAdded.add (PeerProtocolConstants.EXTENSION_MERKLE);
+		Map<String,Integer> extensionsEnabled = new HashMap<String,Integer>();
+		extensionsEnabled.put (PeerProtocolConstants.EXTENSION_MERKLE, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE);
 
 		MockConnection connection = new MockConnection();
 
@@ -1204,8 +1203,9 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
+		peerOutboundQueue.updateExtensionMapping (extensionsEnabled, null, null);
 		peerOutboundQueue.sendHaveNoneMessage();
-		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
+		peerOutboundQueue.sendExtensionHandshake (extensionsEnabled, null, null);
 		peerOutboundQueue.sendPieceMessage (blockDescriptor);
 
 		connection.mockExpectNoMoreOutput();
@@ -1217,7 +1217,7 @@ public class TestPeerOutboundQueue {
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
 		expectedExtensions.put (PeerProtocolConstants.EXTENSION_MERKLE, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE);
 		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, null));
-		connection.mockExpectOutput (PeerProtocolBuilder.merklePieceMessage (blockDescriptor, tree.getHashChain(0, pieceSize).getHashes(), ByteBuffer.wrap (Util.pseudoRandomBlock (0, pieceSize, pieceSize))));
+		connection.mockExpectOutput (PeerProtocolBuilder.merklePieceMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE, blockDescriptor, tree.getHashChain(0, pieceSize).getHashes(), ByteBuffer.wrap (Util.pseudoRandomBlock (0, pieceSize, pieceSize))));
 		connection.mockExpectNoMoreOutput();
 
 		pieceDatabase.terminate (true);
@@ -1236,8 +1236,8 @@ public class TestPeerOutboundQueue {
 		int totalLength = 1024;
 		long viewLength = 1024;
 
-		Set<String> extensionsAdded = new TreeSet<String>();
-		extensionsAdded.add (PeerProtocolConstants.EXTENSION_ELASTIC);
+		Map<String,Integer> extensionsEnabled = new HashMap<String,Integer>();
+		extensionsEnabled.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
 
 		MockConnection connection = new MockConnection();
 
@@ -1252,8 +1252,9 @@ public class TestPeerOutboundQueue {
 
 		ViewSignature viewSignature = new ViewSignature (viewLength, ByteBuffer.wrap (tree.getView (viewLength).getRootHash()), ByteBuffer.allocate (40));
 
+		peerOutboundQueue.updateExtensionMapping (extensionsEnabled, null, null);
 		peerOutboundQueue.sendHaveNoneMessage();
-		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
+		peerOutboundQueue.sendExtensionHandshake (extensionsEnabled, null, null);
 		peerOutboundQueue.sendElasticSignatureMessage (viewSignature);
 
 		connection.mockExpectNoMoreOutput();
@@ -1264,7 +1265,7 @@ public class TestPeerOutboundQueue {
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
 		expectedExtensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
 		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, null));
-		connection.mockExpectOutput (PeerProtocolBuilder.elasticSignatureMessage (viewSignature));
+		connection.mockExpectOutput (PeerProtocolBuilder.elasticSignatureMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, viewSignature));
 		connection.mockExpectNoMoreOutput();
 
 		pieceDatabase.terminate (true);
@@ -1284,8 +1285,8 @@ public class TestPeerOutboundQueue {
 		BlockDescriptor blockDescriptor = new BlockDescriptor (0, 0, 1024);
 		long viewLength = 1024;
 
-		Set<String> extensionsAdded = new TreeSet<String>();
-		extensionsAdded.add (PeerProtocolConstants.EXTENSION_ELASTIC);
+		Map<String,Integer> extensionsEnabled = new HashMap<String,Integer>();
+		extensionsEnabled.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
 
 		MockConnection connection = new MockConnection();
 
@@ -1298,8 +1299,9 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
+		peerOutboundQueue.updateExtensionMapping (extensionsEnabled, null, null);
 		peerOutboundQueue.sendHaveNoneMessage();
-		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
+		peerOutboundQueue.sendExtensionHandshake (extensionsEnabled, null, null);
 		peerOutboundQueue.sendPieceMessage (blockDescriptor);
 
 		connection.mockExpectNoMoreOutput();
@@ -1310,7 +1312,7 @@ public class TestPeerOutboundQueue {
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
 		expectedExtensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
 		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, null));
-		connection.mockExpectOutput (PeerProtocolBuilder.elasticPieceMessage (blockDescriptor, viewLength, tree.getHashChain(0, pieceSize).getHashes(), ByteBuffer.wrap (Util.pseudoRandomBlock (0, pieceSize, pieceSize))));
+		connection.mockExpectOutput (PeerProtocolBuilder.elasticPieceMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, blockDescriptor, viewLength, tree.getHashChain(0, pieceSize).getHashes(), ByteBuffer.wrap (Util.pseudoRandomBlock (0, pieceSize, pieceSize))));
 		connection.mockExpectNoMoreOutput();
 
 		pieceDatabase.terminate (true);
@@ -1329,9 +1331,8 @@ public class TestPeerOutboundQueue {
 		int totalLength = 1024;
 		BitField bitfield = new BitField (new byte[] { (byte)0xff, 0x00, (byte)0xee, (byte)0xf0 }, 28);
 
-
-		Set<String> extensionsAdded = new TreeSet<String>();
-		extensionsAdded.add (PeerProtocolConstants.EXTENSION_ELASTIC);
+		Map<String,Integer> extensionsEnabled = new HashMap<String,Integer>();
+		extensionsEnabled.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
 
 		MockConnection connection = new MockConnection();
 
@@ -1344,8 +1345,9 @@ public class TestPeerOutboundQueue {
 
 		assertFalse (connection.mockIsWriteEnabled());
 
+		peerOutboundQueue.updateExtensionMapping (extensionsEnabled, null, null);
 		peerOutboundQueue.sendHaveNoneMessage();
-		peerOutboundQueue.sendExtensionHandshake (extensionsAdded, null, null);
+		peerOutboundQueue.sendExtensionHandshake (extensionsEnabled, null, null);
 		peerOutboundQueue.sendElasticBitfieldMessage (bitfield);
 
 		connection.mockExpectNoMoreOutput();
@@ -1356,7 +1358,7 @@ public class TestPeerOutboundQueue {
 		Map<String,Integer> expectedExtensions = new TreeMap<String,Integer>();
 		expectedExtensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, (int)PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC);
 		connection.mockExpectOutput (PeerProtocolBuilder.extensionHandshakeMessage (expectedExtensions, null));
-		connection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (bitfield));
+		connection.mockExpectOutput (PeerProtocolBuilder.elasticBitfieldMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, bitfield));
 		connection.mockExpectNoMoreOutput();
 
 		pieceDatabase.terminate (true);

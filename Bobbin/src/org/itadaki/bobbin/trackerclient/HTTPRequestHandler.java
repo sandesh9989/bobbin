@@ -324,12 +324,16 @@ public class HTTPRequestHandler {
 	 */
 	private void actionCancel() {
 
-		this.timeoutFuture.cancel (false);
+		if (this.timeoutFuture != null) {
+			this.timeoutFuture.cancel (false);
+		}
+
 		try {
 			this.connection.close();
 		} catch (IOException e) {
 			// Shouldn't happen and nothing much we can do
 		}
+
 		HTTPRequestHandler.this.listener.requestCancelled (HTTPRequestHandler.this);
 
 	}

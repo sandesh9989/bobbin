@@ -73,9 +73,10 @@ public class ExtensionManager implements PeerCoordinatorListener {
 	 */
 	public void offerExtensionsToPeer (ExtensiblePeer peer) {
 
-		Set<String> enabledExtensions = new HashSet<String>();
+		int extendedMessageID = PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_CUSTOM;
+		Map<String,Integer> enabledExtensions = new HashMap<String,Integer>();
 		for (String identifier : this.handlers.keySet()) {
-			enabledExtensions.add (identifier);
+			enabledExtensions.put (identifier, extendedMessageID++);
 		}
 
 		BDictionary extra = new BDictionary();
