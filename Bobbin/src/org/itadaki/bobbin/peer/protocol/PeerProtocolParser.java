@@ -494,20 +494,20 @@ public class PeerProtocolParser {
 
 		switch (messageType) {
 			case 0:
+				// Request
 				this.consumer.peerMetadataRequestMessage (pieceNumber);
 				break;
 			case 1:
+				// Data
 			case 2:
+				// Reject
 				// TODO currently unimplemented
 				break;
 			default:
 				throw new IOException ("Invalid peer metadata message");
 		}
 
-		// Request
 
-		// Data
-		// Reject
 	}
 
 
@@ -881,7 +881,7 @@ public class PeerProtocolParser {
 										default:
 											byte[] extensionData = new byte[this.messageData.remaining()];
 											this.messageData.get (extensionData);
-											//this.consumer.extensionMessage (extensionID, extensionData); // FIXME
+											this.consumer.extensionMessage (extensionID, extensionData);
 											break;
 									}
 								} else {

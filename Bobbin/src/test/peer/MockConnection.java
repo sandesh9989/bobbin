@@ -478,8 +478,8 @@ public class MockConnection extends Connection {
 				System.out.printf ("%2d extension handshake\n", this.sequence++);
 			}
 
-			public void extensionMessage (String identifier, byte[] data) throws IOException {
-				System.out.printf ("%2d extension (%s:%d)\n", this.sequence++, identifier, data.length);
+			public void extensionMessage (int extensionID, byte[] data) throws IOException {
+				System.out.printf ("%2d extension (%d:%d)\n", this.sequence++, extensionID, data.length);
 			}
 
 			public void peerMetadataRequestMessage (int pieceNumber) throws IOException {

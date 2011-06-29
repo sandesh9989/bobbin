@@ -162,12 +162,11 @@ public interface PeerProtocolConsumer {
 	 * Indicates that an "extension" message has been received (basic protocol message ID 20,
 	 * extension ID >0 when the extension protocol is enabled)
 	 *
-	 * @param identifier The string identifier of the extension, as negotiated in a previous
-	 * extension handshake
+	 * @param extensionID The extension ID of the message
 	 * @param data The payload of the message
 	 * @throws IOException On any validation error
 	 */
-	public void extensionMessage (String identifier, byte[] data) throws IOException;
+	public void extensionMessage (int extensionID, byte[] data) throws IOException;
 
 	/**
 	 * Indicates that a "peer metadata request" message has been received (extension protocol

@@ -639,12 +639,12 @@ public class PeerHandler implements ManageablePeer, PeerProtocolConsumer, Connec
 
 
 	/* (non-Javadoc)
-	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#extensionMessage(java.lang.String, byte[])
+	 * @see org.itadaki.bobbin.peer.protocol.PeerProtocolConsumer#extensionMessage(int, byte[])
 	 */
 	@Override
-	public void extensionMessage (String identifier, byte[] data) throws IOException {
+	public void extensionMessage (int extensionID, byte[] data) throws IOException {
 
-		this.peerSetContext.extensionManager.processExtensionMessage (this, identifier, data);
+		// TODO this.peerSetContext.extensionManager.processExtensionMessage (this, identifier, data);
 
 	}
 
