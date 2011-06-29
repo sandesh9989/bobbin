@@ -12,6 +12,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -25,6 +27,7 @@ import org.itadaki.bobbin.peer.protocol.PeerProtocolParser;
 import org.itadaki.bobbin.torrentdb.BlockDescriptor;
 import org.itadaki.bobbin.torrentdb.PieceStyle;
 import org.itadaki.bobbin.torrentdb.ResourceType;
+import org.itadaki.bobbin.torrentdb.ViewSignature;
 import org.itadaki.bobbin.util.BitField;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -367,529 +370,555 @@ public class TestPeerProtocolParser {
 	}
 
 
-//	/**
-//	 * Tests an extension handshake that adds an extension
-//	 * @throws Exception 
-//	 */
-//	@Test
-//	public void testExtensionHandshakeAdd() throws Exception {
-//
-//		// Given
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put ("bl_ah", 1);
-//		BDictionary extra = new BDictionary();
-//		extra.put ("v", "Foo 1.0");
-//		extra.put ("reqq", 123);
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
-//
-//		// Then
-//		verify(mockConsumer).extensionHandshakeMessage (new HashSet<String> (Arrays.asList ("bl_ah")), new HashSet<String>(), extra);
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	/**
-//	 * Tests an extension handshake that subtracts an extension
-//	 * @throws Exception 
-//	 */
-//	@Test
-//	public void testExtensionHandshakeRemove() throws Exception {
-//
-//		// Given
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put ("bl_ah", 1);
-//		BDictionary extra = new BDictionary();
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
-//		extensions.put ("bl_ah", 0);
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String> (Arrays.asList ("bl_ah")), new HashSet<String>(), extra);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String>(), new HashSet<String> (Arrays.asList ("bl_ah")), extra);
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	/**
-//	 * Tests an extension handshake that subtracts an extension not previously enabled
-//	 * @throws Exception
-//	 */
-//	@Test
-//	public void testExtensionHandshakeRemoveNonexistent() throws Exception {
-//
-//		// Given
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put ("bl_ah", 1);
-//		BDictionary extra = new BDictionary();
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
-//		extensions.put ("wi_bble", 0);
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String> (Arrays.asList ("bl_ah")), new HashSet<String>(), extra);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String>(), new HashSet<String>(), extra);
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	// TODO Test - defense against a recursive list/dictionary attack
-//
-//
-//	/**
-//	 * Tests an extension message
-//	 * @throws IOException
-//	 */
-//	@Test
-//	public void testExtensionMessage() throws IOException {
-//
-//		// Given
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put ("bl_ah", 42);
-//		BDictionary extra = new BDictionary();
-//		extra.put ("v", "Foo 1.0");
-//		extra.put ("reqq", 123);
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionMessage (42, ByteBuffer.wrap (new byte[] { 1, 2, 3, 4 }))));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (extensions, new HashSet<String>(), extra);
-//		sequence.verify(mockConsumer).extensionMessage ("bl_ah", new byte[] { 1, 2, 3, 4 });
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	/**
-//	 * Tests a Merkle piece message
-//	 * @throws IOException
-//	 */
-//	@Test
-//	public void testMerklePieceMessage() throws IOException {
-//
-//		// Given
-//		BlockDescriptor expectedDescriptor = new BlockDescriptor (1, 0, 4);
-//		ByteBuffer expectedHashChain = ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 });
-//		ByteBuffer expectedBlock = ByteBuffer.wrap (new byte[] { 50, 51, 52, 53 });
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put (PeerProtocolConstants.EXTENSION_MERKLE, 1);
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.merklePieceMessage (
-//				expectedDescriptor,
-//				expectedHashChain.duplicate(),
-//				expectedBlock.duplicate()
-//		)));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashSet<String> (
-//				Arrays.asList (PeerProtocolConstants.EXTENSION_MERKLE)),
-//				new HashSet<String>(),
-//				new BDictionary()
-//		);
-//		sequence.verify(mockConsumer).pieceMessage (PieceStyle.MERKLE, null, expectedDescriptor, null, expectedHashChain, expectedBlock);
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	/**
-//	 * Tests an elastic signature message
-//	 * @throws IOException
-//	 */
-//	@Test
-//	public void testElasticSignatureMessage() throws IOException {
-//
-//		// Given
-//		long expectedViewLength = 0x7FFFFEFDFCFBFAF9L;
-//		ByteBuffer expectedViewRootHash = ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 });
-//		ByteBuffer expectedSignature = ByteBuffer.wrap (new byte[] {
-//				50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69,
-//				70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89
-//		});
-//		ViewSignature expectedViewSignature = new ViewSignature (expectedViewLength, expectedViewRootHash, expectedSignature);
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, 2);
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
-//		ByteBuffer[] elasticSignatureBuffers = PeerProtocolBuilder.elasticSignatureMessage (new ViewSignature (
-//				expectedViewLength,
-//				expectedViewRootHash,
-//				expectedSignature
-//		));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (elasticSignatureBuffers));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (
-//				new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC)),
-//				new HashSet<String>(),
-//				new BDictionary()
-//		);
-//		sequence.verify(mockConsumer).elasticSignatureMessage (expectedViewSignature);
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	/**
-//	 * Tests an elastic piece message
-//	 * @throws IOException
-//	 */
-//	@Test
-//	public void testElasticPieceMessage() throws IOException {
-//
-//		// Given
-//		long expectedViewLength = 0x7FFFFEFDFCFBFAF9L;
-//		BlockDescriptor expectedDescriptor = new BlockDescriptor (1, 0, 4);
-//		ByteBuffer expectedHashChain = ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 });
-//		ByteBuffer expectedBlock = ByteBuffer.wrap (new byte[] { 50, 51, 52, 53 });
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, 2);
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.elasticPieceMessage (
-//				expectedDescriptor,
-//				expectedViewLength,
-//				expectedHashChain.duplicate(),
-//				expectedBlock.duplicate()
-//		)));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (
-//				new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC)),
-//				new HashSet<String>(),
-//				new BDictionary()
-//		);
-//		sequence.verify(mockConsumer).pieceMessage (PieceStyle.ELASTIC, null, expectedDescriptor, expectedViewLength, expectedHashChain, expectedBlock);
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	/**
-//	 * Tests an elastic bitfield message
-//	 * @throws IOException
-//	 */
-//	@Test
-//	public void testElasticBitfieldMessage() throws IOException {
-//
-//		// Given
-//		byte[] expectedBitfieldBytes = new byte[] { (byte)0xff, 0x00, (byte)0xee, (byte)0xf0 };
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, 2);
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.elasticBitfieldMessage (new BitField (expectedBitfieldBytes, 28))));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (
-//				new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_ELASTIC)),
-//				new HashSet<String>(),
-//				new BDictionary()
-//		);
-//		sequence.verify(mockConsumer).elasticBitfieldMessage (expectedBitfieldBytes);
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	/**
-//	 * Tests a resource have message
-//	 * @throws IOException
-//	 */
-//	@Test
-//	public void testResourceHave() throws IOException {
-//
-//		// Given
-//		int pieceNumber = 1234;
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
-//				Arrays.asList (ResourceType.INFO),
-//				Arrays.asList (new Integer[] { 1 })
-//		)));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceHaveMessage (ResourceType.INFO.id, pieceNumber)));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (
-//				new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_RESOURCE)),
-//				new HashSet<String>(),
-//				new BDictionary()
-//		);
-//		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
-//		sequence.verify(mockConsumer).haveMessage (ResourceType.INFO, pieceNumber);
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	/**
-//	 * Tests a resource bitfield message
-//	 * @throws IOException
-//	 */
-//	@Test
-//	public void testResourceBitfield() throws IOException {
-//
-//		// Given
-//		BitField bitField = new BitField (40);
-//		bitField.set (0);
-//		bitField.set (9);
-//		bitField.set (18);
-//		bitField.set (27);
-//		bitField.set (36);
-//		byte[] bitFieldBytes = new byte[bitField.byteLength()];
-//		bitField.copyTo(bitFieldBytes, 0);
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
-//				Arrays.asList (ResourceType.INFO),
-//				Arrays.asList (new Integer[] { 1 })
-//		)));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceBitfieldMessage (ResourceType.INFO.id, bitField)));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (
-//				new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_RESOURCE)),
-//				new HashSet<String>(),
-//				new BDictionary()
-//		);
-//		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
-//		sequence.verify(mockConsumer).bitfieldMessage (ResourceType.INFO, bitFieldBytes);
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	/**
-//	 * Tests a resource request message
-//	 * @throws IOException
-//	 */
-//	@Test
-//	public void testResourceRequest() throws IOException {
-//
-//		// Given
-//		BlockDescriptor requestDescriptor = new BlockDescriptor (1234, 5678, 9012);
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
-//				Arrays.asList (ResourceType.INFO),
-//				Arrays.asList (new Integer[] { 1 })
-//		)));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceRequestMessage (ResourceType.INFO.id, requestDescriptor)));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (
-//				new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_RESOURCE)),
-//				new HashSet<String>(),
-//				new BDictionary()
-//		);
-//		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
-//		sequence.verify(mockConsumer).requestMessage (ResourceType.INFO, requestDescriptor);
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	/**
-//	 * Tests a resource cancel message
-//	 * @throws IOException
-//	 */
-//	@Test
-//	public void testResourceCancel() throws IOException {
-//
-//		// Given
-//		BlockDescriptor requestDescriptor = new BlockDescriptor (1234, 5678, 9012);
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
-//				Arrays.asList (ResourceType.INFO),
-//				Arrays.asList (new Integer[] { 1 })
-//		)));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceCancelMessage (ResourceType.INFO.id, requestDescriptor)));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (
-//				new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_RESOURCE)),
-//				new HashSet<String>(),
-//				new BDictionary()
-//		);
-//		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
-//		sequence.verify(mockConsumer).cancelMessage (ResourceType.INFO, requestDescriptor);
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	/**
-//	 * Tests a resource piece message
-//	 * @throws IOException
-//	 */
-//	@Test
-//	public void testResourcePiece() throws IOException {
-//
-//		// Given
-//		BlockDescriptor requestDescriptor = new BlockDescriptor (1234, 5678, 4);
-//		byte[] pieceData = new byte[] { 1, 2, 3, 4 };
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
-//				Arrays.asList (ResourceType.INFO),
-//				Arrays.asList (new Integer[] { 1 })
-//		)));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourcePieceMessage (
-//				ResourceType.INFO.id,
-//				requestDescriptor,
-//				ByteBuffer.wrap (pieceData)
-//		)));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (
-//				new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_RESOURCE)),
-//				new HashSet<String>(), new BDictionary()
-//		);
-//		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
-//		sequence.verify(mockConsumer).pieceMessage (PieceStyle.PLAIN, ResourceType.INFO, requestDescriptor, null, null, ByteBuffer.wrap (pieceData));
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	/**
-//	 * Tests a resource reject request message
-//	 * @throws IOException
-//	 */
-//	@Test
-//	public void testResourceRejectRequest() throws IOException {
-//
-//		// Given
-//		BlockDescriptor requestDescriptor = new BlockDescriptor (1234, 5678, 9012);
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
-//				Arrays.asList (ResourceType.INFO),
-//				Arrays.asList (new Integer[] { 1 })
-//		)));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceRejectRequestMessage (ResourceType.INFO.id, requestDescriptor)));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (
-//				new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_RESOURCE)),
-//				new HashSet<String>(),
-//				new BDictionary()
-//		);
-//		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
-//		sequence.verify(mockConsumer).rejectRequestMessage (ResourceType.INFO, requestDescriptor);
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
-//
-//
-//	/**
-//	 * Tests a resource subscribe message
-//	 * @throws IOException
-//	 */
-//	@Test
-//	public void testResourceSubscribeRequest() throws IOException {
-//
-//		// Given
-//		Map<String,Integer> extensions = new TreeMap<String,Integer>();
-//		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
-//		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
-//		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
-//
-//		// When
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
-//				Arrays.asList (ResourceType.INFO),
-//				Arrays.asList (new Integer[] { 1 })
-//		)));
-//		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceSubscribeMessage (ResourceType.INFO.id)));
-//
-//		// Then
-//		InOrder sequence = inOrder (mockConsumer);
-//		sequence.verify(mockConsumer).extensionHandshakeMessage (
-//				new HashSet<String> (Arrays.asList (PeerProtocolConstants.EXTENSION_RESOURCE)),
-//				new HashSet<String>(),
-//				new BDictionary()
-//		);
-//		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
-//		sequence.verify(mockConsumer).resourceSubscribeMessage (ResourceType.INFO);
-//		verifyNoMoreInteractions (mockConsumer);
-//
-//	}
+	/**
+	 * Tests an extension handshake that adds an extension
+	 * @throws Exception 
+	 */
+	@Test
+	public void testExtensionHandshakeAdd() throws Exception {
+
+		// Given
+		Map<String,Integer> extensions = new TreeMap<String,Integer>();
+		extensions.put ("bl_ah", 1);
+		BDictionary extra = new BDictionary();
+		extra.put ("v", "Foo 1.0");
+		extra.put ("reqq", 123);
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
+
+		// Then
+		verify(mockConsumer).extensionHandshakeMessage (extensions, new HashSet<String>(), extra);
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	/**
+	 * Tests an extension handshake that subtracts an extension
+	 * @throws Exception 
+	 */
+	@Test
+	public void testExtensionHandshakeRemove() throws Exception {
+
+		// Given
+		Map<String,Integer> extensions = new TreeMap<String,Integer>();
+		extensions.put ("bl_ah", 1);
+		Map<String,Integer> extensions2 = new TreeMap<String,Integer>();
+		extensions2.put ("bl_ah", 0);
+		BDictionary extra = new BDictionary();
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions2, extra)));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (extensions, new HashSet<String>(), extra);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashMap<String,Integer>(), new HashSet<String> (Arrays.asList ("bl_ah")), extra);
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	/**
+	 * Tests an extension handshake that subtracts an extension not previously enabled
+	 * @throws Exception
+	 */
+	@Test
+	public void testExtensionHandshakeRemoveNonexistent() throws Exception {
+
+		// Given
+		Map<String,Integer> extensions = new HashMap<String,Integer>();
+		extensions.put ("bl_ah", 1);
+		Map<String,Integer> extensions2 = new HashMap<String,Integer>();
+		extensions2.put ("wi_bble", 0);
+		BDictionary extra = new BDictionary();
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, extra)));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions2, extra)));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (extensions, new HashSet<String>(), extra);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (new HashMap<String,Integer>(), new HashSet<String>(Arrays.asList ("wi_bble")), extra);
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	// TODO Test - defense against a recursive list/dictionary attack
+
+
+	/**
+	 * Tests an extension message
+	 * @throws IOException
+	 */
+	@Test
+	public void testExtensionMessage() throws IOException {
+
+		// Given
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionMessage (42, ByteBuffer.wrap (new byte[] { 1, 2, 3, 4 }))));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionMessage (42, new byte[] { 1, 2, 3, 4 });
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	/**
+	 * Tests a Merkle piece message
+	 * @throws IOException
+	 */
+	@Test
+	public void testMerklePieceMessage() throws IOException {
+
+		// Given
+		BlockDescriptor expectedDescriptor = new BlockDescriptor (1, 0, 4);
+		ByteBuffer expectedHashChain = ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 });
+		ByteBuffer expectedBlock = ByteBuffer.wrap (new byte[] { 50, 51, 52, 53 });
+		Map<String,Integer> extensions = new TreeMap<String,Integer>();
+		extensions.put (PeerProtocolConstants.EXTENSION_MERKLE, 1);
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.merklePieceMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_MERKLE,
+				expectedDescriptor,
+				expectedHashChain.duplicate(),
+				expectedBlock.duplicate()
+		)));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (extensions,
+				new HashSet<String>(),
+				new BDictionary()
+		);
+		sequence.verify(mockConsumer).pieceMessage (PieceStyle.MERKLE, null, expectedDescriptor, null, expectedHashChain, expectedBlock);
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	/**
+	 * Tests an elastic signature message
+	 * @throws IOException
+	 */
+	@Test
+	public void testElasticSignatureMessage() throws IOException {
+
+		// Given
+		long expectedViewLength = 0x7FFFFEFDFCFBFAF9L;
+		ByteBuffer expectedViewRootHash = ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 });
+		ByteBuffer expectedSignature = ByteBuffer.wrap (new byte[] {
+				50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69,
+				70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89
+		});
+		ViewSignature expectedViewSignature = new ViewSignature (expectedViewLength, expectedViewRootHash, expectedSignature);
+		Map<String,Integer> extensions = new TreeMap<String,Integer>();
+		extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, 2);
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
+		ByteBuffer[] elasticSignatureBuffers = PeerProtocolBuilder.elasticSignatureMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, new ViewSignature (
+				expectedViewLength,
+				expectedViewRootHash,
+				expectedSignature
+		));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (elasticSignatureBuffers));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (
+				extensions,
+				new HashSet<String>(),
+				new BDictionary()
+		);
+		sequence.verify(mockConsumer).elasticSignatureMessage (expectedViewSignature);
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	/**
+	 * Tests an elastic piece message
+	 * @throws IOException
+	 */
+	@Test
+	public void testElasticPieceMessage() throws IOException {
+
+		// Given
+		long expectedViewLength = 0x7FFFFEFDFCFBFAF9L;
+		BlockDescriptor expectedDescriptor = new BlockDescriptor (1, 0, 4);
+		ByteBuffer expectedHashChain = ByteBuffer.wrap (new byte[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 });
+		ByteBuffer expectedBlock = ByteBuffer.wrap (new byte[] { 50, 51, 52, 53 });
+		Map<String,Integer> extensions = new TreeMap<String,Integer>();
+		extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, 2);
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.elasticPieceMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, 
+				expectedDescriptor,
+				expectedViewLength,
+				expectedHashChain.duplicate(),
+				expectedBlock.duplicate()
+		)));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (
+				extensions,
+				new HashSet<String>(),
+				new BDictionary()
+		);
+		sequence.verify(mockConsumer).pieceMessage (PieceStyle.ELASTIC, null, expectedDescriptor, expectedViewLength, expectedHashChain, expectedBlock);
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	/**
+	 * Tests an elastic bitfield message
+	 * @throws IOException
+	 */
+	@Test
+	public void testElasticBitfieldMessage() throws IOException {
+
+		// Given
+		byte[] expectedBitfieldBytes = new byte[] { (byte)0xff, 0x00, (byte)0xee, (byte)0xf0 };
+		Map<String,Integer> extensions = new TreeMap<String,Integer>();
+		extensions.put (PeerProtocolConstants.EXTENSION_ELASTIC, 2);
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.elasticBitfieldMessage (PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_ELASTIC, new BitField (expectedBitfieldBytes, 28))));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (
+				extensions,
+				new HashSet<String>(),
+				new BDictionary()
+		);
+		sequence.verify(mockConsumer).elasticBitfieldMessage (expectedBitfieldBytes);
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	/**
+	 * Tests a resource have message
+	 * @throws IOException
+	 */
+	@Test
+	public void testResourceHave() throws IOException {
+
+		// Given
+		int pieceNumber = 1234;
+		Map<String,Integer> extensions = new TreeMap<String,Integer>();
+		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				Arrays.asList (ResourceType.INFO),
+				Arrays.asList (new Integer[] { 1 })
+		)));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceHaveMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				ResourceType.INFO.id,
+				pieceNumber
+		)));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (
+				extensions,
+				new HashSet<String>(),
+				new BDictionary()
+		);
+		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
+		sequence.verify(mockConsumer).haveMessage (ResourceType.INFO, pieceNumber);
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	/**
+	 * Tests a resource bitfield message
+	 * @throws IOException
+	 */
+	@Test
+	public void testResourceBitfield() throws IOException {
+
+		// Given
+		BitField bitField = new BitField (40);
+		bitField.set (0);
+		bitField.set (9);
+		bitField.set (18);
+		bitField.set (27);
+		bitField.set (36);
+		byte[] bitFieldBytes = new byte[bitField.byteLength()];
+		bitField.copyTo(bitFieldBytes, 0);
+		Map<String,Integer> extensions = new TreeMap<String,Integer>();
+		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				Arrays.asList (ResourceType.INFO),
+				Arrays.asList (new Integer[] { 1 })
+		)));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceBitfieldMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				ResourceType.INFO.id,
+				bitField
+		)));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (
+				extensions,
+				new HashSet<String>(),
+				new BDictionary()
+		);
+		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
+		sequence.verify(mockConsumer).bitfieldMessage (ResourceType.INFO, bitFieldBytes);
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	/**
+	 * Tests a resource request message
+	 * @throws IOException
+	 */
+	@Test
+	public void testResourceRequest() throws IOException {
+
+		// Given
+		BlockDescriptor requestDescriptor = new BlockDescriptor (1234, 5678, 9012);
+		Map<String,Integer> extensions = new TreeMap<String,Integer>();
+		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				Arrays.asList (ResourceType.INFO),
+				Arrays.asList (new Integer[] { 1 })
+		)));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceRequestMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				ResourceType.INFO.id,
+				requestDescriptor
+		)));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (
+				extensions,
+				new HashSet<String>(),
+				new BDictionary()
+		);
+		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
+		sequence.verify(mockConsumer).requestMessage (ResourceType.INFO, requestDescriptor);
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	/**
+	 * Tests a resource cancel message
+	 * @throws IOException
+	 */
+	@Test
+	public void testResourceCancel() throws IOException {
+
+		// Given
+		BlockDescriptor requestDescriptor = new BlockDescriptor (1234, 5678, 9012);
+		Map<String,Integer> extensions = new TreeMap<String,Integer>();
+		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				Arrays.asList (ResourceType.INFO),
+				Arrays.asList (new Integer[] { 1 })
+		)));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceCancelMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				ResourceType.INFO.id,
+				requestDescriptor
+		)));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (
+				extensions,
+				new HashSet<String>(),
+				new BDictionary()
+		);
+		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
+		sequence.verify(mockConsumer).cancelMessage (ResourceType.INFO, requestDescriptor);
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	/**
+	 * Tests a resource piece message
+	 * @throws IOException
+	 */
+	@Test
+	public void testResourcePiece() throws IOException {
+
+		// Given
+		BlockDescriptor requestDescriptor = new BlockDescriptor (1234, 5678, 4);
+		byte[] pieceData = new byte[] { 1, 2, 3, 4 };
+		Map<String,Integer> extensions = new TreeMap<String,Integer>();
+		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				Arrays.asList (ResourceType.INFO),
+				Arrays.asList (new Integer[] { 1 })
+		)));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourcePieceMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				ResourceType.INFO.id,
+				requestDescriptor,
+				ByteBuffer.wrap (pieceData)
+		)));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (
+				extensions,
+				new HashSet<String>(), new BDictionary()
+		);
+		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
+		sequence.verify(mockConsumer).pieceMessage (PieceStyle.PLAIN, ResourceType.INFO, requestDescriptor, null, null, ByteBuffer.wrap (pieceData));
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	/**
+	 * Tests a resource reject request message
+	 * @throws IOException
+	 */
+	@Test
+	public void testResourceRejectRequest() throws IOException {
+
+		// Given
+		BlockDescriptor requestDescriptor = new BlockDescriptor (1234, 5678, 9012);
+		Map<String,Integer> extensions = new TreeMap<String,Integer>();
+		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				Arrays.asList (ResourceType.INFO),
+				Arrays.asList (new Integer[] { 1 })
+		)));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceRejectRequestMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				ResourceType.INFO.id,
+				requestDescriptor
+		)));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (
+				extensions,
+				new HashSet<String>(),
+				new BDictionary()
+		);
+		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
+		sequence.verify(mockConsumer).rejectRequestMessage (ResourceType.INFO, requestDescriptor);
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
+
+
+	/**
+	 * Tests a resource subscribe message
+	 * @throws IOException
+	 */
+	@Test
+	public void testResourceSubscribeRequest() throws IOException {
+
+		// Given
+		Map<String,Integer> extensions = new TreeMap<String,Integer>();
+		extensions.put (PeerProtocolConstants.EXTENSION_RESOURCE, 3);
+		PeerProtocolConsumer mockConsumer = mock (PeerProtocolConsumer.class);
+		PeerProtocolParser parser = new PeerProtocolParser (mockConsumer, true, true);
+
+		// When
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.extensionHandshakeMessage (extensions, new BDictionary())));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceDirectoryMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				Arrays.asList (ResourceType.INFO),
+				Arrays.asList (new Integer[] { 1 })
+		)));
+		parser.parseBytes (Util.infiniteReadableByteChannelFor (PeerProtocolBuilder.resourceSubscribeMessage (
+				PeerProtocolConstants.EXTENDED_MESSAGE_TYPE_RESOURCE,
+				ResourceType.INFO.id
+		)));
+
+		// Then
+		InOrder sequence = inOrder (mockConsumer);
+		sequence.verify(mockConsumer).extensionHandshakeMessage (
+				extensions,
+				new HashSet<String>(),
+				new BDictionary()
+		);
+		sequence.verify(mockConsumer).resourceDirectoryMessage (Arrays.asList (new ResourceType[] { ResourceType.INFO }), Arrays.asList (new Integer[] { 1 }));
+		sequence.verify(mockConsumer).resourceSubscribeMessage (ResourceType.INFO);
+		verifyNoMoreInteractions (mockConsumer);
+
+	}
 
 
 	/**
