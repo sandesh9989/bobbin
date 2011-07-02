@@ -381,7 +381,7 @@ public final class Info {
 			assertTrue (rootHashValue != null, "'root hash' or 'pieces' missing");
 			assertTrue (rootHashValue instanceof BBinary, "'root hash' of incorrect type");
 			BBinary rootHash = (BBinary)rootHashValue;
-			assertTrue (rootHash.value().length == 20, "incorrect 'root hash' length");
+			if (rootHash != null) assertTrue (rootHash.value().length == 20, "incorrect 'root hash' length"); // null check to suppress impossible warning
 		}
 
 		// Check: If '/info/root signature' is present it must be of the correct length

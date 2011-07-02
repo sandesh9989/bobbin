@@ -497,7 +497,7 @@ public class ElasticTreeView {
 
 		Cursor cursor = new Cursor (leafNumber, true);
 
-		for (int i = 0; !cursor.atRoot(); i += 2, cursor.goPathUp()) {
+		for (; !cursor.atRoot(); cursor.goPathUp()) {
 			byte[][] siblings = cursor.getSiblings();
 			if ((siblings[0] == null) || (siblings[1] == null)) {
 				return false;
